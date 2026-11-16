@@ -1,0 +1,1000 @@
+      }
+    }
+    if(design.kind==="radial"||design.kind==="oval"||design.kind==="bowl"){
+      for(const side of [-1,1])for(const x of [-52,-26,0,26,52]){
+        const rib=box(.55,18,1.0,x,14,side*61,accent);rib.rotation.x=side*.11;
+      }
+    }
+    if(design.kind==="asymmetric"){
+      box(8,21,95,sideSign(S.club)*78,12,0,accent);
+    }
+
+    // Corner lighting pylons and under-stand floodlights.
+    for(const x of [-1,1])for(const z of [-1,1]){
+      const px=x*82,pz=z*67;
+      box(1.1,22,1.1,px,11,pz,dark);box(9,1.2,2.2,px,22.2,pz,accent);
+      for(let i=0;i<5;i++)box(1.1,.65,1.5,px-3.5+i*1.75,22.8,pz,new THREE.MeshBasicMaterial({color:0xfff2c7}));
+    }
+
+    // Full spectator canopy appears at stand level 8. The centre of the pitch stays open;
+    // thin curved roof wings cover the stands rather than forming a giant slab over the view.
+    if(level>=8){
+      const roofY=24+(level-8)*1.2,innerZ=37,outerZ=66,innerX=53,outerX=80;
+      const roofMetal=new THREE.MeshStandardMaterial({color:design.roof==="silver"?0x9baabd:0x4b6684,metalness:.68,roughness:.3,transparent:true,opacity:.78,side:THREE.DoubleSide});
+      const roofGlass=new THREE.MeshStandardMaterial({color:0x81b5d0,metalness:.22,roughness:.2,transparent:true,opacity:.30,side:THREE.DoubleSide});
+      stadiumRoofPanel("x",-1,innerZ,outerZ,132,roofY,roofMetal,design.roof==="arch"?4.2:2.5);
+      stadiumRoofPanel("x",1,innerZ,outerZ,132,roofY,roofMetal,design.roof==="arch"?4.2:2.5);
+      stadiumRoofPanel("z",-1,innerX,outerX,96,roofY,roofMetal,2.7);
+      stadiumRoofPanel("z",1,innerX,outerX,96,roofY,roofMetal,2.7);
+      // Narrow translucent skylight strips, metal ribs and a fine inner LED ring.
+      stadiumRoofPanel("x",-1,innerZ+9,outerZ-8,126,roofY+.35,roofGlass,2.5);
+      stadiumRoofPanel("x",1,innerZ+9,outerZ-8,126,roofY+.35,roofGlass,2.5);
+      for(const side of [-1,1]){
+        box(132,.8,1.1,0,roofY-.4,side*67,dark);
+        box(128,.18,.34,0,roofY-1.0,side*37.6,accent);
+        for(let x=-60;x<=60;x+=15){
+          const rib=box(.72,.9,29,x,roofY-.25,side*51.5,accent);rib.rotation.x=side*.025;
+          box(1.2,.7,1.5,x,roofY-1.5,side*39, new THREE.MeshBasicMaterial({color:0xfff0c8}));
+        }
+        // Outer steel support columns and diagonals.
+        for(let x=-54;x<=54;x+=27){
+          box(1.35,roofY,1.35,x,roofY/2,side*68,concrete);
+          const brace=box(.85,Math.hypot(10,5),.85,x,roofY-2,side*64,accent);brace.rotation.x=side*.9;
+        }
+      }
+      for(const side of [-1,1]){
+        box(1.1,.8,96,side*81,roofY-.4,0,dark);
+        box(.34,.18,91,side*53,roofY-1,0,accent);
+        for(let z=-40;z<=40;z+=16){const rib=box(27,.9,.72,side*66.5,roofY-.25,z,accent);rib.rotation.z=side*.025;}
+        for(let z=-32;z<=32;z+=32)box(1.35,roofY,1.35,side*81,roofY/2,z,concrete);
+      }
+      // A compact hanging scoreboard beneath the canopy, not across the roof opening.
+      const board=box(20,6,.9,0,roofY-7,0,dark);
+      box(18,4.2,.16,0,roofY-7,.55,new THREE.MeshBasicMaterial({color:0x0a4260}));
+      box(18,4.2,.16,0,roofY-7,-.55,new THREE.MeshBasicMaterial({color:0x0a4260}));
+      box(21,.22,1.1,0,roofY-3.85,0,accent);
+      const lamps=new THREE.Group();
+      for(const side of [-1,1])for(let x=-52;x<=52;x+=26){
+        const light=new THREE.PointLight(0xfff1cf,.34,42);light.position.set(x,roofY-2,side*39);lamps.add(light);
+      }
+      sw.add(lamps);
+    }
+
+    // Tiny entrance, turnstiles and the manager's tunnel at the main stand.
+    box(20,6,10,0,3,-77,dark);box(21,.6,10,0,6.3,-77,accent);
+    for(let x=-8;x<=8;x+=4){box(.32,2.4,.32,x,1.5,-71,glass);}
+    const tunnelSign=stadiumSign(club.n,club);tunnelSign.scale.set(.5,.5,.5);tunnelSign.position.set(0,4.6,-82.2);sw.add(tunnelSign);
+
+    // Team-coloured seat section lights make every club's home ground feel different.
+    if(S.st.c>0){
+      for(const side of [-1,1])for(const x of [-44,0,44]){
+        const lamp=new THREE.PointLight(new THREE.Color(club.a),.18*S.st.c,46);lamp.position.set(x,19,side*48);sw.add(lamp);
+      }
+    }
+
+    builtStadiumKey=key;
+  };
+
+  function sideSign(clubIndex){return clubIndex%2===0?1:-1;}
+
+  // Camera is raised and pulled back so the canopy is visible while the whole pitch stays clear.
+  const oldStadiumInit=initStad;
+  initStad=function(){
+    oldStadiumInit();
+    if(sr){sr.shadowMap.enabled=true;sr.shadowMap.type=THREE.PCFSoftShadowMap;sr.setPixelRatio(Math.min(1.6,window.devicePixelRatio||1));}
+    if(sc){sc.fov=43;sc.near=.5;sc.far=650;sc.updateProjectionMatrix();}
+    buildStad();
+  };
+  stadLoop=function(time){
+    requestAnimationFrame(stadLoop);
+    if(tabOn!=="stadium"||!sw||!sr||!sc)return;
+    if(sauto)sang+=.0018;
+    const radius=206,height=126+Math.sin((time||0)/4200)*3;
+    sc.position.set(Math.cos(sang)*radius,height,Math.sin(sang)*radius);
+    sc.lookAt(0,8,0);sr.render(ss,sc);
+  };
+
+  // Stadium menu describes the selected club's own generated architecture.
+  renderStadium=function(){
+    const c=CL[S.club],design=stadiumDesign();let h="";
+    UP.forEach(u=>{
+      const l=S.st[u[0]],max=u[0]==="a"?10:5;
+      const cost=u[0]==="a"?V27_STAND_COSTS[l]:COSTS[Math.min(l,COSTS.length-1)];
+      const desc=u[0]==="a"?"More seating tiers, upper decks and a stronger roof system. The full supported canopy appears at level 8.":u[2];
+      h+='<div class="panel" style="width:250px"><h3>'+u[1]+' · level '+l+'/'+max+'</h3><p style="font-size:13px;opacity:.85">'+desc+'</p><button '+(l>=max||!V27_canAfford(cost)?'disabled':'')+' onclick="upg(\''+u[0]+'\')">'+(l>=max?'Maxed out':'Upgrade 🪙 '+cost.toLocaleString("en-AU"))+'</button></div>';
+    });
+    $("stadH").innerHTML=hero(c.n+" Stadium",design.label+" · club colours, custom seating, roof trusses and exterior details.");
+    $("stadP").innerHTML='<div class="panel" style="margin-bottom:12px"><b>'+esc(c.n)+' · '+esc(design.label)+'</b><p class="v27-muted">The stadium updates when you change clubs or upgrade the stands. Roof canopy unlocks at stand level 8.</p></div>'+h;
+    buildStad();
+  };
+
+  // ---------- Put the claim-code panel on Home, not buried in the Shop ----------
+  const oldRenderShop=renderShop;
+  renderShop=function(){
+    oldRenderShop();
+    const panel=$("shop").querySelector(".v27-code-panel");
+    if(panel){const heading=panel.previousElementSibling;if(heading&&heading.tagName==="H2")heading.remove();panel.remove();}
+  };
+  renderHome=function(){
+    const c=CL[S.club],mo=S.mode;
+    let h=hero("Welcome back, manager",c.n+' · '+LEAGUES[c.li].n+' · '+S.w+'W '+S.d+'D '+S.l+'L',badge(c,84));
+    h+='<div class="v27-home-grid"><button class="v27-mode-card '+(mo==="fb"?'selected':'')+'" onclick="setMode(\'fb\')"><span>⚽</span><b>Football</b><small>11-a-side · Full pitch</small></button><button class="v27-mode-card '+(mo==="fs"?'selected':'')+'" onclick="setMode(\'fs\')"><span>🥅</span><b>Futsal</b><small>5-a-side · Indoor court</small></button></div>';
+    if(!S.got[mo])h+='<div class="banner"><b>🎁 Free '+(mo==="fb"?'Football':'Futsal')+' Starter Pack</b><p>Get your first '+FORM[mo].n+' players and start building your team.</p><button onclick="claimStarter()">Claim starter pack</button></div>';
+    h+='<div class="v27-home-grid"><div class="panel"><span class="v27-eyebrow">SQUAD RATING</span><div class="v27-large-number">'+rating()+'</div><button class="alt sm" onclick="showTab(\'squad\')">Manage squad</button></div><div class="panel"><span class="v27-eyebrow">CLUB BALANCE</span><div class="v27-large-number">🪙 '+V27_coinText()+'</div><button class="alt sm" onclick="showTab(\'shop\')">Visit shop</button></div><div class="panel"><span class="v27-eyebrow">ALL-TIME TROPHIES</span><div class="v27-large-number">🏆 '+S.profile.trophies+'</div><button class="alt sm" onclick="showTab(\'club\')">Club profile</button></div></div>';
+    h+='<section class="panel v27-code-panel v27-home-codes"><span class="v27-eyebrow">CLUB REWARDS</span><h3>Redeem a code</h3><p class="v27-code-note">Enter a code to claim coins, special players, or special access. Adminalamanda bypasses the 10-win Alamanda gate. Each code works once. Codes you have already redeemed stay hidden.</p><div class="v27-code-row"><input id="v27CodeInput" autocomplete="off" spellcheck="false" placeholder="Enter your code" onkeydown="if(event.key===\'Enter\')redeemCode()"><button onclick="redeemCode()">CLAIM REWARD</button></div><div id="v27CodeMsg" aria-live="polite"></div></section>';
+    h+=renderDaily();
+    h+='<h2>Quick links</h2><div class="grid"><button onclick="showTab(\'play\')">▶ Play a match</button><button class="alt" onclick="showTab(\'tournaments\')">🏆 Tournaments</button><button class="alt" onclick="showTab(\'index\')">📚 Player index</button></div>';
+    h+='<h2>Your save</h2><p class="v27-muted">Progress saves automatically in this browser. Use a save code to move it to another device.</p><button class="alt sm" onclick="expSave()">Copy save code</button> <button class="alt sm" onclick="impSave()">Load save code</button>';
+    $("home").innerHTML=h;
+    const msg=$("v27CodeMsg");if(msg)msg.className="v27-code-success";
+  };
+  redeemCode=function(){
+    const input=$("v27CodeInput"),msg=$("v27CodeMsg");
+    if(!input||!msg||!S)return;
+    const raw=input.value.trim(),key=raw.toLowerCase();
+    const rewards={
+      "admincointest":{coins:5000000,text:"5,000,000 coins added."},
+      "starter plus":{coins:2000,text:"2,000 coins added."},
+      "starterpremium":{coins:100000,text:"100,000 coins added."},
+      "fulladmin":{unlimited:true,text:"Unlimited coins enabled."},
+      "__ks404_johndork__":{johnDork:true,text:"John Dork has joined your club in Football and Futsal."},
+      "__ks404_alamanda_admin__":{alamandaAdminAccess:true,text:"Alamanda Secrets access permanently unlocked. The 10-win requirement is bypassed on this save."}
+    };
+    if(!raw){msg.className="v27-code-error";msg.textContent="Enter a code first.";return;}
+    S.redeemed=S.redeemed||{};
+    if(S.redeemed[key]){msg.className="v27-code-error";msg.textContent="That code has already been redeemed.";sfx.err();return;}
+    const reward=rewards[key];
+    if(!reward){msg.className="v27-code-error";msg.textContent="That code is not valid.";sfx.err();return;}
+    S.redeemed[key]=true;
+    if(reward.unlimited)S.unlimited=true;
+    else if(reward.alamandaAdminAccess)S.alamandaAdminAccess=true;
+    else if(reward.johnDork){
+      S.unlockedSecret=true;S.owned=S.owned||{fb:{},fs:{}};
+      ["fb","fs"].forEach(mode=>{S.owned[mode]=S.owned[mode]||{};const d=V27_SECRET[mode];if(d)S.owned[mode][d.id]=Math.max(1,Number(S.owned[mode][d.id])||0);});
+    }else S.coins=(Number(S.coins)||0)+reward.coins;
+    input.value="";save();sfx.coin();refresh();
+    const fresh=$("v27CodeMsg");if(fresh){fresh.className="v27-code-success";fresh.textContent="✓ Reward claimed: "+reward.text;}
+  };
+
+  // ---------- Fuller, layered sound effects using the existing Web Audio engine ----------
+  sfx.click=()=>{tone(720,1050,.045,"triangle",.035);tone(1150,1500,.035,"sine",.022,.025);};
+  sfx.tab=()=>{tone(390,620,.085,"triangle",.05);tone(620,920,.09,"sine",.035,.045);};
+  sfx.coin=()=>{tone(980,1320,.075,"sine",.055);tone(1480,1980,.16,"sine",.05,.06);tone(1980,2450,.12,"triangle",.035,.15);};
+  sfx.pop=()=>{tone(230,520,.09,"triangle",.07);tone(520,880,.08,"sine",.04,.035);};
+  sfx.err=()=>{tone(260,150,.14,"sawtooth",.04);tone(180,95,.16,"triangle",.04,.08);};
+  sfx.kick=()=>{tone(145,48,.12,"sine",.19);tone(560,170,.055,"triangle",.045,.008);tone(950,420,.035,"sine",.018,.018);};
+  sfx.pass=()=>{tone(420,260,.07,"triangle",.045);tone(820,520,.06,"sine",.025,.025);};
+  sfx.tackle=()=>{tone(115,65,.10,"triangle",.11);tone(310,95,.08,"sawtooth",.035,.02);};
+  sfx.whistle=()=>{tone(2200,2750,.22,"sine",.075);tone(2750,2450,.2,"sine",.065,.19);};
+  sfx.horn=()=>{tone(165,165,.5,"sawtooth",.04);tone(247,247,.52,"sawtooth",.035,.03);tone(330,330,.48,"triangle",.03,.06);};
+  sfx.goal=()=>{chime([523,659,784,1047,1319],.12);tone(130,60,.32,"sine",.13,.05);};
+  const oldPassTo=passTo;
+  passTo=function(p,q){oldPassTo(p,q);if(p&&p.t===0)sfx.pass();};
+  const oldGoal=goal;
+  goal=function(team){oldGoal(team);if(team===0)sfx.goal();};
+
+  // ---------- Mobile controls: keep them visible and reliably release held keys ----------
+  if(typeof V27_bindMobile==="function")V27_bindMobile();
+  if(typeof V27_releaseMobile==="function")window.addEventListener("blur",V27_releaseMobile);
+  const mobileControls=$("mobileControls");
+  if(mobileControls){
+    mobileControls.style.display="flex";
+    mobileControls.setAttribute("aria-label","On-screen match controls");
+    ["mobilePass","mobileShoot","mobileSprint"].forEach(id=>{
+      const button=$(id);if(button){button.style.touchAction="none";button.addEventListener("contextmenu",e=>e.preventDefault());}
+    });
+  }
+
+  // Redraw the Home screen after replacing its renderer; don't reset or rewrite any save data.
+  if(S){renderHome();renderShop();renderStadium();}
+})();
+
+
+/* ============================================================
+   KIKSTART V5 UPGRADE
+   - cup matches now open the match screen (they used to start on a hidden tab)
+   - one clean animation system (no more random player animations)
+   - better pitch, kits, ball, lights, camera, minimap and possession bar
+   - shiny packs with an opening animation and walkouts for real pulls
+   - 3D tournament screen, polished interface, smarter defenders, sprint stamina
+   ============================================================ */
+(function KIKSTART_V5(){
+  if(window.__kikstartV5)return;window.__kikstartV5=true;
+  const V5={fans:[],mini:null};window.V5=V5;
+  const st=document.createElement("style");
+  st.textContent=`
+  html{scroll-behavior:smooth}
+  body{background:radial-gradient(1200px 700px at 12% -10%,#1d2f6e55,transparent 60%),radial-gradient(900px 600px at 100% 10%,#00e0a418,transparent 55%),#070b18}
+  ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#2a3a7a;border-radius:8px}::-webkit-scrollbar-track{background:#0a0f1f}
+  .tab.on{animation:v5in .35s cubic-bezier(.2,.8,.2,1)}
+  @keyframes v5in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  button{box-shadow:0 4px 14px #0004;letter-spacing:.01em}
+  button:hover:not(:disabled){box-shadow:0 8px 22px #0006,0 0 18px #00e0a433}
+  button:active:not(:disabled){transform:translateY(1px) scale(.98)}
+  .panel{background:linear-gradient(160deg,rgba(26,40,84,.9),rgba(12,18,40,.92));border:1px solid #2a3d7a;border-radius:16px;box-shadow:0 14px 30px #0005}
+  .hero{border:1px solid #ffffff1a;box-shadow:0 16px 40px #0006}
+  .hero::before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.1) 48%,transparent 66%);transform:translateX(-120%);animation:v5sheen 6s ease-in-out infinite;pointer-events:none}
+  @keyframes v5sheen{0%,55%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+  #side{background:linear-gradient(180deg,#0b1535,#050914);box-shadow:8px 0 30px #0006}
+  #side .sitems button{display:flex;align-items:center;gap:10px;font-size:15px;letter-spacing:.06em;box-shadow:none}
+  #side .sitems button .ni{width:26px;text-align:center;font-size:17px;filter:saturate(1.2)}
+  #side .sitems button.on{background:linear-gradient(90deg,#00e0a420,transparent);border-radius:0 12px 12px 0}
+  #top{backdrop-filter:blur(10px)}
+  /* cards */
+  .card{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
+  .card:not(.back):hover{transform:translateY(-6px) rotate(-1deg) scale(1.05);box-shadow:0 18px 32px #0008,0 0 22px var(--a)}
+  .card.k-icon,.card.k-hero,.card.k-secret{overflow:hidden}
+  .card.k-icon::before,.card.k-hero::before,.card.k-secret::before{content:"";position:absolute;inset:-30%;background:conic-gradient(from 0deg,#ff6ec7,#ffd86e,#6effc5,#6ec7ff,#c76eff,#ff6ec7);mix-blend-mode:overlay;opacity:.5;animation:v5foil 7s linear infinite;pointer-events:none}
+  .card.k-secret{box-shadow:0 0 26px #fff,0 0 50px #ff2d95}
+  @keyframes v5foil{to{transform:rotate(360deg)}}
+  /* shiny packs */
+  .v5pack{position:relative;width:210px;padding:16px 14px 18px;border-radius:20px;text-align:center;color:#fff!important;background:radial-gradient(circle at 50% 0,var(--a),transparent 62%),linear-gradient(#17224d,#0b1230);border:1px solid var(--a);box-shadow:0 14px 34px #0007,0 0 28px color-mix(in srgb,var(--a) 45%,transparent);transform:perspective(800px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .15s ease-out,box-shadow .3s;overflow:hidden}
+  .v5pack:hover{box-shadow:0 22px 44px #000a,0 0 46px color-mix(in srgb,var(--a) 70%,transparent)}
+  .v5pack::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.28) 48%,transparent 62%);transform:translateX(-130%);animation:v5sheen 4.5s ease-in-out infinite;pointer-events:none}
+  .v5packart{display:block;margin:0 auto 8px;filter:drop-shadow(0 10px 14px #000a);animation:v5float 3.2s ease-in-out infinite alternate}
+  @keyframes v5float{to{transform:translateY(-7px) rotate(1.5deg)}}
+  .v5sheenrect{animation:v5sweep 3.4s ease-in-out infinite}
+  @keyframes v5sweep{0%,40%{transform:translateX(-140px)}100%{transform:translateX(160px)}}
+  .v5spark{animation:v5tw 2.2s ease-in-out infinite}.v5spark:nth-of-type(2n){animation-delay:.7s}.v5spark:nth-of-type(3n){animation-delay:1.3s}
+  @keyframes v5tw{0%,100%{opacity:.15;transform:scale(.6)}50%{opacity:1;transform:scale(1.2)}}
+  /* pack opening */
+  #v5open{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:radial-gradient(circle,#0d1738,#02030a 75%);overflow:hidden;cursor:pointer}
+  #v5open .v5beams{position:absolute;inset:-60%;background:repeating-conic-gradient(var(--c1) 0 4deg,transparent 4deg 16deg);opacity:0;animation:v5spin 8s linear infinite}
+  #v5open.burst .v5beams{opacity:.55;transition:opacity .4s}
+  @keyframes v5spin{to{transform:rotate(360deg)}}
+  #v5open .v5big{position:relative;animation:v5shake 1.3s ease-in forwards}
+  #v5open.burst .v5big{animation:v5rip .7s ease-out forwards}
+  @keyframes v5shake{0%{transform:scale(.4) rotate(0)}18%{transform:scale(1) rotate(0)}30%{transform:rotate(-5deg)}42%{transform:rotate(5deg)}55%{transform:rotate(-8deg) scale(1.05)}70%{transform:rotate(8deg) scale(1.1)}85%{transform:rotate(-10deg) scale(1.15)}100%{transform:rotate(0) scale(1.2)}}
+  @keyframes v5rip{0%{transform:scale(1.2);filter:brightness(1)}60%{transform:scale(2.4);opacity:1;filter:brightness(3)}100%{transform:scale(3.4);opacity:0;filter:brightness(5)}}
+  #v5open .v5tap{position:relative;font-weight:800;letter-spacing:.2em;font-size:13px;opacity:.7;text-transform:uppercase}
+  #v5open .v5flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+  #v5open.burst .v5flash{animation:v5fl .9s ease-out}
+  @keyframes v5fl{0%{opacity:.95}100%{opacity:0}}
+  /* tournaments in 3D */
+  .v5-cups{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:26px;perspective:1400px;margin:8px 0 24px}
+  .v5c3d{position:relative;padding:20px;border-radius:22px;background:linear-gradient(155deg,#1b2d66,#0a1230);border:1px solid #3050a0;box-shadow:0 30px 50px #0008,inset 0 1px 0 #ffffff22;transform-style:preserve-3d;transform:rotateX(5deg) rotateY(-4deg);transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}
+  .v5c3d:hover{transform:rotateX(0) rotateY(0) translateZ(18px);box-shadow:0 44px 70px #000b,0 0 40px #00e0a422}
+  .v5c3d.won{border-color:#ffd23f;box-shadow:0 30px 50px #0008,0 0 40px #ffd23f55}
+  .v5c-head{display:flex;gap:16px;align-items:center;transform:translateZ(30px)}
+  .v5trophy{font-size:58px;transform-style:preserve-3d;animation:v5troph 5s linear infinite;filter:drop-shadow(0 12px 10px #000a) drop-shadow(0 0 16px #ffd23f88)}
+  @keyframes v5troph{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+  .v5c-head h3{margin:2px 0 4px;font-size:19px}.v5c-head small{opacity:.65;letter-spacing:.12em;text-transform:uppercase;font-size:10px;font-weight:800}.v5c-head p{margin:0;font-size:12px;opacity:.7}
+  .v5stairs{display:flex;align-items:flex-end;gap:10px;margin:22px 0 14px;height:150px;transform:translateZ(20px);transform-style:preserve-3d}
+  .v5step{flex:1;border-radius:12px 12px 4px 4px;padding:8px 6px;text-align:center;font-size:11px;font-weight:800;background:linear-gradient(180deg,#26397a,#142254);border:1px solid #3a56a8;box-shadow:0 12px 20px #0007;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;position:relative}
+  .v5step:nth-child(1){height:60%}.v5step:nth-child(2){height:80%}.v5step:nth-child(3){height:100%}
+  .v5step.done{background:linear-gradient(180deg,#14633f,#0a3322);border-color:#26b873}
+  .v5step.now{background:linear-gradient(180deg,#00a77c,#065c47);border-color:#7cebd2;box-shadow:0 0 30px #00e0a477,0 12px 20px #0007;transform:translateZ(26px) translateY(-6px);animation:v5pulse 1.6s ease-in-out infinite}
+  @keyframes v5pulse{50%{box-shadow:0 0 44px #00e0a4cc,0 12px 20px #0007}}
+  .v5step small{opacity:.8;font-weight:700}
+  .v5c-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;transform:translateZ(24px)}
+  .v5prize{font-size:12px;opacity:.75}
+  /* match screen */
+  #hud{background:linear-gradient(135deg,rgba(6,12,30,.92),rgba(14,26,60,.88));border:1px solid #ffffff22;border-radius:14px;box-shadow:0 10px 24px #0008;backdrop-filter:blur(6px)}
+  #v5mini{position:absolute;right:12px;top:12px;z-index:3;width:168px;height:104px;border-radius:10px;border:1px solid #ffffff44;box-shadow:0 8px 20px #0008;background:#08281a}
+  #v5poss{position:absolute;left:12px;top:64px;z-index:3;width:210px;font-size:11px;font-weight:800;letter-spacing:.08em}
+  #v5poss .bar{height:8px;border-radius:5px;background:#ff5a7a;overflow:hidden;margin-top:3px;border:1px solid #0006}
+  #v5poss .bar i{display:block;height:100%;width:50%;background:linear-gradient(90deg,#00e0a4,#7cebd2);transition:width .3s}
+  #v5stam{position:absolute;left:12px;bottom:14px;z-index:3;width:140px;font-size:10px;font-weight:800;letter-spacing:.1em}
+  #v5stam .bar{height:7px;border-radius:5px;background:#0009;overflow:hidden;margin-top:3px;border:1px solid #ffffff33}
+  #v5stam .bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ffd23f,#ff8a00)}
+  #stage{border-radius:18px;box-shadow:0 24px 50px #000a,0 0 0 1px #ffffff18}
+  `;
+  document.head.appendChild(st);
+
+
+  // ---------- player model with arms that can swing, raise and celebrate ----------
+  person=function(primary,secondary,skin,hair,hairStyle){
+    const g=new THREE.Group(),mat=(col,r)=>new THREE.MeshStandardMaterial({color:col,roughness:r===undefined?.75:r}),shirt=mat(primary),trim=mat(secondary),skinM=mat(skin),hairM=mat(hair),sockM=mat(primary),bootM=mat("#111111");
+    const part=(geo,m,x,y,z,par)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;(par||g).add(o);return o};
+    part(new THREE.CylinderGeometry(.42,.5,1.05,12),shirt,0,1.45,0);
+    part(new THREE.CylinderGeometry(.46,.49,.16,12),trim,0,1.52,0);
+    part(new THREE.BoxGeometry(.72,.46,.5),trim,0,.72,0);
+    part(new THREE.TorusGeometry(.16,.035,6,12),trim,0,1.98,0).rotation.x=Math.PI/2;
+    g.userData.a=[-1,1].map(s=>{const sh=new THREE.Group();sh.position.set(s*.52,1.9,0);g.add(sh);part(new THREE.CylinderGeometry(.11,.13,.34,8),shirt,0,-.17,0,sh);part(new THREE.CylinderGeometry(.085,.1,.4,8),skinM,0,-.54,0,sh);part(new THREE.SphereGeometry(.1,8,8),skinM,0,-.78,0,sh);return sh});
+    g.userData.l=[-.2,.2].map(x=>{const lg=new THREE.Group();lg.position.set(x,.55,0);g.add(lg);part(new THREE.CylinderGeometry(.13,.12,.43,8),trim,0,-.17,0,lg);part(new THREE.CylinderGeometry(.095,.09,.48,8),sockM,0,-.58,0,lg);part(new THREE.BoxGeometry(.22,.12,.38),bootM,0,-.84,.11,lg);return lg});
+    part(new THREE.SphereGeometry(.32,14,12),skinM,0,2.18,0);
+    if(hairStyle)part(new THREE.SphereGeometry(.345,14,9,0,Math.PI*2,0,hairStyle===2?2.1:1.25),hairM,0,2.25,0);
+    part(new THREE.BoxGeometry(.14,.035,.025),bootM,-.12,2.2,.29);part(new THREE.BoxGeometry(.14,.035,.025),bootM,.12,2.2,.29);
+    const sd=new THREE.Mesh(new THREE.CircleGeometry(.78,18),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.27}));sd.rotation.x=-Math.PI/2;sd.position.y=.025;g.add(sd);
+    g.rotation.order="YXZ";return g;
+  };
+
+  // ---------- sidebar icons ----------
+  const ICONS={home:"🏠",shop:"🛒",squad:"👥",stadium:"🏟️",play:"⚽",table:"📊",index:"🔎",tournaments:"🏆",club:"📈"};
+  Object.keys(ICONS).forEach(k=>{const b=$("nav-"+k);if(b&&!b.querySelector(".ni"))b.innerHTML='<span class="ni">'+ICONS[k]+'</span>'+b.textContent});
+
+  // ---------- card styling hook ----------
+  const cardBase=cardHTML;
+  cardHTML=function(p,extra,id,pop){let h=cardBase(p,extra,id,pop);if(p&&(p.kind||p.secret)&&h.indexOf("k-")<0)h=h.replace('class="card ','class="card k-'+(p.secret?"secret":p.kind)+' ');return h};
+
+  // ---------- tournaments: the match screen opens, prizes, 3D layout ----------
+  const cupPlay=playCupMatch;
+  playCupMatch=function(){
+    if(M&&!M.over)return;
+    const run=S.cups&&S.cups[S.activeCup];if(!run||run.state!=="active")return;
+    showTab("play");cupPlay();
+    if(!M||M.over){tabOn="tournaments";showTab("tournaments");ask("The match could not start. Check your connection and try again.")}
+  };
+  const CUP_PRIZE=[400,700,1500],CUP_BONUS=2000;
+  const progBase=V27_progressCup;
+  V27_progressCup=function(m,won,draw){
+    const run=S.cups[m.competitionId],before=run?run.round:0,msg=progBase(m,won,draw);
+    if(run&&(run.state==="won"||run.round>before)){let r=CUP_PRIZE[Math.min(2,before)];if(run.state==="won")r+=CUP_BONUS;S.coins+=r;save();return (msg||"")+" +"+r.toLocaleString()+" coins."}
+    return msg;
+  };
+  renderTournaments=function(){
+    const comps=V27_competitions();
+    let h=hero("Competitions","Three rounds of knockout football for each trophy. Win every tie to lift the cup.");
+    h+='<div class="panel v27-league-shortcut"><div><b>Domestic league</b><p class="v27-muted">Your regular season table and results.</p></div><button onclick="showTab(\'table\')">Open league table</button></div><h2>Knockout tournaments</h2><div class="v5-cups">';
+    comps.forEach(c=>{
+      const run=S.cups[c.id],active=run&&run.state==="active",won=run&&run.state==="won",out=run&&run.state==="out",rd=active?run.round:(won?3:0),names=["Quarter-final","Semi-final","Final"];
+      h+='<div class="v5c3d'+(won?' won':'')+'"><div class="v5c-head"><div class="v5trophy">'+(won?'🏆':c.icon)+'</div><div><small>'+esc(c.type)+'</small><h3>'+esc(c.name)+'</h3><p>'+esc(c.sub)+'</p></div></div><div class="v5stairs">';
+      names.forEach((n,i)=>{const op=run&&run.opponents&&run.opponents[i];const cls=(i<rd||won)?'done':(active&&i===rd)?'now':'';h+='<div class="v5step '+cls+'"><span>'+n+'</span>'+(op?badge(op,30)+'<small>'+esc(op.n)+'</small>':'<small>?</small>')+((i<rd||won)?'<span>✔</span>':'')+'</div>'});
+      h+='</div><div class="v5c-foot">';
+      if(active)h+='<button onclick="S.activeCup=\''+c.id+'\';playCupMatch()">▶ Play '+names[run.round].toLowerCase()+'</button>';
+      else if(won)h+='<span class="v27-won">🏆 Champions!</span><button class="alt" onclick="startTournament(\''+c.id+'\')">Enter next edition</button>';
+      else if(out)h+='<span class="v27-muted">Eliminated</span><button class="alt" onclick="startTournament(\''+c.id+'\')">Enter again</button>';
+      else h+='<button onclick="startTournament(\''+c.id+'\')">Enter tournament</button>';
+      h+='<span class="v5prize">Prizes 🪙 '+CUP_PRIZE.join(' / ')+' + '+CUP_BONUS.toLocaleString()+' for the cup</span></div>';
+      if(run&&run.lastMessage)h+='<p class="v27-muted" style="margin:10px 0 0">'+esc(run.lastMessage)+'</p>';
+      h+='</div>';
+    });
+    h+='</div>';
+    $("tournaments").innerHTML=h;
+  };
+
+  // ---------- packs: shiny art, tilt, opening animation, walkouts for real pulls ----------
+  const PCOL={bronze:["#e8a96a","#6b3a10"],silver:["#f4f7ff","#68758f"],gold:["#ffe45c","#c97a00"],ruby:["#ff6a88","#7d0020"],diamond:["#a8f6ff","#1f55d6"]};
+  let pid=0;
+  function packSVG(t,icon,label){
+    const c=PCOL[t]||PCOL.gold,id="v5g"+(pid++);
+    return '<svg class="v5packart" viewBox="0 0 130 164" width="130" height="164"><defs><linearGradient id="'+id+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+c[0]+'"/><stop offset=".55" stop-color="'+c[1]+'"/><stop offset="1" stop-color="'+c[0]+'"/></linearGradient><clipPath id="'+id+'c"><path d="M10 14l11-8 11 8 11-8 11 8 11-8 11 8 11-8 11 8 11-8 11 8v128l-11 8-11-8-11 8-11-8-11 8-11-8-11 8-11-8-11 8-11-8z"/></clipPath></defs><path d="M10 14l11-8 11 8 11-8 11 8 11-8 11 8 11-8 11 8 11-8 11 8v128l-11 8-11-8-11 8-11-8-11 8-11-8-11 8-11-8-11 8-11-8z" fill="url(#'+id+')" stroke="rgba(255,255,255,.85)" stroke-width="2"/><g clip-path="url(#'+id+'c)"><g stroke="rgba(255,255,255,.22)" stroke-width="4"><line x1="65" y1="82" x2="0" y2="10"/><line x1="65" y1="82" x2="130" y2="10"/><line x1="65" y1="82" x2="0" y2="154"/><line x1="65" y1="82" x2="130" y2="154"/><line x1="65" y1="82" x2="65" y2="0"/><line x1="65" y1="82" x2="65" y2="164"/></g><rect class="v5sheenrect" x="-20" y="-10" width="38" height="190" fill="rgba(255,255,255,.45)" transform="skewX(-18)"/></g><circle cx="65" cy="80" r="33" fill="rgba(0,0,0,.3)" stroke="#fff" stroke-width="2.5"/><circle cx="65" cy="80" r="26" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1" stroke-dasharray="3 4"/><text x="65" y="94" font-size="38" text-anchor="middle">'+icon+'</text><text x="65" y="132" font-size="10" font-weight="900" text-anchor="middle" fill="#fff" letter-spacing="2.5">'+(label||"KIKSTART")+'</text><g fill="#fff"><circle class="v5spark" cx="30" cy="40" r="2"/><circle class="v5spark" cx="102" cy="52" r="2.4"/><circle class="v5spark" cx="38" cy="118" r="2"/><circle class="v5spark" cx="98" cy="112" r="2.2"/></g></svg>';
+  }
+  function decoratePacks(){
+    const root=$("shop");if(!root)return;
+    root.querySelectorAll(".pack").forEach(el=>{
+      const art=el.querySelector(".v27-pack-art");if(!art)return;
+      const t=[...el.classList].find(c=>PCOL[c])||"gold",icon=(art.querySelector("span")||{}).textContent||"⭐",mgr=art.classList.contains("manager-art");
+      art.outerHTML=packSVG(t,icon,mgr?"MANAGERS":"KIKSTART");
+      el.classList.add("v5pack");el.classList.remove("pack");
+      el.addEventListener("pointermove",e=>{const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;el.style.setProperty("--ry",(x*14)+"deg");el.style.setProperty("--rx",(-y*14)+"deg")});
+      el.addEventListener("pointerleave",()=>{el.style.setProperty("--ry","0deg");el.style.setProperty("--rx","0deg")});
+    });
+  }
+  const shopBase=renderShop;
+  renderShop=function(){shopBase();decoratePacks()};
+  function rankOf(x){return RI(x.p.r)+((x.p.kind==="icon"||x.p.kind==="hero"||x.p.secret)?1:0)}
+  function cinematic(res,title){
+    const best=res.reduce((a,x)=>rankOf(x)>rankOf(a)?x:a,res[0]),bi=res.indexOf(best),col=COL[best.p.r]||COL.gold,t=best.p.mg?"gold":best.p.r;
+    const o=document.createElement("div");o.id="v5open";o.style.setProperty("--c1",col[0]);o.style.setProperty("--c2",col[1]||col[0]);
+    o.innerHTML='<div class="v5beams"></div><div class="v5big">'+packSVG(t,best.p.mg?"🧥":"⭐","KIKSTART").replace('width="130" height="164"','width="190" height="240"')+'</div><div class="v5tap">'+esc(title||"Opening pack")+'</div><div class="v5flash"></div>';
+    document.body.appendChild(o);boom(.2);cheer(1.6,.12);
+    let done=false;const finish=()=>{if(done)return;done=true;o.remove();
+      if(rankOf(best)>=2&&PK&&PK[bi]&&!PK[bi].done&&typeof walkout==="function"){walkout(best.p,()=>{try{flip(bi)}catch(e){}})}};
+    setTimeout(()=>{if(done)return;o.classList.add("burst");boom(.9);burst(innerWidth/2,innerHeight/2,col,150,13);cheer(2.4,.3);chime([523,659,784,1047],.12)},1300);
+    setTimeout(finish,2200);o.addEventListener("click",finish);
+  }
+  const grantBase=grant;
+  grant=function(list,title){const before=PK;grantBase(list,title);if(PK&&PK!==before&&PK.length)cinematic(PK,title)};
+
+  // ---------- 3D pitch details, crowd, lights ----------
+  const initBase=init3D;
+  init3D=function(){
+    const was=!!renderer,ok=initBase();if(!ok||was)return ok;
+    try{
+      const c=document.createElement("canvas");c.width=4;c.height=256;const x=c.getContext("2d"),g=x.createLinearGradient(0,0,0,256);g.addColorStop(0,"#050a1c");g.addColorStop(.55,"#18255a");g.addColorStop(1,"#3a4c96");x.fillStyle=g;x.fillRect(0,0,4,256);
+      scene.background=new THREE.CanvasTexture(c);scene.fog=new THREE.Fog(0x16224f,120,300);
+      scene.add(new THREE.HemisphereLight(0xbcd0ff,0x1a5a30,.55));
+      const sun=scene.children.find(o=>o&&o.isDirectionalLight);
+      if(sun){sun.castShadow=true;sun.intensity=.75;sun.position.set(26,60,30);sun.shadow.mapSize.set(2048,2048);const sc=sun.shadow.camera;sc.left=-85;sc.right=85;sc.top=60;sc.bottom=-60;sc.near=1;sc.far=190;sun.shadow.bias=-.0004}
+    }catch(e){}
+    return ok;
+  };
+  const worldBase=buildWorld;
+  buildWorld=function(F,c){
+    worldBase(F,c);V5.fans=[];
+    if(!world)return;
+    const L=F.L,W=F.W,big=F.sc>.9;
+    world.children.slice(0,12).forEach(o=>{o.receiveShadow=true});
+    const white=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});
+    const add=(m,x,y,z)=>{m.position.set(x,y,z);world.add(m);return m};
+    const spot=(x,z)=>{const s=new THREE.Mesh(new THREE.CircleGeometry(.3,14),white);s.rotation.x=-Math.PI/2;add(s,x,.08,z)};
+    spot(0,0);
+    [-1,1].forEach(s=>{
+      spot(s*(L/2-(big?11:5)),0);
+      const arc=new THREE.Mesh(new THREE.RingGeometry(big?9:3.5,(big?9:3.5)+.28,30,1,s>0?Math.PI*.64:-Math.PI*.36,Math.PI*.72),white);arc.rotation.x=-Math.PI/2;add(arc,s*(L/2-(big?11:5)),.07,0);
+      // goal nets
+      const gh=big?2.6:2,net=new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:.35});
+      const back=new THREE.Mesh(new THREE.PlaneGeometry(F.gw,gh,14,6),net);back.rotation.y=Math.PI/2;add(back,s*(L/2+2),gh/2,0);
+      [-1,1].forEach(q=>{const side=new THREE.Mesh(new THREE.PlaneGeometry(2,gh,4,6),net);add(side,s*(L/2+1),gh/2,q*F.gw/2)});
+      const top=new THREE.Mesh(new THREE.PlaneGeometry(2,F.gw,4,14),net);top.rotation.x=-Math.PI/2;add(top,s*(L/2+1),gh,0);
+      // corner flags
+      [-1,1].forEach(q=>{
+        const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,1.6,6),new THREE.MeshLambertMaterial({color:0xffffff}));add(pole,s*L/2,.8,q*W/2);
+        const flag=new THREE.Mesh(new THREE.PlaneGeometry(.6,.4),new THREE.MeshBasicMaterial({color:0xffd23f,side:THREE.DoubleSide}));add(flag,s*L/2-s*.3,1.4,q*W/2);
+      });
+    });
+    // collect fans so the crowd can jump when something happens
+    const fg=world.children.filter(o=>o&&o.geometry&&o.geometry.parameters&&o.geometry.parameters.width===.9&&o.geometry.parameters.height===1.2);
+    fg.forEach(f=>{f.userData.y0=f.position.y;f.userData.ph=rnd()*6.28});V5.fans=fg;
+  };
+
+  // ---------- ball texture + shirt numbers + overlays ----------
+  function ballTex(){
+    const c=document.createElement("canvas");c.width=256;c.height=128;const x=c.getContext("2d");x.fillStyle="#f6f6f6";x.fillRect(0,0,256,128);x.fillStyle="#1a1a1a";
+    for(let i=0;i<14;i++){const px=(i%7)*38+((i>6)?19:0)+10,py=i<7?36:90;x.beginPath();for(let k=0;k<5;k++){const a=k/5*6.283-1.57;x.lineTo(px+Math.cos(a)*11,py+Math.sin(a)*11)}x.closePath();x.fill()}
+    x.fillRect(0,60,256,6);return new THREE.CanvasTexture(c);
+  }
+  const numCache={};
+  function numberTex(n,col){const k=n+col;if(numCache[k])return numCache[k];const c=document.createElement("canvas");c.width=c.height=64;const x=c.getContext("2d");x.fillStyle=col;x.font="bold 46px Arial";x.textAlign="center";x.textBaseline="middle";x.strokeStyle="#0008";x.lineWidth=4;x.strokeText(String(n),32,34);x.fillText(String(n),32,34);return numCache[k]=new THREE.CanvasTexture(c)}
+  function overlays(){
+    const stage=$("stage");if(!stage)return;
+    if(!$("v5mini")){const mc=document.createElement("canvas");mc.id="v5mini";mc.width=168;mc.height=104;stage.appendChild(mc)}
+    if(!$("v5poss")){const d=document.createElement("div");d.id="v5poss";d.innerHTML='<span>POSSESSION <b id="v5pv">50%</b></span><div class="bar"><i></i></div>';stage.appendChild(d)}
+    if(!$("v5stam")){const d=document.createElement("div");d.id="v5stam";d.innerHTML='STAMINA<div class="bar"><i></i></div>';stage.appendChild(d)}
+    V5.mini=$("v5mini");
+  }
+  const startBase=startMatch;
+  startMatch=function(key){
+    startBase(key);
+    if(!M||M.over||M.v5)return;M.v5=1;M.poss=[0,0];M.stam=1;overlays();
+    try{
+      const F=M.F,bm=M.ball.mesh;bm.geometry=new THREE.SphereGeometry(.5*F.ps,24,16);bm.material=new THREE.MeshLambertMaterial({map:ballTex()});bm.castShadow=true;
+      M.pl.forEach(p=>{
+        const num=p.gk?1:(p.i+1),dark=!p.t?(lum(CL[S.club].a)>150):(lum(M.team.a)>150);
+        const pl=new THREE.Mesh(new THREE.PlaneGeometry(.62,.62),new THREE.MeshBasicMaterial({map:numberTex(num,dark?"#111111":"#ffffff"),transparent:true}));pl.rotation.y=Math.PI;pl.position.set(0,1.38,-.56);p.mesh.add(pl);
+      });
+    }catch(e){}
+  };
+
+  // ---------- celebrations: one coordinated animation per goal ----------
+  const goalBase=goal,CEL=[["run","RUNS TO THE CORNER!"],["slide","KNEE SLIDE!"],["arms","ARMS WIDE!"],["pile","THE TEAM PILES ON!"],["sky","POINTS TO THE SKY!"]];
+  goal=function(t){goalBase(t);if(!M)return;const c=CEL[Math.floor(rnd()*CEL.length)];M.cel=c[0];M.celT=0;M.camShake=.9;if(t===0)banner("GOAL! · "+c[1])};
+
+  // ---------- gameplay: marking, sprint stamina, switch player, soft dribble, no overlap ----------
+  const aiBase=ai;
+  ai=function(p,dt){
+    const m=M,F=m.F,o=m.owner;
+    if(!p.gk&&o&&o.t!==p.t&&!(m["c"+p.t]||[]).includes(p)){
+      let mk=null,md=1e9;m.pl.forEach(q=>{if(q.t!==p.t&&q!==o&&!q.gk){const d=hyp(q.x-p.x,q.z-p.z);if(d<md){md=d;mk=q}}});
+      if(mk&&md<F.L*.32){
+        const a=p.t?-1:1,h=home(p),tx=.55*(mk.x-a*2.4*F.sc)+.45*(h[0]+(m.ball.x-h[0])*.35),tz=.55*mk.z+.45*(h[1]+(m.ball.z-h[1])*.35),dx=tx-p.x,dz=tz-p.z,d=hyp(dx,dz);
+        let sx=0,sz=0;if(d>.6){sx=dx/d;sz=dz/d}
+        move(p,sx,sz,p.spd*(p.t?p.sk:1)*Math.min(1,d/2.5)*(p.lunge>0?1.4:1),dt);if(d>.6){p.dx=sx;p.dz=sz}return;
+      }
+    }
+    aiBase(p,dt);
+  };
+  const ctrlBase=userCtrl;
+  userCtrl=function(p,dt){
+    const m=M;if(!m)return;if(m.stam===undefined)m.stam=1;
+    const mv=!!(K.KeyW||K.KeyA||K.KeyS||K.KeyD||K.ArrowUp||K.ArrowDown||K.ArrowLeft||K.ArrowRight),want=!!(K.ShiftLeft||K.ShiftRight),spr=want&&mv&&m.stam>0,sl=K.ShiftLeft,sr=K.ShiftRight;
+    if(want&&!spr){K.ShiftLeft=0;K.ShiftRight=0}
+    try{ctrlBase(p,dt)}finally{K.ShiftLeft=sl;K.ShiftRight=sr}
+    m.stam=cl(m.stam+(spr?-.3:.17)*dt,0,1);
+    const sb=$("v5stam");if(sb)sb.querySelector("i").style.width=(m.stam*100)+"%";
+    if(K.KeyC){if(!K.cdn){K.cdn=1;m.sw=1}}else K.cdn=0;
+  };
+  const pickBase=pickCtrl;
+  pickCtrl=function(){
+    const m=M;
+    if(m.sw){m.sw=0;let q=null,qd=1e9;m.pl.forEach(p=>{if(p.t===0&&!p.gk&&p!==m.ctrl){const d=hyp(p.x-m.ball.x,p.z-m.ball.z);if(d<qd){qd=d;q=p}}});if(q){m.ctrl=q;m.lockT=performance.now()+900;return}}
+    if(performance.now()<(m.lockT||0)&&m.ctrl&&!(m.owner&&m.owner.t===0))return;
+    pickBase();
+  };
+  const ballBase=ballStep;
+  ballStep=function(dt){
+    const m=M,b=m.ball,po=m.owner,px=b.x,pz=b.z;ballBase(dt);
+    if(m.owner){const k=Math.min(1,dt*(m.owner===po?13:8));b.x=px+(b.x-px)*k;b.z=pz+(b.z-pz)*k}
+  };
+  const stepBase=stepMatch;
+  stepMatch=function(dt){
+    stepBase(dt);
+    if(!M||M.over||M.wait||M.intro>0||M.pause>0)return;
+    const m=M,r=1.05*m.F.sc;
+    for(let i=0;i<m.pl.length;i++)for(let j=i+1;j<m.pl.length;j++){const a=m.pl[i],c=m.pl[j],dx=c.x-a.x,dz=c.z-a.z,d=hyp(dx,dz);if(d>0&&d<r){const k=(r-d)/2/d;a.x-=dx*k;a.z-=dz*k;c.x+=dx*k;c.z+=dz*k}}
+  };
+
+  // ---------- animation: one state machine, smooth blending, nothing random ----------
+  const lerp=(a,b,k)=>a+(b-a)*k;
+  window.V5_animate=function(m,dt){
+    const b=m.ball,F=m.F,now=performance.now()/1000,cel=!!(m.pause>0&&m.celeb&&m.scorer);
+    m.celT=cel?(m.celT||0)+dt:0;
+    if(cel){
+      const sc=m.scorer,a=sc.t?-1:1,ty=m.cel||"arms";
+      m.pl.forEach(p=>{
+        if(p.t!==sc.t||p.gk)return;
+        if(p===sc){
+          if(ty==="run"){const tx=cl(p.x+a*16,-F.L/2+3,F.L/2-3),tz=(p.z>=0?1:-1)*(F.W/2-3);p.dx=tx-p.x;p.dz=tz-p.z;p.x+=(tx-p.x)*dt*1.3;p.z+=(tz-p.z)*dt*1.3;p.vx=p.dx*.5;p.vz=p.dz*.5}
+          else if(ty==="slide"){p.x=cl(p.x+a*dt*Math.max(0,7-m.celT*3.2),-F.L/2+2,F.L/2-2);p.dx=a;p.dz=0;p.vx=0;p.vz=0}
+          else{p.dx=a;p.dz=0;p.vx=p.vz=0}
+        }else{
+          p.x+=((sc.x+(p.i%3-1)*1.8)-p.x)*dt*.9;p.z+=((sc.z+(p.i%4-1.5)*1.5)-p.z)*dt*.9;p.dx=sc.x-p.x;p.dz=sc.z-p.z;p.vx=p.dx*.4;p.vz=p.dz*.4;
+        }
+      });
+    }
+    const k=Math.min(1,dt*20);
+    m.pl.forEach(p=>{
+      const g=p.mesh,u=g.userData,spd=hyp(p.vx,p.vz),sp=Math.min(1.35,spd/7),ce=cel&&p.t===m.scorer.t&&!p.gk,sc=ce&&p===m.scorer;
+      p.ph=(p.ph||0)+dt*(2.5+sp*10);p.kt=Math.max(0,(p.kt||0)-dt);
+      const slide=p.lunge>0&&!ce;
+      let y=Math.abs(Math.sin(p.ph*.5))*sp*.11;
+      if(ce&&!(sc&&m.cel==="slide"))y+=Math.abs(Math.sin(now*9+p.i))*(sc&&m.cel==="arms"?.25:.65);
+      if(slide)y=0;
+      let sw=Math.sin(p.ph)*sp*.95,l0=sw,l1=-sw,a0=-sw*.85,a1=sw*.85,az0=0,az1=0,lean=sp*.13,tilt=0;
+      if(p.kt>0){const q=Math.sin((1-p.kt/.3)*Math.PI);l0=-1.35*q;a1=.7*q;lean+=.1*q}
+      if(slide){l0=-1.5;l1=-.3;lean=-.95;a0=a1=-1.2}
+      if(ce){a0=a1=0;az0=-2.7;az1=2.7;l0=l1=0;lean=0;if(sc&&m.cel==="sky"){az0=0;az1=3.1}if(sc&&m.cel==="slide"){lean=-1}}
+      if(p.gk){
+        const opp=!m.owner||m.owner.t!==p.t,bs=hyp(b.vx,b.vz),dist=hyp(b.x-p.x,b.z-p.z);
+        if(opp&&bs>11&&dist<9&&b.y<3.4&&m.pause<=0){const th=g.rotation.y;p.dive=-((b.x-p.x)*Math.cos(th)-(b.z-p.z)*Math.sin(th))>0?1:-1;p.dv=.5}
+        p.dv=Math.max(0,(p.dv||0)-dt);
+        if(p.dv>0){tilt=p.dive*1.2*Math.min(1,p.dv*5);az0=-2.6;az1=2.6;a0=a1=0;y+=Math.sin((p.dv/.5)*Math.PI)*.4;lean=0}
+      }
+      g.position.set(p.x,y,p.z);
+      if(hyp(p.dx,p.dz)>.001){const d=Math.atan2(p.dx,p.dz)-g.rotation.y;g.rotation.y+=Math.atan2(Math.sin(d),Math.cos(d))*Math.min(1,dt*12)}
+      u.l[0].rotation.x=lerp(u.l[0].rotation.x,l0,k);u.l[1].rotation.x=lerp(u.l[1].rotation.x,l1,k);
+      u.a[0].rotation.x=lerp(u.a[0].rotation.x,a0,k);u.a[1].rotation.x=lerp(u.a[1].rotation.x,a1,k);
+      u.a[0].rotation.z=lerp(u.a[0].rotation.z,az0,k);u.a[1].rotation.z=lerp(u.a[1].rotation.z,az1,k);
+      g.rotation.x=lerp(g.rotation.x,lean,k);g.rotation.z=lerp(g.rotation.z,tilt,k);
+    });
+    (m.refs||[]).forEach(r=>{
+      const g=r.mesh,u=g.userData;if(r.px===undefined){r.px=g.position.x;r.pz=g.position.z}
+      const vx=(g.position.x-r.px)/Math.max(dt,.001),vz=(g.position.z-r.pz)/Math.max(dt,.001);r.px=g.position.x;r.pz=g.position.z;
+      const sp=Math.min(1,hyp(vx,vz)/6);r.ph=(r.ph||0)+dt*(3+sp*8);const sw=Math.sin(r.ph)*sp*.9;
+      u.l[0].rotation.x=sw;u.l[1].rotation.x=-sw;u.a[0].rotation.x=-sw*.7;u.a[1].rotation.x=sw*.7;
+      const d=Math.atan2(b.x-g.position.x,b.z-g.position.z)-g.rotation.y;g.rotation.y+=Math.atan2(Math.sin(d),Math.cos(d))*Math.min(1,dt*6);
+    });
+    // crowd
+    const fans=V5.fans;if(fans&&fans.length){const ex=cel?1:Math.min(.45,hyp(b.vx,b.vz)*.012+.05),t2=now*5;for(let i=0;i<fans.length;i++){const f=fans[i];f.position.y=f.userData.y0+Math.max(0,Math.sin(t2+f.userData.ph))*.35*ex}}
+    // possession + minimap
+    if(m.owner&&!m.pause&&!m.wait&&m.intro<=0){m.poss=m.poss||[0,0];m.poss[m.owner.t]+=dt}
+    const pe=$("v5poss");if(pe&&m.poss){const tot=(m.poss[0]+m.poss[1])||1,pc=Math.round(m.poss[0]/tot*100);pe.querySelector("i").style.width=pc+"%";pe.querySelector("b").textContent=pc+"%"}
+    const mc=V5.mini;if(mc){const c=mc.getContext("2d"),W=mc.width,H=mc.height,sx=W/F.L,sz=H/F.W;c.clearRect(0,0,W,H);c.fillStyle="rgba(8,42,24,.92)";c.fillRect(0,0,W,H);c.strokeStyle="rgba(255,255,255,.5)";c.strokeRect(1,1,W-2,H-2);c.beginPath();c.moveTo(W/2,0);c.lineTo(W/2,H);c.stroke();
+      m.pl.forEach(p=>{c.fillStyle=p.t?"#ff5a7a":"#00e0a4";c.beginPath();c.arc((p.x+F.L/2)*sx,(p.z+F.W/2)*sz,p===m.ctrl?4.5:2.8,0,6.3);c.fill();if(p===m.ctrl){c.strokeStyle="#fff";c.lineWidth=1.5;c.stroke();c.lineWidth=1}});
+      c.fillStyle="#fff";c.beginPath();c.arc((b.x+F.L/2)*sx,(b.z+F.W/2)*sz,2.4,0,6.3);c.fill()}
+  };
+  window.V5_camera=function(dt){
+    const m=M,b=m.ball,cs=m.F.sc>.9?1:.45,bs=hyp(b.vx,b.vz);
+    let tx=b.x*.72+cl(b.vx*.28,-9,9),ty=(29+Math.min(7,bs*.22))*cs,tz=(35+Math.min(9,bs*.3))*cs,lx=null,fov=50;
+    if(m.pause>.4&&m.scorer&&m.celeb){const s=m.scorer;tx=s.x;ty=8*cs+3;tz=s.z+15*cs;lx=s;fov=42}
+    const k=Math.min(1,dt*(lx?2.4:3.2));camera.position.x+=(tx-camera.position.x)*k;camera.position.y+=(ty-camera.position.y)*k;camera.position.z+=(tz-camera.position.z)*k;
+    if(m.camShake>0){camera.position.x+=(rnd()-.5)*m.camShake;camera.position.y+=(rnd()-.5)*m.camShake*.6;m.camShake=Math.max(0,m.camShake-dt*2.4)}
+    camera.fov+=(fov-camera.fov)*Math.min(1,dt*3);camera.updateProjectionMatrix();
+    camera.lookAt(lx?lx.x:camera.position.x,lx?2:0,lx?lx.z:3*cs);
+  };
+})();
+
+</script>
+<script>
+// ================= ALAMANDA COLLEGE SECRETS COLLECTION · v10 =================
+// Academy cards are normally obtained through the raffle. The one-time secret code intentionally unlocks the full collection.
+(function(){
+  if (window.__kikstartAlamandaInstalledV9) return;
+  window.__kikstartAlamandaInstalledV9 = true;
+
+  const AK_rosterSeed = [
+    ["Sebastian", "FWD"], ["Jon", "MID"], ["Ganiko", "DEF"], ["Sonny", "FWD"],
+    ["Arsham", "MID"], ["Rayaan", "MID"], ["Khizar", "FWD"], ["Brooklyn", "DEF"],
+    ["Emir", "MID"], ["Darcy", "DEF"], ["Nyle", "GK"], ["Lucas", "MID"],
+    ["Callum", "FWD"], ["Aaban", "DEF"], ["Salmaan", "FWD"],
+    [null, "MID"], // Retired slot retained to preserve Zayd's existing player ID.
+    ["Zayd", "FWD"], ["Krish", "MID"], ["Riaan", "MID"]
+  ];
+
+  const AK_players = { fb: [], fs: [] };
+  ["fb", "fs"].forEach(mode => {
+    AK_rosterSeed.forEach(([name, position], index) => {
+      const playerId = POOL[mode].length;
+      if (!name) {
+        POOL[mode].push({ id: playerId, n: "Unavailable academy slot", pos: position,
+          o: 1, f: "", look: "0100", r: "bronze", secret: true, removed: true });
+        if (S && S.owned && S.owned[mode]) delete S.owned[mode][playerId];
+        return;
+      }
+      const player = { id: playerId, n: name, pos: position, o: 99, f: "🎓", look: "0100",
+        r: "diamond", kind: "academy", secret: true, academy: true, academyIndex: index };
+      POOL[mode].push(player);
+      AK_players[mode].push(player);
+    });
+  });
+
+  // Academy players have maxed attributes; keep them out of every ordinary shop and pack.
+  const AK_baseStats = V27_stats;
+  V27_stats = function(player) {
+    if (player && player.academy) {
+      return player.pos === "GK"
+        ? { positioning:99, control:99, throwing:99, pace:99, passing:99, physical:99 }
+        : { pace:99, shooting:99, passing:99, dribbling:99, defending:99, physical:99 };
+    }
+    return AK_baseStats(player);
+  };
+
+  const AK_STYLE = document.createElement("style");
+  AK_STYLE.textContent = `
+    .ak-wrap{display:flex;flex-direction:column;gap:16px}
+    .ak-intro{position:relative;overflow:hidden;background:radial-gradient(ellipse at 90% 0%,rgba(102,245,255,.24),transparent 42%),linear-gradient(130deg,#182d52,#11172e 70%);border:1px solid #70d9ed;border-radius:18px;padding:20px;box-shadow:0 16px 38px #0007,inset 0 1px 0 #ffffff55}
+    .ak-eyebrow{font-size:10px;font-weight:1000;letter-spacing:.2em;color:#a2fff0;text-shadow:0 0 12px #60ffe0aa}
+    .ak-roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px}
+    .ak-player{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(circle at 15% 8%,rgba(255,255,255,.3),transparent 30%),linear-gradient(145deg,#246a91 0%,#26356e 43%,#11152c 100%);border:1px solid rgba(167,246,255,.94);border-radius:17px;padding:14px;min-width:0;box-shadow:0 12px 25px #0007,0 0 17px rgba(56,208,255,.38),inset 0 1px 0 #ffffff90;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+    .ak-player:before{content:"";position:absolute;inset:-65% -90%;z-index:0;pointer-events:none;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.1) 43%,rgba(255,255,255,.78) 50%,rgba(114,247,255,.32) 55%,transparent 63%);transform:translateX(-65%) rotate(12deg);animation:akFoilSweepV9 3.2s ease-in-out infinite;mix-blend-mode:screen}
+    .ak-player:after{content:"✦　✧　·　✦　✧";position:absolute;inset:8px 9px auto auto;z-index:0;pointer-events:none;color:#eaffffb0;font-size:11px;letter-spacing:4px;text-shadow:0 0 12px #9fffff;opacity:.8}
+    .ak-player>*{position:relative;z-index:1}
+    .ak-player:hover{transform:translateY(-6px) scale(1.02);border-color:#fff;box-shadow:0 22px 40px #000b,0 0 32px rgba(91,236,255,.72),inset 0 1px 0 #fff}
+    @keyframes akFoilSweepV9{0%,12%{transform:translateX(-66%) rotate(12deg)}74%,100%{transform:translateX(66%) rotate(12deg)}}
+    .ak-player-top{display:flex;align-items:center;gap:11px;margin-bottom:10px}
+    .ak-avatar{width:50px;height:50px;flex:none;border-radius:15px;display:grid;place-items:center;background:linear-gradient(140deg,#fff,#7ff7e3 35%,#4a9fff 72%,#c37bff);color:#071a25;font-size:17px;font-weight:1000;box-shadow:0 0 0 1px #fff9,0 6px 18px #0008,0 0 21px #6fffe8aa}
+    .ak-player-name{font-weight:1000;font-size:15px;overflow-wrap:anywhere;text-shadow:0 1px 8px #0009}
+    .ak-meta{font-size:11px;color:#c6e9ff;margin-top:3px}
+    .ak-ovr{margin-left:auto;font-size:28px;font-weight:1000;color:#fff;text-shadow:0 0 8px #8afcff,0 0 20px #49cfff,0 0 32px #49cfff88}
+    .ak-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
+    .ak-stat{padding:7px 5px;border-radius:9px;background:linear-gradient(145deg,#071426ee,#142e4add);border:1px solid #a3edff77;text-align:center;box-shadow:inset 0 1px 0 #ffffff30,0 4px 10px #0003}
+    .ak-stat b{display:block;font-size:14px;color:#fff;text-shadow:0 0 8px #7deaff}
+    .ak-stat small{font-size:9px;letter-spacing:.06em;color:#c0d9ef;text-transform:uppercase}
+    .ak-status{font-size:11px;font-weight:900;letter-spacing:.04em;text-align:center;border-radius:9px;padding:9px;background:linear-gradient(90deg,#0b2439,#173c5a);border:1px solid #63dfff55;color:#d9f8ff;box-shadow:inset 0 1px 0 #ffffff22}
+    .ak-status.owned{background:linear-gradient(90deg,#103d32,#145b47);border-color:#57e7b0;color:#baffdf}
+    .ak-raffle{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 20px;border-radius:18px;border:1px solid #ffe58c;background:radial-gradient(circle at 90% 0%,#ffdf7666,transparent 40%),linear-gradient(120deg,#463252,#17223e 62%,#51401f);box-shadow:0 14px 34px #0008,0 0 22px #ffcf5a22,inset 0 1px 0 #fff7}
+    .ak-raffle:after{content:"";position:absolute;inset:-90% -55%;pointer-events:none;background:linear-gradient(110deg,transparent 42%,#fff2 50%,transparent 58%);transform:translateX(-50%) rotate(14deg);animation:akFoilSweepV9 4s ease-in-out infinite}
+    .ak-raffle>*{position:relative;z-index:1}
+    .ak-raffle-title{font-weight:1000;font-size:19px;color:#fff1ba;text-shadow:0 0 12px #ffca5bbb}
+    .ak-raffle button{background:linear-gradient(110deg,#fff0ad,#ffc13c 55%,#ff9d27);color:#382007;box-shadow:0 5px 18px #ffb52e77,0 0 22px #ffd35b44;border:1px solid #fff6}
+    .ak-note{font-size:12px;line-height:1.5;color:#d2e3f5}
+    @media(max-width:560px){.ak-roster{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ak-player{padding:10px}.ak-player-name{font-size:13px}.ak-stats{gap:4px}.ak-stat{padding:6px 2px}.ak-raffle{padding:13px}.ak-raffle button{width:100%}}
+    @media(prefers-reduced-motion:reduce){.ak-player:before,.ak-raffle:after{animation:none}.ak-player{transition:none}}
+  `;
+  document.head.appendChild(AK_STYLE);
+
+  // Give Alamanda its own tab in both menus.
+  const main = $("main");
+  if (main && !$("alamanda")) {
+    const section = document.createElement("div");
+    section.id = "alamanda";
+    section.className = "tab";
+    main.insertBefore(section, $("play"));
+  }
+  const sideMenu = document.querySelector("#side .sitems");
+  if (sideMenu && !$("nav-alamanda")) {
+    const button = document.createElement("button");
+    button.id = "nav-alamanda";
+    button.innerHTML = "🎓 Alamanda Secrets";
+    button.onclick = () => showTab("alamanda");
+    sideMenu.appendChild(button);
+  } else if ($("nav-alamanda")) {
+    $("nav-alamanda").innerHTML = "🎓 Alamanda Secrets";
+  }
+  const titleMenu = document.querySelector("#start .sitems");
+  if (titleMenu && !titleMenu.querySelector('[data-t="alamanda"]')) {
+    const button = document.createElement("button");
+    button.dataset.t = "alamanda";
+    button.innerHTML = "🎓 Alamanda Secrets";
+    button.onclick = () => menuGo("alamanda");
+    titleMenu.appendChild(button);
+  }
+
+  const AK_TICKET_COST = 100000;
+  const AK_CHANCE_DENOMINATOR = 1000; // Exactly 1/1000 = 0.1% per raffle ticket.
+  const AK_CODE = "__ks404_alamanda__";
+  function AK_freeTickets() {
+    if (!S) return 0;
+    S.akFreeRaffleTickets = Math.max(0, Number(S.akFreeRaffleTickets) || 0);
+    return S.akFreeRaffleTickets;
+  }
+  function AK_owned(mode) {
+    S.owned = S.owned || { fb: {}, fs: {} };
+    S.owned[mode] = S.owned[mode] || {};
+    return S.owned[mode];
+  }
+
+  // If the old all-cards code was used in v8, revoke that bypassed collection once
+  // and convert it into a single free raffle ticket. This keeps the raffle mandatory.
+  if (S && S.akAllCardsUnlocked && !S.akRaffleOnlyMigrationV9) {
+    ["fb", "fs"].forEach(mode => {
+      const owned = AK_owned(mode);
+      AK_players[mode].forEach(player => { delete owned[player.id]; });
+    });
+    S.akAllCardsUnlocked = false;
+    S.akFreeRaffleTickets = Math.max(1, Number(S.akFreeRaffleTickets) || 0);
+    S.akRaffleOnlyMigrationV9 = true;
+    save();
+  }
+
+  // Hard guard: academy players cannot be bought from the market.
+  const AK_baseBuy = buy;
+  buy = function(id) {
+    const p = S && POOL[S.mode] && POOL[S.mode][id];
+    if (p && p.academy) {
+      ask("Alamanda players can only be won through the Alamanda College raffle.");
+      return;
+    }
+    return AK_baseBuy(id);
+  };
+
+  // Prevent timed restocks from ever placing academy cards in normal market stock.
+  const AK_baseRestock = restock;
+  restock = function() {
+    if (!S) return AK_baseRestock();
+    AK_baseRestock();
+    ["fb", "fs"].forEach(mode => AK_players[mode].forEach(player => {
+      S.stock[mode][player.id] = 0;
+    }));
+    save();
+  };
+
+  // Normal player packs must never contain academy cards either.
+  buyPack = function(i) {
+    const pk = PACKS[i];
+    if (!S || !pk || !V27_canAfford(pk.cost) || !V27_spend(pk.cost)) return;
+    sfx.coin();
+    const mode = S.mode, got = [];
+    for (let k = 0; k < pk.n; k++) {
+      const eligible = p => !!p && !p.secret && !p.messiExclusive && !p.daniyal && !p.khizargive && !p.shrekCard && !p.allTimeXI && !p.codeExclusive && !p.launchEventKey && !p.academy && !p.removed && !p.v32Ayden && p.kind !== "secret";
+      const rarity = rollR(pk.odds);
+      let pool = POOL[mode].filter(p => p.r === rarity && eligible(p) && !got.some(x => x.id === p.id));
+      if (!pool.length) pool = POOL[mode].filter(p => p.r !== "bronze" && eligible(p) && !got.some(x => x.id === p.id));
+      if (!pool.length) pool = POOL[mode].filter(eligible);
+      if (!pool.length) break;
+      const picked = V27_weightedPlayer(pool);
+      if (picked && !got.some(x => x.id === picked.id)) got.push(picked);
+    }
+    if (got.length) {
+      const previousPermit = V27_grantPermit;
+      V27_grantPermit = true;
+      try { grant(got, pk.name); }
+      finally { V27_grantPermit = previousPermit; }
+    }
+    save();
+  };
+
+  // There is deliberately no per-player recruitment button or direct claim function.
+  window.AK_claimAlamandaPlayer = function() {
+    ask("Individual recruitment is disabled. The only way to win an Alamanda player is the random raffle.");
+  };
+  window.AK_claimAllAlamandaCards = function() {
+    ask("Direct academy unlocks are disabled. Use the Alamanda College raffle to win a random player.");
+  };
+
+  function AK_enterRaffle() {
+    if (!S || !["fb", "fs"].includes(S.mode)) return;
+    const mode = S.mode;
+    const owned = AK_owned(mode);
+    const available = AK_players[mode].filter(player => !owned[player.id]);
+    if (!available.length) {
+      ask("You have collected all Alamanda players in this mode.");
+      AK_render();
+      return;
+    }
+    const useVoucher = AK_freeTickets() > 0;
+    if (!useVoucher && !V27_canAfford(AK_TICKET_COST)) {
+      ask("You need 100,000 coins for an Alamanda College raffle ticket.");
+      return;
+    }
+    const confirmText = useVoucher
+      ? "Use one free Alamanda raffle ticket? You have " + AK_freeTickets() + " free ticket(s). The draw has a 0.1% chance (1 in 1,000) to award one random uncollected player."
+      : "Enter the Alamanda College raffle for 100,000 coins? The draw has a 0.1% chance (1 in 1,000) to award one random uncollected player. The ticket fee is not refunded if you do not win.";
+    ask(confirmText, () => {
+      if (useVoucher) {
+        if (AK_freeTickets() < 1) { ask("No free raffle tickets remain."); return; }
+        S.akFreeRaffleTickets -= 1;
+      } else if (!V27_spend(AK_TICKET_COST)) {
+        ask("You do not have enough coins for a raffle ticket.");
+        return;
+      }
+      S.akRaffle = S.akRaffle || { entries: 0, wins: 0 };
+      S.akRaffle.entries = (Number(S.akRaffle.entries) || 0) + 1;
+      // Uniform 1-in-1,000 draw. No second chance or hidden bonus multiplier.
+      const won = Math.floor(rnd() * AK_CHANCE_DENOMINATOR) === 0;
+      if (won) {
+        const winner = available[Math.floor(rnd() * available.length)];
+        S.akRaffle.wins = (Number(S.akRaffle.wins) || 0) + 1;
+        S.akRaffle.lastWinner = winner.n;
+        const previousPermit = V27_grantPermit;
+        V27_grantPermit = true;
+        try { grant([winner], "Alamanda College Raffle Winner"); }
+        finally { V27_grantPermit = previousPermit; }
+        save();
+      } else {
+        save();
+        sfx.err();
+        AK_render();
+        ask("No winning ticket this time. The draw chance was exactly 0.1% (1 in 1,000). Your ticket has been used.");
+      }
+    });
+  }
+  window.AK_enterAlamandaRaffle = AK_enterRaffle;
+
+  function AK_render() {
+    if (!S || !$("alamanda")) return;
+    const mode = S.mode;
+    const owned = AK_owned(mode);
+    const players = AK_players[mode];
+    const totalOwned = players.filter(player => owned[player.id]).length;
+    const available = players.length - totalOwned;
+    const raffle = S.akRaffle || { entries: 0, wins: 0 };
+    const freeTickets = AK_freeTickets();
+    let html = hero("Alamanda College Secrets", "A hidden academy collection · " + (mode === "fb" ? "Football" : "Futsal"));
+    html += '<div class="ak-wrap">';
+    html += '<div class="ak-intro"><div class="ak-eyebrow">SECRET ACADEMY COLLECTION</div><h2 style="margin:8px 0">The Alamanda roster</h2><p class="ak-note">Every academy player is 99 OVR with 99 attributes. Players cannot be signed individually or pulled from normal packs. The raffle is the normal way to win one; the secret code unlocks the complete collection for free.</p><div class="ak-note"><b>' + totalOwned + ' / ' + players.length + '</b> collected · <b>' + available + '</b> still in the draw pool</div></div>';
+    const ticketLabel = freeTickets > 0 ? 'Enter raffle · FREE ×' + freeTickets : 'Enter raffle · 🪙 100,000';
+    html += '<section class="ak-raffle"><div><div class="ak-eyebrow">ONE RANDOM WINNER · ONE TICKET</div><div class="ak-raffle-title">🎟️ Alamanda College Raffle</div><p class="ak-note">Ticket: 100,000 coins · <b>0.1% chance (1 in 1,000)</b> per ticket · Entries: ' + (Number(raffle.entries) || 0) + ' · Wins: ' + (Number(raffle.wins) || 0) + '</p><p class="ak-note">' + (freeTickets ? 'Free raffle tickets: ' + freeTickets + '. A ticket still enters the random draw; it does not unlock a card by itself.' : 'Every paid ticket enters one independent draw. No direct recruitment is available.') + '</p></div><button onclick="AK_enterAlamandaRaffle()" ' + (available <= 0 || (!freeTickets && !V27_canAfford(AK_TICKET_COST)) ? 'disabled' : '') + '>' + (available <= 0 ? 'Collection complete' : ticketLabel) + '</button></section>';
+    html += '<div class="ak-roster">';
+    players.forEach(player => {
+      const stats = V27_stats(player);
+      const statRows = player.pos === "GK"
+        ? [["Position", stats.positioning], ["Control", stats.control], ["Throwing", stats.throwing], ["Pace", stats.pace], ["Passing", stats.passing], ["Physical", stats.physical]]
+        : [["Pace", stats.pace], ["Shooting", stats.shooting], ["Passing", stats.passing], ["Dribbling", stats.dribbling], ["Defending", stats.defending], ["Physical", stats.physical]];
+      const initials = player.n.split(/\s+/).map(part => part[0]).slice(0, 2).join("").toUpperCase();
+      const isOwned = !!owned[player.id];
+      html += '<article class="ak-player"><div class="ak-player-top"><div class="ak-avatar">' + esc(initials) + '</div><div><div class="ak-player-name">' + esc(player.n) + '</div><div class="ak-meta">' + player.pos + ' · Academy card</div></div><div class="ak-ovr">99</div></div><div class="ak-stats">';
+      statRows.forEach(([label, value]) => { html += '<div class="ak-stat"><b>' + value + '</b><small>' + label + '</small></div>'; });
+      html += '</div><div class="ak-status ' + (isOwned ? 'owned' : '') + '">' + (isOwned ? '✓ IN YOUR CLUB' : '🔒 RAFFLE ONLY · RANDOM DRAW') + '</div></article>';
+    });
+    html += '</div><p class="ak-note">The roster is shown for discovery only. Cards are awarded randomly by the raffle; the shop, packs, and direct signing cannot grant them. The one-time secret code is a full-collection reward.</p></div>';
+    $("alamanda").innerHTML = html;
+  }
+  window.AK_renderAlamanda = AK_render;
+
+  // Secret code exception: unlock the entire Alamanda collection in both game modes.
+  // This also upgrades older saves where the same code previously awarded a raffle voucher.
+  const AK_previousRedeemCode = window.redeemCode;
+  window.redeemCode = function() {
+    const input = $("v27CodeInput"), msg = $("v27CodeMsg");
+    if (!input || !msg || !S) {
+      if (typeof AK_previousRedeemCode === "function") return AK_previousRedeemCode();
+      return;
+    }
+    const key = input.value.trim().toLowerCase();
+    if (key !== AK_CODE) {
+      if (typeof AK_previousRedeemCode === "function") return AK_previousRedeemCode();
+      return;
+    }
+    if (S.akFullCollectionUnlockedV10) {
+      msg.className = "v27-code-error";
+      msg.textContent = "The full Alamanda collection has already been unlocked on this save.";
+      sfx.err();
+      return;
+    }
+    S.owned = S.owned || { fb: {}, fs: {} };
+    ["fb", "fs"].forEach(mode => {
+      S.owned[mode] = S.owned[mode] || {};
+      AK_players[mode].forEach(player => {
+        S.owned[mode][player.id] = Math.max(1, Number(S.owned[mode][player.id]) || 0);
+        if (S.stock && S.stock[mode]) S.stock[mode][player.id] = 0;
+      });
+    });
+    S.akFreeRaffleTickets = 0;
+    S.akFullCollectionUnlockedV10 = true;
+    S.redeemed = S.redeemed || {};
+    S.redeemed[key] = true;
+    input.value = "";
+    save();
+    sfx.coin();
+    refresh();
+    const freshMsg = $("v27CodeMsg");
+    if (freshMsg) {
+      freshMsg.className = "v27-code-success";
+      freshMsg.textContent = "✓ Full Alamanda collection unlocked! All " + AK_players.fb.length + " players have joined Football and Futsal.";
+    }
+  };
+
+  showTab = function(name) {
+    const tabs = ["home", "shop", "squad", "stadium", "play", "table", "index", "tournaments", "club", "alamanda"];
+    if (!tabs.includes(name)) name = "home";
+    if (M && !M.over && name !== "play") return;
+    tabOn = name;
+    if (name === "stadium") initStad();
+    if (name === "index") renderIndex();
+    if (name === "tournaments") renderTournaments();
+    if (name === "club") renderClub();
+    if (name === "alamanda") AK_render();
+    tabs.forEach(tab => {
+      const section = $(tab);
+      if (section) section.classList.toggle("on", tab === name);
+      const nav = $("nav-" + tab);
+      if (nav) nav.classList.toggle("on", tab === name);
+    });
+  };
+
+  const AK_baseRenderHome = renderHome;
+  renderHome = function() {
+    AK_baseRenderHome();
+    if ($("home")) {
+      $("home").insertAdjacentHTML("beforeend", '<div class="panel ak-home-card" style="margin-top:14px"><div class="ak-eyebrow">HIDDEN COLLECTION</div><h3 style="margin:7px 0">🎓 Alamanda College Secrets</h3><p class="ak-note">Win a random 99 OVR academy player in the 100,000-coin raffle, or use the secret reward code to unlock the full collection.</p><button class="alt" onclick="showTab(\'alamanda\')">Open secret collection →</button></div>');
+    }
+  };
+
+  const AK_baseRefresh = refresh;
+  refresh = function() {
+    AK_baseRefresh();
+    if (tabOn === "alamanda") AK_render();
+  };
+
+  // Ensure startup state and any migrated free ticket are persisted.
+  if (S) {
+    V27_normalize();
+    ["fb", "fs"].forEach(mode => AK_players[mode].forEach(player => {
+      if (S.stock && S.stock[mode]) S.stock[mode][player.id] = 0;
+    }));
+    save();
+    refresh();
+  }
+})();
+
+// ================= GLOBAL VISUAL POLISH · v9 =================
+(function(){
+  if (document.getElementById("kikstartPolishV9")) return;
+  const style=document.createElement("style");style.id="kikstartPolishV9";
+  style.textContent=`
+    @keyframes k9AmbientShine{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+    .card:not(.back),.pack{isolation:isolate;border:1px solid #ffffff66;box-shadow:0 9px 24px #0008,0 0 15px color-mix(in srgb,var(--a) 38%,transparent),inset 0 1px 0 #ffffff88}
+    .card:not(.back):before{content:"";position:absolute;inset:-45%;z-index:0;pointer-events:none;background:linear-gradient(118deg,transparent 34%,#ffffff10 43%,#ffffff70 50%,#8ff9ff30 54%,transparent 62%);transform:translateX(-65%) rotate(14deg);animation:k9CardFoil 4.2s ease-in-out infinite;mix-blend-mode:screen}
+    .card:not(.back)>*{position:relative;z-index:1}
+    @keyframes k9CardFoil{0%,16%{transform:translateX(-65%) rotate(14deg)}78%,100%{transform:translateX(65%) rotate(14deg)}}
+    .pack{background-size:180% 180%;animation:k9AmbientShine 9s ease-in-out infinite;transition:transform .2s ease,box-shadow .2s ease}
+    .pack:hover{transform:translateY(-5px) scale(1.015);box-shadow:0 18px 32px #0009,0 0 25px var(--a),inset 0 1px 0 #fff}
+    .panel,.hero,.v27-shop-top,.v27-mode-card{box-shadow:0 10px 26px #0005,inset 0 1px 0 #ffffff16}
+    .hero{border:1px solid #ffffff1c}
+    button:not(:disabled){box-shadow:0 4px 13px #0004,inset 0 1px 0 #ffffff35;transition:transform .16s ease,filter .16s ease,box-shadow .16s ease}
+    button:not(:disabled):hover{filter:brightness(1.12);box-shadow:0 8px 20px #0006,0 0 18px #00e0a433,inset 0 1px 0 #fff5}
+    .sitems button{border-radius:9px!important}
+    .pill{border:1px solid #ffffff1b;box-shadow:inset 0 1px 0 #ffffff12}
+    .ak-home-card{background:radial-gradient(circle at 95% 0%,#63dbff22,transparent 40%),linear-gradient(130deg,#162747,#111a32);border-color:#4ea5ce66}
+    @media(prefers-reduced-motion:reduce){.card:not(.back):before,.pack{animation:none!important}button,.pack{transition:none!important}}
+  `;
+  document.head.appendChild(style);
+})();
+</script>
+
+<script>
+// ================= KIKSTART v10 · MODEST CLUB SPONSOR INCOME =================
+(function(){
+  if (window.__kikstartClubSponsorV10) return;
+  window.__kikstartClubSponsorV10 = true;
+
+  const V10_SPONSOR_COOLDOWN = 24 * 60 * 60 * 1000;
+  const V10_SPONSOR_BASE = 150;
+  const V10_SPONSOR_PER_FACILITY = 25;
+
+  function V10_sponsorReward(){
+    const facilities = S && S.st ? cl(Number(S.st.d) || 0, 0, 5) : 0;
+    return V10_SPONSOR_BASE + facilities * V10_SPONSOR_PER_FACILITY;
+  }
+  function V10_sponsorRemaining(){
+    const last = S ? Number(S.clubSponsorLastClaim) || 0 : 0;
+    if (!last) return 0;
+    return Math.max(0, V10_SPONSOR_COOLDOWN - (Date.now() - last));
+  }
+  function V10_timeLabel(ms){
+    const totalMinutes = Math.ceil(ms / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return hours + "h " + String(minutes).padStart(2, "0") + "m";
+  }
+
+  window.V10_claimClubSponsor = function(){
+    if (!S) return;
+    const remaining = V10_sponsorRemaining();
+    if (remaining > 0) {
+      ask("Your next local sponsor payment is available in " + V10_timeLabel(remaining) + ".");
+      return;
+    }
+    const reward = V10_sponsorReward();
+    S.coins = (Number(S.coins) || 0) + reward;
+    S.clubSponsorLastClaim = Date.now();
+    S.clubSponsorClaims = (Number(S.clubSponsorClaims) || 0) + 1;
+    save();
+    sfx.coin();
+    refresh();
+    ask("Your local club sponsor paid " + reward.toLocaleString("en-AU") + " coins. Your next payment is available in 24 hours.");
+  };
+
+  const V10_previousRenderHome = renderHome;
+  renderHome = function(){
+    V10_previousRenderHome();
+    const home = $("home");
+    if (!home) return;
+    const remaining = V10_sponsorRemaining();
+    const reward = V10_sponsorReward();
+    const facilities = S && S.st ? cl(Number(S.st.d) || 0, 0, 5) : 0;
+    const buttonLabel = remaining > 0 ? "AVAILABLE IN " + V10_timeLabel(remaining) : "CLAIM +" + reward.toLocaleString("en-AU") + " COINS";
+    home.insertAdjacentHTML("beforeend",
+      '<section class="panel v10-sponsor-card" style="margin-top:14px;border:1px solid #e5c87566;background:radial-gradient(circle at 95% 0%,#ffdc7622,transparent 42%),linear-gradient(125deg,#172641,#29213c)">' +
