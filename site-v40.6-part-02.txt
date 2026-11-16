@@ -1,0 +1,1000 @@
+
+const V27_FORMATIONS = {
+  fb:{"4-4-2":{def:[1,2,3,4],mid:[5,6,7,8],fwd:[9,10],pos:[[-.95,0],[-.62,-.72],[-.62,-.24],[-.62,.24],[-.62,.72],[-.18,-.72],[-.12,-.24],[-.12,.24],[-.18,.72],[.38,-.28],[.38,.28]]},
+      "4-3-3":{def:[1,2,3,4],mid:[5,6,7],fwd:[8,9,10],pos:[[-.95,0],[-.62,-.72],[-.62,-.24],[-.62,.24],[-.62,.72],[-.16,-.5],[-.08,0],[-.16,.5],[.36,-.58],[.46,0],[.36,.58]]},
+      "4-2-3-1":{def:[1,2,3,4],mid:[5,6,7,8,9],fwd:[10],pos:[[-.95,0],[-.62,-.72],[-.62,-.24],[-.62,.24],[-.62,.72],[-.2,-.35],[-.2,.35],[.08,-.62],[.12,0],[.08,.62],[.48,0]]},
+      "3-5-2":{def:[1,2,3],mid:[4,5,6,7,8],fwd:[9,10],pos:[[-.95,0],[-.62,-.5],[-.62,0],[-.62,.5],[-.12,-.78],[-.06,-.4],[-.02,0],[-.06,.4],[-.12,.78],[.4,-.28],[.4,.28]]}},
+  fs:{"2-2":{def:[1,2],mid:[3,4],fwd:[],pos:[[-.9,0],[-.25,-.5],[-.25,.5],[.35,-.35],[.35,.35]]},
+      "1-2-1":{def:[1],mid:[2,3],fwd:[4],pos:[[-.9,0],[-.35,0],[0,-.5],[0,.5],[.48,0]]},
+      "3-1":{def:[1,2,3],mid:[],fwd:[4],pos:[[-.9,0],[-.35,-.55],[-.35,0],[-.35,.55],[.48,0]]}}
+};
+const V27_MANAGER_PACKS = [
+  {name:"Touchline Starter",icon:"📋",cost:500,n:2,odds:{bronze:20,silver:55,gold:22,ruby:3}},
+  {name:"Tactical Silver",icon:"🧠",cost:1800,n:3,odds:{silver:45,gold:40,ruby:13,diamond:2}},
+  {name:"Elite Manager",icon:"🏆",cost:5500,n:3,odds:{gold:55,ruby:35,diamond:10}},
+  {name:"Legend Manager",icon:"👑",cost:14000,n:4,odds:{gold:25,ruby:50,diamond:25}}
+];
+PACKS.push({name:"Icons & Heroes Pack",t:"diamond",icon:"🌟",cost:15000,n:5,odds:{gold:42,ruby:53,diamond:5},special:true});
+const V27_STAND_COSTS=[1000,2500,5000,8500,13000,19000,27000,38000,52000,70000];
+const V27_COMP_NAMES={ucl:"UEFA Champions League",super:"Super Cup",domestic:"Domestic Cup",leaguecup:"League Cup"};
+const V27_COUNTRY_CUPS=["FA Cup","Copa del Rey","Coppa Italia","DFB-Pokal","Coupe de France"];
+let V27_cupQueued=false, V27_roofKey="", V27_tutorialStep=0, V27_joyActive=false, V27_joyCenter=null;
+
+function V27_localDate(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function V27_blankProfile(){return {played:0,wins:0,draws:0,losses:0,goals:0,assists:0,cleanSheets:0,foulsWon:0,yellowCards:0,trophies:0,trophyNames:[]}}
+function V27_ensureDaily(){if(!S.daily||S.daily.date!==V27_localDate())S.daily={date:V27_localDate(),play:0,goals:0,wins:0,claimed:{}}}
+function V27_normalize(){
+  if(!S)return;
+  S.coins=Number.isFinite(S.coins)?S.coins:0;S.owned=S.owned||{fb:{},fs:{}};S.owned.fb=S.owned.fb||{};S.owned.fs=S.owned.fs||{};
+  S.owm=S.owm||{};S.got=S.got||{fb:0,fs:0};S.got.fb=S.got.fb||0;S.got.fs=S.got.fs||0;S.stock=S.stock||{fb:{},fs:{}};S.stock.fb=S.stock.fb||{};S.stock.fs=S.stock.fs||{};
+  S.mgr=Number.isInteger(S.mgr)?S.mgr:-1;S.st=S.st||{a:0,b:0,c:0,d:0};["a","b","c","d"].forEach(k=>S.st[k]=Math.max(0,Number(S.st[k])||0));S.st.a=Math.min(10,S.st.a);
+  S.formation=S.formation||{fb:"4-4-2",fs:"2-2"};if(!V27_FORMATIONS.fb[S.formation.fb])S.formation.fb="4-4-2";if(!V27_FORMATIONS.fs[S.formation.fs])S.formation.fs="2-2";
+  if(!S.profile){S.profile=V27_blankProfile();S.profile.wins=Number(S.w)||0;S.profile.draws=Number(S.d)||0;S.profile.losses=Number(S.l)||0;S.profile.played=S.profile.wins+S.profile.draws+S.profile.losses;}else S.profile=Object.assign(V27_blankProfile(),S.profile);S.profile.trophyNames=Array.isArray(S.profile.trophyNames)?S.profile.trophyNames:[];
+  S.redeemed=S.redeemed||{};S.unlimited=!!S.unlimited;S.unlockedSecret=!!S.unlockedSecret;S.court=S.court||"classic";S.cups=S.cups||{};S.activeCup=S.activeCup||"";S.tutorialDone=!!S.tutorialDone;
+  if(!S.lg)S.lg={fb:mkLeague(),fs:mkLeague()};["fb","fs"].forEach(mo=>{if(!S.lg[mo])S.lg[mo]=mkLeague();const lg=S.lg[mo];lg.teams=lg.teams||[];const country=CL[S.club].li;CL.forEach((c,i)=>{if(c.li===country&&!lg.teams.some(t=>t.k===c.k))lg.teams.push(Object.assign({n:c.n,k:c.k,a:c.a,b:c.b,me:i===S.club?1:0,str:i===S.club?0:65,pl:0,w:0,d:0,l:0,gf:0,ga:0,p:0}));});lg.teams.forEach((t,i)=>{["pl","w","d","l","gf","ga","p"].forEach(k=>t[k]=Number(t[k])||0);if(!Number.isFinite(Number(t.str))||Number(t.str)<=0)t.str=Math.max(48,84-i*2);});});
+  V27_ensureDaily();
+  ["fb","fs"].forEach(mo=>POOL[mo].forEach(p=>{if(p.academy||p.secret)S.stock[mo][p.id]=0;else if(S.stock[mo][p.id]===undefined)S.stock[mo][p.id]=rnd()<ST[p.r][0]?1+Math.floor(rnd()*ST[p.r][1]):0;}));
+}
+function V27_coinText(){return S.unlimited?"∞":Number(S.coins||0).toLocaleString("en-AU")}
+function V27_canAfford(n){return S.unlimited||S.coins>=n}
+function V27_spend(n){if(S.unlimited)return true;if(S.coins<n)return false;S.coins-=n;return true}
+function V27_playerPrice(p){return p&&p.secret?50000000:price(p)}
+function V27_stats(p){
+  const r=Number(p.o)||60,goal= p.pos==="GK";
+  const v=(n)=>cl(Math.round(n),25,99);
+  if(goal)return {positioning:v(r+4),control:v(r-4),throwing:v(r+2),pace:v(r-10),passing:v(r-3),physical:v(r+1)};
+  const map={FWD:[r+5,r+4,r-2,r+4,r-20,r],MID:[r,r-2,r+5,r+3,r-5,r-2],DEF:[r-4,r-18,r-5,r-10,r+7,r+6]};
+  const a=map[p.pos]||map.MID;return {pace:v(a[0]),shooting:v(a[1]),passing:v(a[2]),dribbling:v(a[3]),defending:v(a[4]),physical:v(a[5])};
+}
+const V27_TRAITS={
+  "Lionel Messi":["Close Control","Finesse Shot","Elite Playmaker"],"Cristiano Ronaldo":["Power Header","Aerial Threat","Big-Game Player"],"Neymar":["5-Star Skills","Trickster","Flair"],
+  "Pelé":["Complete Forward","Clinical Finisher","Big-Game Player"],"Diego Maradona":["Close Control","Playmaker","Flair"],"Zinedine Zidane":["First Touch","Playmaker","Big-Game Player"],
+  "Ronaldinho":["Trickster","Flair","5-Star Skills"],"Kylian Mbappé":["Rapid","Quick Step","Clinical Finisher"],"Erling Haaland":["Power Shot","Aerial Threat","Poacher"],
+  "Kevin De Bruyne":["Incisive Pass","Long Ball","Playmaker"],"Virgil van Dijk":["Aerial Defender","Anticipate","Leader"],"Luka Modrić":["Technical","Press Resistant","Playmaker"],
+  "Johan Cruyff":["First Touch","Playmaker","Finesse Shot"],"Thierry Henry":["Rapid","Finesse Shot","Clinical Finisher"],"David Beckham":["Dead Ball","Long Ball","Cross Specialist"],
+  "Andrés Iniesta":["Press Resistant","First Touch","Playmaker"],"Xavi":["Incisive Pass","Tiki-Taka","Playmaker"],"Gianluigi Buffon":["Reflexes","Shot Stopper","Leader"],
+  "Lev Yashin":["Reflexes","Sweeper Keeper","Commanding"],"Didier Drogba":["Power Header","Target Forward","Big-Game Player"],"Samuel Eto'o":["Rapid","Poacher","Clinical Finisher"],
+  "John Dork":["?????","Unlisted Potential","Secret Legend"]
+};
+function V27_traits(p){return V27_TRAITS[p.n]|| (p.pos==="GK"?["Shot Stopper","Quick Distribution"]:p.pos==="DEF"?["Strong Tackle","Aerial Defender"]:p.pos==="MID"?["Playmaker","Press Resistant"]:["Quick Step","Clinical Finisher"])}
+function V27_statsHTML(p){const s=V27_stats(p),isGK=p.pos==="GK",arr=isGK?[["POS","Positioning",s.positioning],["CTL","Ball control",s.control],["THR","Throwing",s.throwing],["PAC","Pace",s.pace],["PAS","Passing",s.passing],["PHY","Physicality",s.physical]]:[["PAC","Pace",s.pace],["SHO","Shooting",s.shooting],["PAS","Passing",s.passing],["DRI","Dribbling",s.dribbling],["DEF","Defending",s.defending],["PHY","Physicality",s.physical]];return '<div class="v27-stat-grid">'+arr.map(([k,label,v])=>'<span title="'+label+'"><b>'+k+'</b> '+v+'</span>').join("")+'</div><div class="v27-traits">'+V27_traits(p).map(t=>'<i>'+esc(t)+'</i>').join("")+'</div>'}
+
+// Updated cards show their role type, traits and player attributes.
+cardHTML=function(p,extra,id,pop){
+  const kind=p.v32Ayden?"SPECIAL":p.secret?"SECRET":p.kind==="icon"?"ICON":p.kind==="hero"?"HERO":p.mg?"MANAGER":"PLAYER";
+  return '<div'+(id?' id="'+id+'"':'')+' class="card '+p.r+(pop?' pop':'')+'"><div class="top"><div><div class="ovr">'+p.o+'</div><div class="pos">'+esc(p.pos)+'</div></div><div style="font-size:18px">'+esc(p.f||"⚽")+'</div></div>'+face(p.look||"0101",64)+'<div class="nm">'+esc(p.n)+'</div><div class="rar">'+RAR[p.r].i+' '+RAR[p.r].n+' · '+kind+'</div>'+V27_statsHTML(p)+(extra||'')+'</div>';
+};
+
+// Better 3D kit model; this changes visuals only, not player movement or match rules.
+person=function(primary,secondary,skin,hair,hairStyle){
+  const g=new THREE.Group(),mat=(col,rough=.75)=>new THREE.MeshStandardMaterial({color:col,roughness:rough}),shirt=mat(primary),trim=mat(secondary),skinM=mat(skin),hairM=mat(hair),shortM=mat(secondary),sockM=mat("#f4f4f4"),bootM=mat("#111111");
+  const part=(geo,m,x,y,z)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;g.add(o);return o};
+  part(new THREE.CylinderGeometry(.42,.5,1.05,12),shirt,0,1.45,0);
+  part(new THREE.BoxGeometry(.72,.46,.5),shortM,0,.72,0);
+  // jersey front stripes and collar
+  for(let i=-1;i<=1;i++)part(new THREE.BoxGeometry(.095,.76,.018),trim,i*.19,1.48,.43);
+  part(new THREE.TorusGeometry(.16,.035,6,12),trim,0,1.98,0).rotation.x=Math.PI/2;
+  const arms=[-.48,.48].map((x,i)=>{const a=part(new THREE.CylinderGeometry(.105,.13,.78,8),shirt,x,1.47,0);a.rotation.z=(i?-.24:.24);part(new THREE.SphereGeometry(.115,8,8),skinM,x+(i?.1:-.1),1.08,0);return a});
+  g.userData.l=[-.2,.2].map(x=>{const lg=new THREE.Group();lg.position.set(x,.55,0);g.add(lg);const upper=new THREE.Mesh(new THREE.CylinderGeometry(.13,.12,.43,8),shortM);upper.position.y=-.17;lg.add(upper);const lower=new THREE.Mesh(new THREE.CylinderGeometry(.095,.09,.48,8),sockM);lower.position.y=-.58;lg.add(lower);const boot=new THREE.Mesh(new THREE.BoxGeometry(.22,.12,.38),bootM);boot.position.set(0,-.84,.11);lg.add(boot);return lg});
+  part(new THREE.SphereGeometry(.32,14,12),skinM,0,2.18,0);
+  if(hairStyle)part(new THREE.SphereGeometry(.345,14,9,0,Math.PI*2,0,hairStyle===2?2.1:1.25),hairM,0,2.25,0);
+  part(new THREE.BoxGeometry(.14,.035,.025),bootM,-.12,2.2,.29);part(new THREE.BoxGeometry(.14,.035,.025),bootM,.12,2.2,.29);
+  const shadow=part(new THREE.CircleGeometry(.78,18),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.27}),0,.025,0);shadow.rotation.x=-Math.PI/2;shadow.castShadow=false;
+  g.rotation.order="YXZ";return g;
+};
+
+// Use the selected formation in both the board and the live match lineup.
+function V27_applyFormation(mo){const f=V27_FORMATIONS[mo][S.formation[mo]]||V27_FORMATIONS[mo][mo==="fb"?"4-4-2":"2-2"];FORM[mo].pos=f.pos;FORM[mo].def=f.def;FORM[mo].mid=f.mid;FORM[mo].fwd=f.fwd;}
+lineup=function(mo){
+  V27_applyFormation(mo);const F=FORM[mo],own=POOL[mo].filter(p=>S.owned[mo][p.id]).sort((a,b)=>b.o-a.o),used=new Set(),xi=new Array(F.n);
+  const take=(pos)=>{let p=own.find(x=>!used.has(x.id)&&x.pos===pos);if(!p)p=own.find(x=>!used.has(x.id));if(p)used.add(p.id);return p};
+  xi[0]=take("GK");F.def.forEach(i=>xi[i]=take("DEF"));F.mid.forEach(i=>xi[i]=take("MID"));F.fwd.forEach(i=>xi[i]=take("FWD"));
+  for(let i=0;i<xi.length;i++)if(!xi[i])xi[i]=take("MID");return xi;
+};
+function V27_formationBoard(xi,mo){const f=V27_FORMATIONS[mo][S.formation[mo]],F=FORM[mo];return '<div class="v27-board"><div class="v27-half"></div><div class="v27-circle"></div><div class="v27-box left"></div><div class="v27-box right"></div>'+xi.map((p,i)=>{if(!p)return"";const xy=f.pos[i]||[0,0],left=50+xy[0]*43,top=50+xy[1]*43;return '<div class="v27-slot" style="left:'+left+'%;top:'+top+'%" title="'+esc(p.n)+'"><b>'+esc(p.n.split(" ").slice(-1)[0])+'</b><small>'+p.o+' · '+p.pos+'</small></div>'}).join("")+'</div>'}
+function setFormation(v){const mo=S.mode;if(!V27_FORMATIONS[mo][v])return;S.formation[mo]=v;V27_applyFormation(mo);save();refresh()}
+renderSquad=function(){
+  const mo=S.mode,F=FORM[mo],xi=lineup(mo),opts=Object.keys(V27_FORMATIONS[mo]);
+  let h=hero("Squad","Set your formation, inspect player attributes and choose the manager for your club.");
+  h+='<div class="v27-toolbar"><label>Formation <select onchange="setFormation(this.value)">'+opts.map(x=>'<option '+(S.formation[mo]===x?'selected':'')+'>'+x+'</option>').join("")+'</select></label><span class="pill">Starting XI '+F.n+'</span><span class="pill">Squad rating '+rating()+'</span></div>';
+  h+=V27_formationBoard(xi,mo)+'<h2>Starting lineup</h2><div class="grid">'+xi.map(p=>p?cardHTML(p):'').join("")+'</div>';
+  h+='<h2>Manager cards</h2><p class="v27-muted">Managers come from manager-only packs and provide a team boost.</p><div class="grid">';
+  const ms=MGRS.filter(m=>S.owm[m.id]);h+=ms.length?ms.map(m=>cardHTML(m,'<div class="v27-extra">Owned ×'+S.owm[m.id]+'</div><button '+(S.mgr===m.id?'class="alt"':'')+' onclick="equip('+m.id+')">'+(S.mgr===m.id?'Equipped':'Equip')+'</button>')).join(""):'<p class="v27-muted">No managers yet. Open a manager pack in the Shop.</p>';
+  h+='</div><h2>Owned players</h2><div class="grid">';POOL[mo].filter(p=>S.owned[mo][p.id]).sort((a,b)=>b.o-a.o).forEach(p=>h+=cardHTML(p,'<div class="v27-extra">Owned ×'+S.owned[mo][p.id]+'</div><button class="alt sm" onclick="sell('+p.id+')">Sell · 🪙 '+sellV(p)+'</button>'));
+  $("squad").innerHTML=h+'</div>';
+};
+
+// Player pack odds now select players individually; star forwards are deliberately very rare.
+function V27_weightedPlayer(pool){
+  // Ordinary cards are the baseline. Icons and Heroes are substantially rarer;
+  // the headline legends are exceptionally rare even after a high-tier roll.
+  const headline=new Set(["Lionel Messi","Cristiano Ronaldo","Neymar","Diego Maradona","Pelé","Zinedine Zidane","Ronaldinho","Paolo Maldini"]);
+  const eligible=pool.filter(p=>p&&!p.secret&&!p.messiExclusive&&!p.daniyal&&!p.khizargive&&!p.shrekCard&&!p.allTimeXI&&!p.codeExclusive&&!p.launchEventKey&&!p.academy&&!p.removed&&!p.v32Ayden&&p.kind!=="secret");
+  if(!eligible.length)throw new Error("No eligible player cards for this pack tier.");
+  const weights=eligible.map(p=>({p,w:headline.has(p.n)?.006:(p.kind==="icon"?.045:(p.kind==="hero"?.12:1))}));
+  let total=weights.reduce((a,x)=>a+x.w,0),r=rnd()*total;
+  for(const x of weights){r-=x.w;if(r<=0)return x.p;}
+  return weights[weights.length-1].p;
+}
+buyPack=function(i){
+  const pk=PACKS[i];if(!pk||!V27_canAfford(pk.cost))return;if(!V27_spend(pk.cost))return;sfx.coin();
+  const mo=S.mode,got=[];
+  for(let k=0;k<pk.n;k++){
+    // John Dork is a one-in-a-million pack pull, not a normal market listing.
+    if(pk.t==="diamond"&&rnd()<0.000001){got.push(V27_SECRET[mo]);S.unlockedSecret=true;continue;}
+    const r=rollR(pk.odds);let pool=POOL[mo].filter(p=>p.r===r&&!p.secret&&!p.v32Ayden&&!got.some(x=>x.id===p.id));
+    if(!pool.length)pool=POOL[mo].filter(p=>p.r!=="bronze"&&!p.secret&&!p.v32Ayden&&!got.some(x=>x.id===p.id));
+    if(!pool.length)pool=POOL[mo].filter(p=>!p.secret&&!p.v32Ayden);
+    const picked=V27_weightedPlayer(pool);
+    if(picked&&POOL[mo][picked.id]===picked&&!got.some(x=>x.id===picked.id))got.push(picked);
+    else {const safe=POOL[mo].filter(p=>!p.secret&&!p.v32Ayden&&!got.some(x=>x.id===p.id));if(!safe.length)break;got.push(safe[Math.floor(rnd()*safe.length)]);}
+  }
+  grant(got,pk.name);save();
+};
+function buyManagerPack(i){const pk=V27_MANAGER_PACKS[i];if(!pk||!V27_canAfford(pk.cost))return;V27_spend(pk.cost);const got=[];for(let k=0;k<pk.n;k++){const r=rollR(pk.odds),pool=MGRS.filter(m=>m.r===r&&!got.some(x=>x.id===m.id));const options=pool.length?pool:MGRS;got.push(options[Math.floor(rnd()*options.length)]);}grant(got,pk.name);save();}
+buy=function(id){const mo=S.mode,p=POOL[mo][id];if(!p||!V27_canAfford(V27_playerPrice(p)))return;if(p.secret){if(!S.unlockedSecret||(S.owned[mo][id]||0)>0)return;if(!V27_spend(50000000))return;}else{if(!S.stock[mo][id])return;if(!V27_spend(V27_playerPrice(p)))return;S.stock[mo][id]--;}S.owned[mo][id]=(S.owned[mo][id]||0)+1;if(p.secret)S.unlockedSecret=true;save();sfx.coin();refresh();fx(p,innerWidth/2,innerHeight/2)};
+
+function renderShop(){
+  const mo=S.mode;let h=hero("Transfer market","Build your squad with player packs, rare Icons and Heroes. Manager cards are in their own section.");
+  h+='<div class="v27-shop-top"><div><span class="v27-eyebrow">CLUB BALANCE</span><div class="v27-bigcoin">🪙 '+V27_coinText()+'</div></div><div><span class="v27-eyebrow">PLAYER INDEX</span><button class="alt" onclick="showTab(\'index\')">Browse all players →</button></div></div>';
+  h+='<h2>Player packs</h2><div class="grid v27-packs">';
+  PACKS.forEach((pk,i)=>{h+='<div class="pack '+pk.t+' v27-pack"><div class="v27-pack-art"><span>'+pk.icon+'</span><i></i></div><div class="v27-pack-label">'+(pk.special?'SPECIAL DROP':'PLAYER COLLECTION')+'</div><b>'+esc(pk.name)+'</b><div class="v27-pack-sub">'+pk.n+' player cards</div><div class="odds">'+ORDER.slice().reverse().filter(r=>pk.odds[r]).map(r=>'<div><span>'+RAR[r].i+' '+RAR[r].n+'</span><span>'+pk.odds[r]+'%</span></div>').join("")+'</div><button '+(!V27_canAfford(pk.cost)?'disabled':'')+' onclick="buyPack('+i+')">Open · 🪙 '+pk.cost.toLocaleString("en-AU")+'</button></div>'});
+  h+='</div><h2>Manager packs</h2><p class="v27-muted">Historic greats, trophy-winning coaches and modern tactical managers. These packs never contain players.</p><div class="grid v27-packs">';
+  V27_MANAGER_PACKS.forEach((pk,i)=>{h+='<div class="pack '+(i===3?'diamond':i===2?'gold':i===1?'silver':'bronze')+' v27-pack"><div class="v27-pack-art manager-art"><span>'+pk.icon+'</span><i></i></div><div class="v27-pack-label">MANAGER COLLECTION</div><b>'+esc(pk.name)+'</b><div class="v27-pack-sub">'+pk.n+' manager cards</div><div class="odds">'+ORDER.slice().reverse().filter(r=>pk.odds[r]).map(r=>'<div><span>'+RAR[r].i+' '+RAR[r].n+'</span><span>'+pk.odds[r]+'%</span></div>').join("")+'</div><button '+(!V27_canAfford(pk.cost)?'disabled':'')+' onclick="buyManagerPack('+i+')">Open · 🪙 '+pk.cost.toLocaleString("en-AU")+'</button></div>'});
+  h+='</div><p class="v27-muted">Need a reward code? Redeem it from the Home screen.</p>'
+  h+='<h2>Player market <span class="pill">Restock in <span id="rt"></span></span></h2><p class="v27-muted">Limited stock rotates. Messi, Neymar and Cristiano Ronaldo have a much lower individual chance of appearing.</p>';
+  ORDER.slice().reverse().forEach(r=>{const l=POOL[mo].filter(p=>p.r===r&&!p.secret&&!p.academy&&!p.removed&&S.stock[mo][p.id]>0);if(!l.length)return;h+='<h3>'+RAR[r].i+' '+RAR[r].n+'</h3><div class="grid">'+l.map(p=>cardHTML(p,'<button '+(!V27_canAfford(V27_playerPrice(p))?'disabled':'')+' onclick="buy('+p.id+')">🪙 '+V27_playerPrice(p).toLocaleString("en-AU")+' (×'+S.stock[mo][p.id]+')</button>')).join("")+'</div>'});
+  if(S.unlockedSecret){const p=V27_SECRET[mo];h+='<h2>Secret transfer</h2><div class="grid">'+cardHTML(p,'<p class="v27-muted">One-in-a-million pack drop · 50,000,000 coins</p><button '+(S.owned[mo][p.id]||!V27_canAfford(50000000)?'disabled':'')+' onclick="buy('+p.id+')">Sign · 🪙 50,000,000</button>')+'</div>'}
+  $("shop").innerHTML=h;
+}
+function redeemCode(){
+  const input=$("v27CodeInput"),msg=$("v27CodeMsg");if(!input||!msg)return;const raw=input.value.trim(),key=raw.toLowerCase();
+  const rewards={"admincointest":{coins:5000000,text:"5,000,000 coins added."},"starter plus":{coins:2000,text:"2,000 coins added."},"starterpremium":{coins:100000,text:"100,000 coins added."},"fulladmin":{unlimited:true,text:"Unlimited coins enabled."}};
+  if(!raw){msg.textContent="Enter a code first.";return;}if(S.redeemed[key]){msg.textContent="That code has already been redeemed.";return;}const reward=rewards[key];if(!reward){msg.textContent="That code is not valid.";sfx.err();return;}
+  S.redeemed[key]=true;if(reward.unlimited)S.unlimited=true;else S.coins+=reward.coins;input.value="";save();sfx.coin();refresh();const fresh=$("v27CodeMsg");if(fresh)fresh.textContent="✓ Reward claimed: "+reward.text;
+}
+function renderIndex(q){
+  const mo=S.mode,term=(q===undefined?($("v27IndexSearch")?.value||""):q).toLowerCase();let h=hero("Player index","Browse every player currently available in the selected game mode, including Icons and Heroes.");
+  h+='<div class="v27-toolbar"><input id="v27IndexSearch" placeholder="Search players or positions…" value="'+esc(term)+'" oninput="renderIndex(this.value)"><span class="pill">'+POOL[mo].filter(p=>!p.secret).length+' players</span></div><div class="grid">';
+  const players=POOL[mo].filter(p=>!p.secret&&(p.n.toLowerCase().includes(term)||p.pos.toLowerCase().includes(term)||String(p.kind||"").includes(term))).sort((a,b)=>b.o-a.o);
+  h+=players.map(p=>cardHTML(p,'<div class="v27-extra">'+(S.owned[mo][p.id]?'Owned ×'+S.owned[mo][p.id]:'Not owned')+'</div>')).join("");
+  h+='</div><h2>Secret card</h2>'+(S.unlockedSecret?cardHTML(V27_SECRET[mo],'<div class="v27-extra">Available in the secret transfer section · 50,000,000 coins</div>'):'<div class="v27-secret-lock"><b>?????</b><span>John Dork · undiscovered</span><small>One-in-a-million chance in a Diamond-tier player pack · Price: 50,000,000 coins</small></div>');
+  h+='<h2>Manager index</h2><p class="v27-muted">Managers are collected separately from players.</p><div class="grid">'+MGRS.slice().sort((a,b)=>b.boost-a.boost).map(m=>cardHTML(m,'<div class="v27-extra">'+(S.owm[m.id]?'Owned ×'+S.owm[m.id]:'Not owned')+'</div>')).join("")+'</div>';
+  $("index").innerHTML=h;
+}
+
+// Daily quests and an all-time club record.
+const V27_QUESTS=[{id:"play",title:"Make an appearance",desc:"Complete 1 match",goal:1,reward:300},{id:"goals",title:"Find the net",desc:"Score 2 goals",goal:2,reward:500},{id:"wins",title:"Three points",desc:"Win 1 match",goal:1,reward:650}];
+function renderDaily(){V27_ensureDaily();return '<h2>Daily quests</h2><div class="grid">'+V27_QUESTS.map(q=>{const v=S.daily[q.id]||0,done=v>=q.goal,claimed=!!S.daily.claimed[q.id];return '<div class="panel v27-quest"><div class="v27-quest-top"><b>'+esc(q.title)+'</b><span>🪙 '+q.reward+'</span></div><p>'+esc(q.desc)+'</p><div class="v27-progress"><i style="width:'+Math.min(100,v/q.goal*100)+'%"></i></div><small>'+Math.min(v,q.goal)+' / '+q.goal+'</small><button class="'+(claimed?'alt':'')+'" '+(!done||claimed?'disabled':'')+' onclick="claimQuest(\''+q.id+'\')">'+(claimed?'Claimed':done?'Claim reward':'In progress')+'</button></div>'}).join("")+'</div><p class="v27-muted">Quests refresh daily using your device’s local date.</p>'}
+function claimQuest(id){V27_ensureDaily();const q=V27_QUESTS.find(x=>x.id===id);if(!q||S.daily.claimed[id]||(S.daily[id]||0)<q.goal)return;S.daily.claimed[id]=true;S.coins+=q.reward;save();sfx.coin();refresh()}
+renderHome=function(){
+  const c=CL[S.club],mo=S.mode;let h=hero("Welcome back, manager",c.n+' · '+LEAGUES[c.li].n+' · '+S.w+'W '+S.d+'D '+S.l+'L',badge(c,84));
+  h+='<div class="v27-home-grid"><button class="v27-mode-card '+(mo==="fb"?'selected':'')+'" onclick="setMode(\'fb\')"><span>⚽</span><b>Football</b><small>11-a-side · Full pitch</small></button><button class="v27-mode-card '+(mo==="fs"?'selected':'')+'" onclick="setMode(\'fs\')"><span>🥅</span><b>Futsal</b><small>5-a-side · Indoor court</small></button></div>';
+  if(!S.got[mo])h+='<div class="banner"><b>🎁 Free '+(mo==="fb"?'Football':'Futsal')+' Starter Pack</b><p>Get your first '+FORM[mo].n+' players and start building your team.</p><button onclick="claimStarter()">Claim starter pack</button></div>';
+  h+='<div class="v27-home-grid"><div class="panel"><span class="v27-eyebrow">SQUAD RATING</span><div class="v27-large-number">'+rating()+'</div><button class="alt sm" onclick="showTab(\'squad\')">Manage squad</button></div><div class="panel"><span class="v27-eyebrow">CLUB BALANCE</span><div class="v27-large-number">🪙 '+V27_coinText()+'</div><button class="alt sm" onclick="showTab(\'shop\')">Visit shop</button></div><div class="panel"><span class="v27-eyebrow">ALL-TIME TROPHIES</span><div class="v27-large-number">🏆 '+S.profile.trophies+'</div><button class="alt sm" onclick="showTab(\'club\')">Club profile</button></div></div>';
+  h+=renderDaily();h+='<h2>Quick links</h2><div class="grid"><button onclick="showTab(\'play\')">▶ Play a match</button><button class="alt" onclick="showTab(\'tournaments\')">🏆 Tournaments</button><button class="alt" onclick="showTab(\'index\')">📚 Player index</button></div>';
+  h+='<h2>Your save</h2><p class="v27-muted">Progress saves automatically in this browser. Use a save code to move it to another device.</p><button class="alt sm" onclick="expSave()">Copy save code</button> <button class="alt sm" onclick="impSave()">Load save code</button>';
+  $("home").innerHTML=h;
+};
+renderClub=function(){const p=S.profile;let h=hero("All-Time Club","Your career record across every season, match and competition.","🏟️");const stats=[["Matches",p.played],["Wins",p.wins],["Draws",p.draws],["Losses",p.losses],["Goals",p.goals],["Assists",p.assists],["Clean sheets",p.cleanSheets],["Fouls won",p.foulsWon],["Yellow cards",p.yellowCards],["Trophies",p.trophies]];h+='<div class="v27-stat-overview">'+stats.map(([n,v])=>'<div class="panel"><small>'+n+'</small><b>'+Number(v||0).toLocaleString("en-AU")+'</b></div>').join("")+'</div><h2>Honours cabinet</h2>';
+  h+=p.trophyNames.length?'<div class="grid">'+p.trophyNames.map(t=>'<div class="panel v27-trophy">🏆 <b>'+esc(t)+'</b></div>').join("")+'</div>':'<p class="v27-muted">No trophies yet. Win a league season or a cup to add your first honour.</p>';
+  h+='<h2>Club details</h2><div class="panel">'+badge(CL[S.club],48)+' <b>'+esc(CL[S.club].n)+'</b><p>'+esc(LEAGUES[CL[S.club].li].n)+' · '+(S.mode==="fb"?"Football":"Futsal")+'</p><p>Formation: '+esc(S.formation[S.mode])+' · Stadium stands level '+S.st.a+'/10</p></div>';
+  $("club").innerHTML=h;
+};
+
+// Competition hub with the league, continental cup and each country's main domestic cups.
+function V27_competitions(){const li=CL[S.club].li,dom=V27_COUNTRY_CUPS[li],country=LEAGUES[li].n;return [
+  {id:"ucl",name:"UEFA Champions League",sub:"Continental knockout cup · 3 match rounds",icon:"⭐",type:"Europe"},
+  {id:"domestic",name:dom,sub:country+" national knockout cup",icon:"🏆",type:country},
+  {id:"leaguecup",name:li===0?"EFL Cup":li===1?"Supercopa / Copa Tournament":li===2?"Supercoppa / Coppa Tournament":li===3?"DFL-Pokal": "Coupe de la Ligue Challenge",sub:"Secondary domestic cup",icon:"🥇",type:country},
+  {id:"super",name:li===0?"Community Shield":li===1?"Supercopa de España":li===2?"Supercoppa Italiana":li===3?"DFL-Supercup":"Trophée des Champions",sub:"Season-opening super cup",icon:"✨",type:country}
+]}
+function V27_makeCupTeam(id){const c=CL[id],base=[84,81,78,75,72,70,68,66][id%8];return {n:c.n,k:c.k,a:c.a,b:c.b,str:base+Math.floor(rnd()*5),me:0}}
+function startTournament(id){const def=V27_competitions().find(x=>x.id===id);if(!def)return;if(S.cups[id]&&S.cups[id].state==="active")return ask("You already have an active run in this competition. Continue it?",()=>{S.activeCup=id;refresh();});
+  const eligible=id==="ucl"?CL.map((c,i)=>i).filter(i=>CL[i].li!==CL[S.club].li||i!==S.club):CL.map((c,i)=>i).filter(i=>CL[i].li===CL[S.club].li&&i!==S.club);
+  const opponents=[];for(let r=0;r<3;r++){const id2=eligible[Math.floor(rnd()*eligible.length)];opponents.push(V27_makeCupTeam(id2));}
+  S.cups[id]={id,name:def.name,state:"active",round:0,opponents,started:V27_localDate()};S.activeCup=id;save();refresh();showTab("tournaments");
+}
+function playCupMatch(){const run=S.cups[S.activeCup];if(!run||run.state!=="active")return;const op=run.opponents[run.round];if(!op)return;NX.medium=op;V27_cupQueued=true;startMatch("medium");}
+function V27_progressCup(m,won,draw){const id=m.competitionId;if(!id)return;const run=S.cups[id];if(!run||run.state!=="active")return;let advanced=won;if(draw)advanced=rnd()<.5;let msg="";
+  if(advanced){run.round++;run.wins=(run.wins||0)+1;if(run.round>=3){run.state="won";S.profile.trophies++;S.profile.trophyNames.push(run.name);msg="🏆 You won the "+run.name+"! The trophy has been added to your All-Time Club.";}else msg="✅ You advanced to the "+["","Semi-final","Final"][run.round]+".";}
+  else{run.state="out";msg="You were eliminated from the "+run.name+".";}
+  run.lastMessage=msg;return msg;
+}
+renderTournaments=function(){const comps=V27_competitions();let h=hero("Competitions","Play for silverware across Europe and your domestic cup calendar.");h+='<div class="panel v27-league-shortcut"><div><b>Domestic league</b><p class="v27-muted">Your regular season table and results.</p></div><button onclick="showTab(\'table\')">Open league table</button></div><h2>Knockout tournaments</h2><div class="v27-comp-grid">';
+  comps.forEach(c=>{const run=S.cups[c.id],active=run&&run.state==="active",won=run&&run.state==="won";h+='<div class="panel v27-comp-card"><div class="v27-comp-icon">'+c.icon+'</div><small>'+c.type+'</small><h3>'+esc(c.name)+'</h3><p>'+esc(c.sub)+'</p>';
+    if(active)h+='<div class="v27-progress"><i style="width:'+run.round/3*100+'%"></i></div><small>Round '+(run.round+1)+' of 3 · '+["Quarter-final","Semi-final","Final"][run.round]+'</small><button onclick="S.activeCup=\''+c.id+'\';playCupMatch()">Play '+["quarter-final","semi-final","final"][run.round]+'</button>';
+    else if(won)h+='<span class="v27-won">🏆 Champions</span><button class="alt" onclick="startTournament(\''+c.id+'\')">Enter next edition</button>';
+    else if(run&&run.state==="out")h+='<span class="v27-muted">Eliminated</span><button class="alt" onclick="startTournament(\''+c.id+'\')">Enter again</button>';
+    else h+='<button onclick="startTournament(\''+c.id+'\')">Enter tournament</button>';
+    if(run&&run.lastMessage)h+='<p class="v27-muted">'+esc(run.lastMessage)+'</p>';h+='</div>'});
+  h+='</div><h2>Competition overview</h2><p class="v27-muted">League matches use the existing match engine. Cup games are played in the same 3D match view and progress through quarter-final, semi-final and final rounds.</p>';
+  $("tournaments").innerHTML=h;
+};
+
+// 10-step stadium stands upgrade path with a roof at higher levels.
+renderStadium=function(){let h='';UP.forEach(u=>{const l=S.st[u[0]],max=u[0]==="a"?10:5,cost=u[0]==="a"?V27_STAND_COSTS[l]:COSTS[Math.min(l,COSTS.length-1)];h+='<div class="panel" style="width:250px"><h3>'+u[1]+' · level '+l+'/'+max+'</h3><p style="font-size:13px;opacity:.85">'+(u[0]==="a"?"Expand the stands across 10 levels. Levels 8–10 add a full roof structure.":u[2])+'</p><button '+(l>=max||!V27_canAfford(cost)?'disabled':'')+' onclick="upg(\''+u[0]+'\')">'+(l>=max?'Maxed out':'Upgrade 🪙 '+cost.toLocaleString("en-AU"))+'</button></div>'});
+  $("stadH").innerHTML=hero(CL[S.club].n+" Stadium","Drag to look around your 3D stadium. The roof appears from stands level 8.");$("stadP").innerHTML=h;buildStad();};
+upg=function(k){const l=S.st[k],max=k==="a"?10:5,cost=k==="a"?V27_STAND_COSTS[l]:COSTS[Math.min(l,COSTS.length-1)];if(l>=max||!V27_canAfford(cost))return;if(!V27_spend(cost))return;S.st[k]++;save();sfx.coin();cheer(2,.25);refresh();};
+const V27_baseBuildStad=buildStad;
+buildStad=function(){const old=skey;V27_baseBuildStad();if(!sr||!sw)return;const key=JSON.stringify(S.st)+S.club;if(V27_roofKey===key)return;V27_roofKey=key;if(S.st.a<8)return;
+  const c=CL[S.club],T=2+S.st.a,edge=3.5+(T-1)*2.8,z=33+edge+4,x=50+edge+4,y=4+T*1.5+6;
+  const roofMat=new THREE.MeshLambertMaterial({color:0x172443,emissive:0x071020,transparent:true,opacity:.92,side:THREE.DoubleSide});
+  const add=(w,h,d,px,py,pz,mat=roofMat)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(px,py,pz);sw.add(o);};
+  add(130,1,17,0,y,z);add(130,1,17,0,y,-z);add(17,1,2*z,x,y,0);add(17,1,2*z,-x,y,0);
+  const beam=new THREE.MeshLambertMaterial({color:c.a});[-1,1].forEach(s=>{add(2,1.2,2,0,y-1,s*z,beam);add(2,1.2,2,s*x,y-1,0,beam)});
+  const board=new THREE.Mesh(new THREE.BoxGeometry(18,7,.5),new THREE.MeshBasicMaterial({color:0x07101f}));board.position.set(0,y-8,-z+1);sw.add(board);
+};
+
+// Custom futsal court skins.
+const V27_COURTS={classic:{name:"Classic green",base:0x176b38,stripe:0x218548},blue:{name:"Arena blue",base:0x154a83,stripe:0x1e65a7},indoor:{name:"Indoor wood",base:0x8b5a2b,stripe:0xa46c37},neon:{name:"Neon court",base:0x182b45,stripe:0x25415e}};
+function setCourt(v){if(V27_COURTS[v]){S.court=v;save();refresh();}}
+const V27_baseBuildWorld=buildWorld;
+buildWorld=function(F,c){V27_baseBuildWorld(F,c);if(S.mode==="fs"&&world){const court=V27_COURTS[S.court]||V27_COURTS.classic;world.children.slice(0,9).forEach((o,i)=>{if(o.material&&o.material.color)o.material.color.setHex(i===0?court.base:(i%2?court.stripe:court.base));});}};
+
+// Improve 3D renderer settings without changing the simulation.
+const V27_baseInit3D=init3D;
+init3D=function(){const ok=V27_baseInit3D();if(ok&&renderer){renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;if(THREE.ACESFilmicToneMapping)renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;}return ok;};
+
+function V27_ballLabel(player){const c=document.createElement("canvas");c.width=320;c.height=88;const x=c.getContext("2d");x.fillStyle="rgba(4,16,27,.9)";x.beginPath();if(x.roundRect)x.roundRect(8,8,304,72,22);else x.rect(8,8,304,72);x.fill();const name=(window.KIKSTART_playerName?window.KIKSTART_playerName(player,M):((player&&player.playerName)||"BALL"));x.fillStyle="#b8ffed";const font=Math.max(18,Math.min(34,34-(name.length>12?(name.length-12)*1.1:0)));x.font="900 "+font+"px Arial";x.textAlign="center";x.textBaseline="middle";x.fillText(name,160,44,282);const tx=new THREE.CanvasTexture(c),sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthTest:false}));sp.position.set(0,3.25,0);sp.scale.set(3.2,.88,1);sp.visible=false;return sp;}
+const V27_baseStartMatch=startMatch;
+startMatch=function(key){
+  const mo=S.mode;V27_applyFormation(mo);let oldOpp=NX.medium;const cup=V27_cupQueued&&S.cups[S.activeCup]&&S.cups[S.activeCup].state==="active";const actualKey=cup?"medium":key;let bonus=0;
+  if(cup){NX.medium=S.cups[S.activeCup].opponents[S.cups[S.activeCup].round];bonus=LV.medium.fee;S.coins+=bonus;}
+  else if(S.unlimited){bonus=LV[actualKey].fee;S.coins+=bonus;}
+  V27_baseStartMatch(actualKey);
+  const started=!!(M&&!M.over&&M.mo===mo&&M.t===0&&M.team===NX[actualKey]);
+  if(!started&&bonus)S.coins=Math.max(0,S.coins-bonus);
+  if(cup&&started){M.L=Object.assign({},M.L,{fee:0,win:0});M.competitionId=S.activeCup;M.competitionRound=S.cups[S.activeCup].round;}
+  if(cup){NX.medium=oldOpp;V27_cupQueued=false;}
+  if(M&&!M.over){M.foulCooldown=0;M.fouls=0;M.refs=[];M.pl.forEach(p=>{p.ballLabel=V27_ballLabel(p);p.mesh.add(p.ballLabel);});
+    const addRef=(x,z)=>{const r=person("#171a22","#f1d24a","#e6b98d","#262626",1);r.scale.setScalar(.78);r.position.set(x,0,z);world.add(r);M.refs.push({mesh:r,homeX:x,homeZ:z});};
+    addRef(0,5);addRef(0,-(M.F.W/2+5));addRef(0,M.F.W/2+5);
+  }
+  save();
+};
+
+// Keep the original controls; add rare whistle/foul events and in-world possession labels.
+const V27_baseUserCtrl=userCtrl;
+userCtrl=function(p,dt){const tackling=!!K.Space&&M&&M.owner!==p;V27_baseUserCtrl(p,dt);if(tackling&&M&&M.owner&&M.owner.t===1&&p.lunge>0&&M.foulCooldown<=0&&nearOpp(p)<1.45*M.F.sc&&rnd()<.055){const victim=M.owner;M.foulCooldown=5;M.fouls++;S.profile.foulsWon++;if(rnd()<.16)S.profile.yellowCards++;M.ball.x=victim.x;M.ball.z=victim.z;M.ball.vx=M.ball.vz=0;M.owner=null;M.lastT=1;M.pause=1.25;M.celeb=0;M.after=()=>{M.owner=victim;M.lastT=1;victim.hold=0;};banner("FOUL · FREE KICK");sfx.whistle();save();}};
+const V27_basePassTo=passTo;
+passTo=function(p,q){V27_basePassTo(p,q);if(M&&p.t===0){M.lastAssist=p;M.lastAssistAt=performance.now();}};
+const V27_baseGoal=goal;
+goal=function(t){if(t===0&&S&&M){S.profile.goals++;V27_ensureDaily();S.daily.goals=(S.daily.goals||0)+1;if(M.lastAssist&&M.lastAssist!==M.lastP&&performance.now()-(M.lastAssistAt||0)<12000)S.profile.assists++;save();}V27_baseGoal(t);if(t===0){const c=["ARMS WIDE!","KNEE SLIDE!","THE TEAM PILE-IN!","POINT TO THE SKY!"];banner("GOAL! · "+c[Math.floor(rnd()*c.length)]);}};
+const V27_baseStep=stepMatch;
+stepMatch=function(dt){V27_baseStep(dt);if(!M)return;M.foulCooldown=Math.max(0,(M.foulCooldown||0)-dt);M.pl.forEach(p=>{if(p.ballLabel)p.ballLabel.visible=!!(M.owner===p&&p.t===0);});
+  if(M.refs&&M.refs.length){const b=M.ball;M.refs[0].mesh.position.x+=(b.x-M.refs[0].mesh.position.x)*Math.min(1,dt*1.8);M.refs[0].mesh.position.z+=(b.z+4-M.refs[0].mesh.position.z)*Math.min(1,dt*1.8);M.refs[1].mesh.position.x+=(b.x*.55-M.refs[1].mesh.position.x)*Math.min(1,dt*.8);M.refs[2].mesh.position.x+=(b.x*.55-M.refs[2].mesh.position.x)*Math.min(1,dt*.8);}
+  const status=$("playerStatus");if(status){if(M.owner&&M.owner.t===0){const pl=M.owner;status.textContent="BALL · "+(M.ctrl===pl?"YOU · ":"")+((lineup(M.mo).find(x=>x&&x.pos===pl.pos)||{}).n||"Your player")+" · "+(M.mo==="fb"?"Football":"Futsal");}else status.textContent="Selected player: "+(M.ctrl?M.ctrl.o+" OVR":"waiting for possession");}
+};
+
+// Track career totals and competition progression after the existing match result is calculated.
+const V27_baseFinish=finishMatch;
+finishMatch=function(forfeit){const old=M;if(!old||old.over)return;const goals=old.score[0],conceded=old.score[1],won=!forfeit&&goals>conceded,draw=!forfeit&&goals===conceded,cupId=old.competitionId;V27_baseFinish(forfeit);
+  S.profile.played++;if(won){S.profile.wins++;V27_ensureDaily();S.daily.wins=(S.daily.wins||0)+1;}else if(draw)S.profile.draws++;else S.profile.losses++;if(!forfeit&&conceded===0)S.profile.cleanSheets++;
+  V27_ensureDaily();S.daily.play=(S.daily.play||0)+1;
+  let extra="";if(cupId){extra=V27_progressCup(old,won,draw)||"";if($("endBox")&&extra)$("endBox").innerHTML+='<br><br><b>'+esc(extra)+'</b>';}
+  save();refresh();if(tabOn==="tournaments")renderTournaments();
+};
+
+// Opponent selector and lobby include tournament shortcuts and custom futsal surfaces.
+renderPlay=function(){const mo=S.mode;let h=hero("Match centre",mo==="fb"?"Football · 11-a-side · Two-minute matches":"Futsal · 5-a-side · Two-minute matches");
+  if(!S.got[mo]){$("lobby").innerHTML=h+'<p>Claim your starter pack on the Home tab first.</p>';return;}
+  pickOpp();h+='<p>Squad rating <b>'+rating()+'</b> · Matches use the existing real-time 3D controls and count in your league.</p>';
+  if(mo==="fs")h+='<div class="panel v27-court-select"><b>Custom futsal court</b><select onchange="setCourt(this.value)">'+Object.keys(V27_COURTS).map(k=>'<option value="'+k+'" '+(S.court===k?'selected':'')+'>'+V27_COURTS[k].name+'</option>').join("")+'</select></div>';
+  Object.keys(LV).forEach(k=>{const L=LV[k],o=NX[k];h+='<div class="v27-match-choice"><div><b>'+L.n+'</b><small>vs '+esc(o.n)+' · Rating '+o.str+'</small></div><button '+(!V27_canAfford(L.fee)?'disabled':'')+' onclick="startMatch(\''+k+'\')">Play · 🪙 '+L.fee+'</button><small>Win '+Math.round(L.win*(1+.1*S.st.d))+' · Draw refunds · Loss −'+L.fee+'</small></div>'});
+  h+='<div class="panel"><b>Want a trophy?</b><p class="v27-muted">Enter the UEFA Champions League or your domestic cups from the Tournaments tab.</p><button class="alt" onclick="showTab(\'tournaments\')">Open tournaments</button></div>';
+  $("lobby").innerHTML=h;
+};
+
+// A more dimensional league presentation with a podium and lifted table rows.
+renderTable=function(){const lg=S.lg[S.mode],teams=lg.teams.slice().sort((a,b)=>b.p-a.p||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf),mine=teams.findIndex(t=>t.me),leaders=teams.slice(0,3);let h=hero("League table",lg.name+" · "+(S.mode==="fb"?"Football":"Futsal")+" · Your club is "+(mine<0?"not ranked":"#"+(mine+1)),badge(CL[S.club],68));
+  h+='<div class="v27-podium">'+leaders.map((t,i)=>'<div class="v27-podium-card rank-'+(i+1)+'">'+(i===0?'👑':i===1?'🥈':'🥉')+'<small>POSITION '+(i+1)+'</small><b>'+esc(t.n)+'</b><strong>'+t.p+' PTS</strong></div>').join("")+'</div>';
+  h+='<div class="v27-table-shell"><table class="tbl v27-league-table"><thead><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>PTS</th></tr></thead><tbody>';
+  teams.forEach((t,i)=>{const gd=t.gf-t.ga;h+='<tr'+(t.me?' class="me"':'')+'><td><span class="v27-rank">'+(i+1)+'</span></td><td><span class="v27-club-cell">'+badge(t,28)+' <b>'+esc(t.n)+'</b></span></td><td>'+t.pl+'</td><td>'+t.w+'</td><td>'+t.d+'</td><td>'+t.l+'</td><td>'+t.gf+'</td><td>'+t.ga+'</td><td class="'+(gd>0?'v27-positive':gd<0?'v27-negative':'')+'">'+(gd>0?'+':'')+gd+'</td><td><b>'+t.p+'</b></td></tr>';});
+  h+='</tbody></table></div><div class="v27-league-footer"><span class="v27-muted">3 points for a win · 1 for a draw · Goal difference breaks ties.</span><button class="alt sm" onclick="newSeason()">Start new season</button></div>';
+  $("table").innerHTML=h;
+};
+// Better mode transition and tabs.
+setMode=function(m){if(M&&!M.over)return;if(!["fb","fs"].includes(m))return;S.mode=m;V27_applyFormation(m);save();const toast=$("modeToast");toast.textContent=m==="fs"?"FUTSAL MODE":"FOOTBALL MODE";toast.classList.remove("show");void toast.offsetWidth;toast.classList.add("show");refresh();};
+showTab=function(n){if(M&&!M.over&&n!=="play")return;const tabs=["home","shop","squad","stadium","play","table","index","tournaments","club"];if(!tabs.includes(n))n="home";tabOn=n;if(n==="stadium")initStad();if(n==="index")renderIndex();if(n==="tournaments")renderTournaments();if(n==="club")renderClub();tabs.forEach(t=>{const el=$(t);if(el)el.classList.toggle("on",t===n);const nav=$("nav-"+t);if(nav)nav.classList.toggle("on",t===n);});};
+refresh=function(){if(!S)return;V27_normalize();const c=CL[S.club],b=mgrBoost()+S.st.a;$("hl").innerHTML='<div style="display:flex;align-items:center;gap:10px">'+badge(c,38)+'<b style="font-size:16px">'+esc(c.n)+'</b></div>';
+  $("hr").innerHTML='<span class="pill">'+(S.mode==="fb"?"⚽ Football":"🥅 Futsal")+'</span><span class="pill">🪙 '+V27_coinText()+'</span><span class="pill">Squad '+rating()+(b?' +'+b:'')+'</span><span class="pill" style="cursor:pointer" onclick="toggleMute()">'+(MUTE?"🔇":"🔊")+'</span>';
+  renderHome();renderShop();renderSquad();renderStadium();renderTable();if(tabOn==="index")renderIndex();if(tabOn==="tournaments")renderTournaments();if(tabOn==="club")renderClub();if(!M||M.over)renderPlay();
+};
+
+// First-time onboarding tutorial. Resetting the club brings the user back to club selection.
+function V27_showTutorial(){if(!S||S.tutorialDone)return;V27_tutorialStep=0;V27_drawTutorial();$("tutorial").classList.add("on");}
+function V27_drawTutorial(){const steps=[
+  ["WELCOME TO KIKSTART","Pick your club, then build a team that can compete for trophies. Your match engine and controls stay the same."],
+  ["CHOOSE YOUR MODE","Football is 11-a-side. Futsal is 5-a-side and has its own custom courts and formations. Switch modes from Home."],
+  ["BUILD YOUR SQUAD","Claim your free starter pack, set a formation on Squad, and inspect each player's stats and traits."],
+  ["SHOP & COLLECTIONS","Player packs and manager packs are separate. Use the Player Index to browse cards, and redeem codes on the Home screen."],
+  ["PLAY YOUR FIRST MATCH","WASD / arrows to move, Space to pass or tackle, hold F to shoot, ↑ / ↓ or Q / E to adjust shot loft while charging, and Shift to sprint. On mobile, use the joystick, action buttons and shot-loft slider."],
+  ["QUESTS & TROPHIES","Daily quests reward coins. League results, cup wins, goals and assists are tracked in All-Time Club. Good luck!"]
+];const s=steps[V27_tutorialStep];$("tutorialTitle").textContent=s[0];$("tutorialBody").textContent=s[1];$("tutorialCount").textContent="TIP "+(V27_tutorialStep+1)+" / "+steps.length;$("tutorialNext").textContent=V27_tutorialStep===steps.length-1?"Let's play":"Next";}
+function V27_nextTutorial(){if(V27_tutorialStep>=5){V27_finishTutorial();return;}V27_tutorialStep++;V27_drawTutorial();}
+function V27_finishTutorial(){if(S){S.tutorialDone=true;save();}$("tutorial").classList.remove("on");}
+chooseClub=function(i){ask("Play as "+CL[i].n+"?",()=>{S={club:i,coins:1000,owned:{fb:{},fs:{}},owm:{},mgr:-1,got:{fb:0,fs:0},stock:{},rest:0,w:0,d:0,l:0,mode:(window.__KIKSTART_START_MODE||"fb"),st:{a:0,b:0,c:0,d:0},formation:{fb:"4-4-2",fs:"2-2"},profile:V27_blankProfile(),redeemed:{},unlimited:false,unlockedSecret:false,court:"classic",cups:{},activeCup:"",tutorialDone:false};S.lg={fb:mkLeague(),fs:mkLeague()};V27_normalize();restock();save();$("pick").classList.remove("on");$("start").classList.add("hide");refresh();showTab(pending||"home");pending=null;sfx.coin();V27_showTutorial();});};
+askReset=function(){ask("Reset all progress and return to the choose-your-club menu? This permanently deletes the current save.",()=>{try{localStorage.removeItem("kikstartV2")}catch(e){}location.reload();});};
+
+// Mobile virtual joystick and touch action buttons. They feed the same keyboard-state controls.
+function V27_setKey(code,on){K[code]=on?1:0;}
+function V27_releaseMobile(){["KeyW","KeyA","KeyS","KeyD","Space","KeyF","ShiftLeft"].forEach(k=>V27_setKey(k,false));V27_joyActive=false;}
+function V27_bindMobile(){const base=$("joyBase"),knob=$("joyKnob");if(!base||base.dataset.bound)return;base.dataset.bound="1";
+  const update=e=>{if(!V27_joyActive||!V27_joyCenter)return;const dx=e.clientX-V27_joyCenter.x,dy=e.clientY-V27_joyCenter.y,len=Math.hypot(dx,dy),max=40,nx=len?dx/Math.max(max,len):0,ny=len?dy/Math.max(max,len):0;knob.style.transform='translate('+nx*max+'px,'+ny*max+'px)';V27_setKey("KeyD",nx>.22);V27_setKey("KeyA",nx<-.22);V27_setKey("KeyS",ny>.22);V27_setKey("KeyW",ny<-.22);};
+  base.addEventListener("pointerdown",e=>{e.preventDefault();V27_joyActive=true;const r=base.getBoundingClientRect();V27_joyCenter={x:r.left+r.width/2,y:r.top+r.height/2};base.setPointerCapture(e.pointerId);update(e);});
+  base.addEventListener("pointermove",update);const stop=()=>{V27_setKey("KeyW",false);V27_setKey("KeyA",false);V27_setKey("KeyS",false);V27_setKey("KeyD",false);V27_joyActive=false;knob.style.transform="translate(0,0)";};base.addEventListener("pointerup",stop);base.addEventListener("pointercancel",stop);
+  [["mobilePass","Space"],["mobileShoot","KeyF"],["mobileSprint","ShiftLeft"]].forEach(([id,key])=>{const el=$(id);if(!el)return;el.addEventListener("pointerdown",e=>{e.preventDefault();el.setPointerCapture(e.pointerId);V27_setKey(key,true);});["pointerup","pointercancel","lostpointercapture"].forEach(ev=>el.addEventListener(ev,()=>V27_setKey(key,false)));});
+}
+
+// Add match labels, mobile controls and new navigation panels to the existing page.
+const V27_addCSS=document.createElement("style");V27_addCSS.textContent=`
+.v27-muted{opacity:.7;font-size:13px;line-height:1.5}.v27-eyebrow{font-size:10px;letter-spacing:.15em;opacity:.65;font-weight:900}.v27-large-number{font-size:30px;font-weight:900;margin:6px 0 12px}.v27-home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:14px 0}.v27-mode-card{min-height:116px;text-align:left;color:#eef2ff;background:linear-gradient(135deg,#162750,#0b1735);border:1px solid #29416f;display:flex;flex-direction:column;gap:7px}.v27-mode-card span{font-size:28px}.v27-mode-card small{opacity:.7}.v27-mode-card.selected{border-color:#00e0a4;box-shadow:0 0 22px #00e0a422}.v27-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 18px}.v27-toolbar select,.v27-court-select select{background:#0d1730;color:#eef2ff;border:1px solid #344568;padding:9px 12px;border-radius:9px}.v27-toolbar input,.v27-code-row input{background:#0d1730;color:#eef2ff;border:1px solid #344568;padding:11px 13px;border-radius:9px;min-width:220px}.v27-board{position:relative;width:100%;max-width:760px;aspect-ratio:1.72;margin:14px 0 22px;border:3px solid #eaf7ee;border-radius:10px;overflow:hidden;background:repeating-linear-gradient(90deg,#167342 0,#167342 12.5%,#1b804a 12.5%,#1b804a 25%)}.v27-board:before{content:"";position:absolute;left:50%;top:0;height:100%;border-left:2px solid #ffffff99}.v27-half{position:absolute;left:50%;top:50%;width:16%;aspect-ratio:1;border:2px solid #ffffff99;border-radius:50%;transform:translate(-50%,-50%)}.v27-circle{position:absolute;left:50%;top:50%;width:5px;height:5px;background:#fff;border-radius:50%;transform:translate(-50%,-50%)}.v27-box{position:absolute;top:24%;height:52%;width:13%;border:2px solid #ffffffaa}.v27-box.left{left:-1px;border-left:0}.v27-box.right{right:-1px;border-right:0}.v27-slot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;width:clamp(42px,7vw,62px);height:clamp(32px,5vw,43px);padding:2px;border-radius:8px;background:linear-gradient(145deg,#0b192b,#173756);border:1px solid #b9f4df;box-shadow:0 2px 8px #0008;color:white;text-align:center;font-size:clamp(8px,1vw,11px);line-height:1.1}.v27-slot small{font-size:8px;opacity:.8}.v27-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin:6px 0;font-size:9px}.v27-stat-grid span{background:#07101f33;padding:3px;border-radius:4px}.v27-table-shell{background:linear-gradient(145deg,#16284d,#081326);padding:10px;border:1px solid #324b76;border-radius:16px;box-shadow:0 18px 35px #0007;transform:perspective(1200px) rotateX(1.4deg);overflow-x:auto}.v27-league-table{max-width:none;width:100%;border-collapse:separate;border-spacing:0 4px;background:transparent}.v27-league-table th{background:#1a315b;color:#eaf4ff}.v27-league-table td{background:#0c1930;border-top:1px solid #20385f;border-bottom:1px solid #20385f;padding:10px 7px}.v27-league-table tr:hover td{background:#172c4e;transform:translateZ(5px)}.v27-league-table tr.me td{background:linear-gradient(90deg,#15543f,#103b37);border-color:#2d8e70}.v27-club-cell{display:flex;align-items:center;gap:8px;white-space:nowrap}.v27-rank{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:7px;background:#1b2c4b;font-weight:900}.v27-positive{color:#70f0b5}.v27-negative{color:#ff879d}.v27-podium{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.v27-podium-card{padding:14px 10px;border-radius:13px;background:linear-gradient(145deg,#1a2d52,#0d172c);border:1px solid #41577c;display:flex;flex-direction:column;gap:6px;text-align:center;box-shadow:0 10px 18px #0005;transform:perspective(700px) rotateX(2deg)}.v27-podium-card small{font-size:9px;letter-spacing:.1em;opacity:.7}.v27-podium-card strong{font-size:19px;color:#ffe58b}.v27-podium-card.rank-1{border-color:#ffe58b;transform:translateY(-6px);background:linear-gradient(145deg,#4c3c1e,#171e35)}.v27-podium-card.rank-2{border-color:#aebbd2}.v27-podium-card.rank-3{border-color:#b77d52}.v27-league-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}.v27-traits{display:flex;flex-wrap:wrap;justify-content:center;gap:3px;margin:5px 0}.v27-traits i{font-style:normal;font-size:8px;border-radius:99px;padding:2px 5px;background:#07101f38}.card{width:145px;padding:8px 7px 10px}.card .nm{min-height:30px}.card .v27-extra{font-size:10px;margin:4px 0}.card .v27-stat-grid{margin-top:6px}.card .stat-toggle{font-size:9px}.v27-packs{align-items:stretch}.v27-pack{width:210px;padding:14px 13px 16px;border:1px solid #ffffff52;box-shadow:0 10px 25px #0007,0 0 20px var(--a)}.v27-pack-art{height:95px;margin:-2px -2px 10px;border-radius:12px;background:linear-gradient(145deg,#ffffff44,#030a1e55);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}.v27-pack-art span{font-size:54px;filter:drop-shadow(0 5px 10px #0008);z-index:1}.v27-pack-art i{position:absolute;width:220%;height:26px;background:#ffffff38;transform:rotate(-28deg);box-shadow:0 0 20px #ffffff44}.manager-art{background:radial-gradient(circle,#fff7c755,transparent 55%),linear-gradient(140deg,#15284e,#36295e)}.v27-pack-label{font-size:9px;letter-spacing:.17em;font-weight:900;opacity:.8}.v27-pack-sub{font-size:11px;margin:4px 0 8px}.v27-shop-top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;padding:16px 18px;background:linear-gradient(120deg,#132c55,#182044);border:1px solid #345184;border-radius:14px}.v27-bigcoin{font-size:28px;font-weight:900}.v27-code-panel{max-width:650px}.v27-code-row{display:flex;gap:8px;flex-wrap:wrap}.v27-code-row input{flex:1}.v27-quest{width:min(100%,230px);flex:1}.v27-quest p{font-size:12px;opacity:.75}.v27-quest-top{display:flex;justify-content:space-between;gap:8px}.v27-progress{height:7px;border-radius:9px;background:#050b18;overflow:hidden;margin:8px 0}.v27-progress i{display:block;height:100%;background:linear-gradient(90deg,#00d99b,#7ef4d0);border-radius:9px}.v27-quest small{display:block;opacity:.7}.v27-quest button{margin-top:8px}.v27-stat-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}.v27-stat-overview .panel{display:flex;flex-direction:column;gap:7px}.v27-stat-overview small{opacity:.7}.v27-stat-overview b{font-size:26px}.v27-trophy{display:flex;align-items:center;gap:9px}.v27-comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:12px}.v27-comp-card{background:linear-gradient(145deg,#17264a,#0e1730);border-color:#33476d;display:flex;flex-direction:column;align-items:flex-start;gap:7px}.v27-comp-card h3{margin:0}.v27-comp-card p{font-size:12px;opacity:.7}.v27-comp-card button{margin-top:8px}.v27-comp-icon{font-size:34px}.v27-won{color:#ffe48b;font-weight:900}.v27-league-shortcut{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.v27-match-choice{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px;background:#111b36;border:1px solid #26385d;border-radius:12px;margin:10px 0}.v27-match-choice>div{display:flex;flex-direction:column;gap:4px}.v27-match-choice small{opacity:.7}.v27-court-select{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:480px;margin:12px 0}.v27-secret-lock{width:min(100%,320px);padding:24px;border:1px dashed #d9bd65;border-radius:14px;background:linear-gradient(140deg,#302849,#111729);display:flex;flex-direction:column;gap:8px}.v27-secret-lock b{font-size:38px;letter-spacing:.22em;color:#ffe58a}.v27-secret-lock small{opacity:.7}.v27-tutorial-box{width:min(92vw,520px);padding:28px;border-radius:18px;background:linear-gradient(145deg,#17284d,#0a1126);border:1px solid #3b588c;box-shadow:0 20px 80px #000b;text-align:left}.v27-tutorial-box h2{margin:12px 0}.v27-tutorial-box p{line-height:1.6;opacity:.85}.v27-tutorial-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:20px}.v27-tutorial-count{font-size:10px;letter-spacing:.16em;color:#00e0a4;font-weight:900}.v27-mode-toast{position:fixed;z-index:90;top:16%;left:50%;transform:translate(-50%,-10px);padding:14px 26px;border:1px solid #72ffdb;border-radius:999px;background:#071b25;color:#eafff8;font-size:clamp(18px,4vw,28px);font-weight:1000;letter-spacing:.12em;opacity:0;pointer-events:none;box-shadow:0 0 35px #00e0a466}.v27-mode-toast.show{animation:v27toast 1.7s ease forwards}@keyframes v27toast{0%{opacity:0;transform:translate(-50%,-14px) scale(.85)}15%,75%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-8px) scale(.98)}}#mobileControls{display:none;justify-content:space-between;align-items:center;gap:14px;max-width:920px;margin:10px 0 16px;touch-action:none;user-select:none}#joyBase{width:122px;height:122px;border:2px solid #7cebd2aa;border-radius:50%;background:radial-gradient(circle,#203657,#0a1427);position:relative;touch-action:none}#joyKnob{position:absolute;width:46px;height:46px;left:50%;top:50%;margin:-23px;border-radius:50%;background:linear-gradient(140deg,#a8ffea,#00a77c);box-shadow:0 3px 15px #0009;pointer-events:none}.v27-mobile-actions{display:grid;grid-template-columns:repeat(2,70px);gap:9px}.v27-mobile-actions button{width:70px;height:58px;padding:5px;border-radius:16px;touch-action:none}.v27-mobile-actions .shoot{background:linear-gradient(145deg,#ffcb57,#e56b28);color:#251507}.v27-mobile-actions .sprint{grid-column:span 2;width:100%;background:#234b75;color:#fff}#playerStatus{font-size:12px;opacity:.85;min-height:18px;margin:8px 0 12px}#stage{touch-action:pan-y}
+@media(max-width:760px){.card{width:calc(50% - 8px);max-width:160px}.v27-stat-grid{font-size:9px}.v27-stat-grid span{padding:2px}.v27-board{aspect-ratio:1.25}.v27-slot{width:48px;height:36px}#mobileControls{display:flex}#stage{height:56vh;min-height:320px}#main>.tab{padding-left:12px;padding-right:12px}.v27-match-choice{align-items:flex-start}.v27-mode-card{min-height:105px}}
+@media(hover:none) and (pointer:coarse){#mobileControls{display:flex}}
+#modal{overflow-y:auto;justify-content:flex-start;padding:22px 12px;min-height:100vh}#modal>#reveal{width:100%;flex:0 0 auto}#modal>h2{margin-top:8px}#modal>p{padding:5px 0}#modal>div:last-child{padding-bottom:22px} @media(max-width:760px){#modal .card{width:calc(50% - 10px);max-width:150px}#modal #reveal{gap:8px}}
+`;
+document.head.appendChild(V27_addCSS);
+
+// Insert the additional views and mobile/tutor overlays once.
+const V27_side=document.querySelector("#side .sitems");if(V27_side&&!$("nav-index")){[ ["index","Player Index"],["tournaments","Tournaments"],["club","All-Time Club"] ].forEach(([id,label])=>{const b=document.createElement("button");b.id="nav-"+id;b.textContent=label;b.onclick=()=>showTab(id);V27_side.appendChild(b);});}
+const V27_startMenu=document.querySelector("#start .sitems");if(V27_startMenu&&!V27_startMenu.querySelector('[data-t="tournaments"]')){const b=document.createElement("button");b.dataset.t="tournaments";b.textContent="Tournaments";b.onclick=()=>menuGo("tournaments");V27_startMenu.appendChild(b);}
+const V27_main=$("main");if(V27_main&&!$("index")){["index","tournaments","club"].forEach(id=>{const d=document.createElement("div");d.id=id;d.className="tab";V27_main.insertBefore(d,$("play"));});}
+const V27_match=$("matchView");if(V27_match&&!$("mobileControls")){const controls=document.createElement("div");controls.id="mobileControls";controls.innerHTML='<div id="joyBase" aria-label="Movement joystick"><div id="joyKnob"></div></div><div class="v27-mobile-actions"><button id="mobilePass" class="alt">PASS<br> / TACKLE</button><button id="mobileShoot" class="shoot">SHOOT</button><button id="mobileSprint" class="sprint">SPRINT</button></div>';$("stage").insertAdjacentElement("afterend",controls);const status=document.createElement("div");status.id="playerStatus";status.textContent="Selected player: ready";controls.insertAdjacentElement("afterend",status);const aim=document.createElement("div");aim.id="shotAimPanel";aim.innerHTML='<label for="shotAimRange"><b>SHOT HEIGHT</b><span id="shotAimReadout">Medium · 40%</span></label><input id="shotAimRange" type="range" min="0" max="100" value="40" step="1"><small>Low = driven shot · High = lofted shot · Arrow keys while charging also adjust height</small>' ;status.insertAdjacentElement("afterend",aim);}
+if(!$('tutorial')){const t=document.createElement("div");t.id="tutorial";t.className="ov";t.style.zIndex="85";t.innerHTML='<div class="v27-tutorial-box"><div id="tutorialCount" class="v27-tutorial-count"></div><h2 id="tutorialTitle"></h2><p id="tutorialBody"></p><div class="v27-tutorial-actions"><button class="alt" onclick="V27_finishTutorial()">Skip tutorial</button><button id="tutorialNext" onclick="V27_nextTutorial()">Next</button></div></div>';$('app').appendChild(t);}
+if(!$('modeToast')){const t=document.createElement("div");t.id="modeToast";t.className="v27-mode-toast";document.body.appendChild(t);}
+V27_bindMobile();
+
+
+// Cup results do not alter the domestic league table.
+const V27_baseRecord=record;record=function(opp,y,o){if(M&&M.competitionId)return;V27_baseRecord(opp,y,o);};
+// League champions receive a season trophy when a new season begins.
+newSeason=function(){const lg=S.lg[S.mode],ordered=lg.teams.slice().sort((a,b)=>b.p-a.p||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf),champ=ordered[0];ask("Start a new season? The league table will reset.",()=>{if(champ&&champ.me){S.profile.trophies++;S.profile.trophyNames.push(LEAGUES[CL[S.club].li].n+" League Title");}S.lg[S.mode]=mkLeague();save();refresh();});};
+sell=function(id){const mo=S.mode,p=POOL[mo][id],F=FORM[mo];if(!p||!S.owned[mo][id])return;const value=Math.round(V27_playerPrice(p)/4);if(S.owned[mo][id]===1&&Object.keys(S.owned[mo]).length<=F.n)return ask("You need at least "+F.n+" different players, so you can't sell "+p.n+" yet.");ask("Sell "+p.n+" for 🪙 "+value.toLocaleString("en-AU")+"?",()=>{if(!S.owned[mo][id])return;S.coins+=value;if(--S.owned[mo][id]<=0)delete S.owned[mo][id];sfx.coin();save();refresh();});};
+// Normalize an existing save; boot straight into club selection when no club has been chosen.
+if(S){V27_normalize();refresh();showTab("home");if(!S.tutorialDone)setTimeout(V27_showTutorial,250);}else{$("start").classList.add("hide");openPick();}
+
+
+// title screen: floating legend cards
+$("fan").innerHTML=["Lionel Messi","Cristiano Ronaldo","Neymar"].map((n,i)=>cardHTML(POOL.fb.find(p=>p.n===n)).replace('<div class="card','<div style="--r:'+[-8,0,8][i]+'deg;--y:'+[10,-8,10][i]+'px" class="card')).join("");
+
+// ================= POLISH PATCH: RARITY, MATCH INTRO, SHOT LOFT, STADIUM =================
+// Remove accidental repeat rewards: a cinematic must never be triggered by opening a menu,
+// starting a match, or showing the current squad's top-rated player.
+const V27_safeGrant=grant;
+grant=function(list,title){
+  if(!Array.isArray(list)||!list.length)return;
+  const mo=S.mode;
+  const valid=list.filter(p=>p&&Number.isInteger(p.id)&&(p.mg?MGRS[p.id]===p:POOL[mo][p.id]===p));
+  if(!valid.length)return;
+  V27_safeGrant(valid,title);
+};
+
+// Make every player pack use the updated, displayed percentages.
+PACKS.forEach(pk=>{
+  if(pk.name==="Bronze Pack")pk.odds={bronze:76,silver:21,gold:2.7,ruby:.28,diamond:.02};
+  else if(pk.name==="Silver Pack")pk.odds={bronze:48,silver:43,gold:8,ruby:.85,diamond:.15};
+  else if(pk.name==="Gold Pack")pk.odds={silver:60,gold:32,ruby:7,diamond:1};
+  else if(pk.name==="Diamond Pack")pk.odds={gold:72,ruby:24,diamond:4};
+  else if(pk.name==="Icons & Heroes Pack")pk.odds={gold:42,ruby:53,diamond:5};
+});
+
+// Proper shot loft: the ball follows a short 3D arc and can be saved or hit over the bar.
+const V27_oldUserCtrl=userCtrl;
+userCtrl=function(p,dt){
+  const m=M;if(!m)return;
+  const charging=!!(K.KeyF||K.KeyJ);
+  if(charging){
+    const n=(K.ArrowUp?1:0)-(K.ArrowDown?1:0);
+    if(n)m.aimHeight=cl((m.aimHeight??.4)+n*dt*.8,0,1);
+  }
+  const up=K.ArrowUp,down=K.ArrowDown;
+  if(charging){K.ArrowUp=0;K.ArrowDown=0;}
+  try{V27_oldUserCtrl(p,dt);}finally{K.ArrowUp=up;K.ArrowDown=down;}
+  const slider=$("shotAimRange"),readout=$("shotAimReadout");
+  if(slider&&m.ctrl===p){const v=Math.round(cl(m.aimHeight??.4,0,1)*100);if(document.activeElement!==slider)slider.value=String(v);if(readout)readout.textContent=(v<25?"Low":v<70?"Medium":"High")+" · "+v+"%";}
+};
+const V27_oldShoot=shoot;
+shoot=function(p,pw,aimz,shotHeight){
+  const h=shotHeight!==undefined?shotHeight:(p.t===0?(M?.aimHeight??.4):.34);
+  return V27_oldShoot(p,pw,aimz,cl(h,0,1));
+};
+const V27_oldKick=kick;
+kick=function(p,vx,vz,vy){return V27_oldKick(p,vx,vz,Number.isFinite(vy)?vy:0);};
+// A match starts with a level ball; restart/goal/out states are reset by the same ball physics.
+if(typeof M!=="undefined"&&M&&!M.over){M.ball.y=.5*M.F.ps;M.ball.vy=0;}
+
+// Materials are created lazily so the game can still boot if the 3D CDN is unavailable.
+let V27_roofMat=null;
+let V27_roofGlass=null;
+function V27_roofStrip(axis,sign,inner,outer,length,y,material){
+  const along=24,across=8,pos=[],idx=[];
+  for(let i=0;i<=along;i++){
+    const u=-length/2+(length*i/along);
+    for(let j=0;j<=across;j++){
+      const v=j/across,span=inner+(outer-inner)*v;
+      const arch=Math.sin(v*Math.PI)*2.25;
+      const yy=y+arch-v*.45;
+      if(axis==="x")pos.push(u,yy,sign*span);else pos.push(sign*span,yy,u);
+    }
+  }
+  for(let i=0;i<along;i++)for(let j=0;j<across;j++){
+    const a=i*(across+1)+j,b=a+across+1;idx.push(a,b,a+1,b,b+1,a+1);
+  }
+  const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
+  const mesh=new THREE.Mesh(g,material);mesh.castShadow=true;mesh.receiveShadow=true;sw.add(mesh);
+}
+function V27_addDetailedRoof(){
+  if(!sr||!sw||typeof THREE==="undefined"||S.st.a<8)return;
+  if(!V27_roofMat)V27_roofMat=new THREE.MeshStandardMaterial({color:0x263957,metalness:.62,roughness:.4,emissive:0x07101a,side:THREE.DoubleSide});
+  if(!V27_roofGlass)V27_roofGlass=new THREE.MeshStandardMaterial({color:0x4e7890,metalness:.2,roughness:.25,transparent:true,opacity:.42,side:THREE.DoubleSide});
+  const T=2+S.st.a,edge=3.5+(T-1)*2.8;
+  const innerZ=33+edge-13,outerZ=33+edge+18,innerX=50+edge-13,outerX=50+edge+18;
+  const topY=1.2+(T-1)*1.5+7.4;
+  const longLen=2*(50+edge+5),endLen=2*(33+edge+5);
+  // Four continuous curved canopy wings cover the stands while leaving the pitch open.
+  [-1,1].forEach(side=>V27_roofStrip("x",side,innerZ,outerZ,longLen,topY,V27_roofMat));
+  [-1,1].forEach(side=>V27_roofStrip("z",side,innerX,outerX,endLen,topY,V27_roofMat));
+  // Outer fascia, inner LED strips and exposed steel trusses.
+  const box=(w,h,d,x,y,z,mat)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat||V27_roofMat);o.position.set(x,y,z);o.castShadow=true;sw.add(o);return o;};
+  const fascia=new THREE.MeshLambertMaterial({color:0x0e1b31,emissive:0x040a16});
+  const led=new THREE.MeshBasicMaterial({color:0x3fe8d0});
+  [-1,1].forEach(side=>{
+    box(longLen,1.25,1.6,0,topY-1,side*(outerZ+1),fascia);
+    box(1.6,1.25,endLen,side*(outerX+1),topY-1,0,fascia);
+    box(longLen-4,.22,.45,0,topY-1.65,side*(innerZ+2),led);
+    box(.45,.22,endLen-4,side*(innerX+2),topY-1.65,0,led);
+    for(let x=-longLen/2+6;x<=longLen/2-5;x+=15){
+      box(.65,.65,outerZ-innerZ,x,topY-1.2,side*((outerZ+innerZ)/2),V27_roofMat);
+    }
+    for(let z=-endLen/2+6;z<=endLen/2-5;z+=15){
+      box(outerX-innerX,.65,.65,side*((outerX+innerX)/2),topY-1.2,z,V27_roofMat);
+    }
+    // Outside support columns and diagonal braces.
+    [-longLen/2+5,0,longLen/2-5].forEach(x=>{
+      box(1.35,topY+1,1.35,x,(topY+1)/2,side*(outerZ+3),fascia);
+      const brace=box(1,Math.hypot(6,5),1,x,topY-2,side*(outerZ-3),V27_roofMat);brace.rotation.x=side*.68;
+    });
+    [-endLen/2+5,0,endLen/2-5].forEach(z=>box(1.35,topY+1,1.35,side*(outerX+3),(topY+1)/2,z,fascia));
+  });
+  // Translucent roof-light panels and a detailed central scoreboard.
+  [-1,1].forEach(side=>V27_roofStrip("x",side,innerZ+8,outerZ-5,longLen-12,topY+.4,V27_roofGlass));
+  const board=new THREE.Mesh(new THREE.BoxGeometry(21,7,.8),new THREE.MeshLambertMaterial({color:0x07101d,emissive:0x07172d}));board.position.set(0,topY-6,0);sw.add(board);
+  const screen=new THREE.Mesh(new THREE.BoxGeometry(18.5,4.7,.12),new THREE.MeshBasicMaterial({color:0x123e59}));screen.position.set(0,topY-6,0.48);sw.add(screen);
+  const trim=new THREE.Mesh(new THREE.BoxGeometry(22,.25,1),new THREE.MeshBasicMaterial({color:0x55e8ce}));trim.position.set(0,topY-2.45,0);sw.add(trim);
+}
+const V27_buildStadiumBase=buildStad;
+buildStad=function(){
+  V27_buildStadiumBase();
+  const key=JSON.stringify(S.st)+S.club;
+  if(V27_roofKey!==key){V27_roofKey=key;V27_addDetailedRoof();}
+};
+
+// Add a clean, visible shot-height control and polish it for desktop and mobile.
+const V27_aimStyle=document.createElement("style");V27_aimStyle.textContent=`
+#shotAimPanel{display:flex;align-items:center;gap:12px;flex-wrap:wrap;max-width:920px;margin:10px 0 16px;padding:12px 14px;border:1px solid #2b4268;border-radius:13px;background:linear-gradient(120deg,#101d38,#0b1428);box-shadow:0 8px 22px #0004}
+#shotAimPanel label{display:flex;flex-direction:column;gap:3px;min-width:105px;font-size:11px;letter-spacing:.08em}
+#shotAimPanel label span{font-size:12px;letter-spacing:0;color:#72f0ca;font-weight:800}
+#shotAimRange{flex:1;min-width:130px;accent-color:#00e0a4;cursor:pointer}
+#shotAimPanel small{width:100%;font-size:11px;opacity:.67}
+#mobileControls{align-items:center}
+@media(max-width:760px){#shotAimPanel{margin-top:4px}#shotAimRange{min-width:100%;order:3}#shotAimPanel small{order:4}}
+`;
+document.head.appendChild(V27_aimStyle);
+const V27_aimSlider=$("shotAimRange");
+if(V27_aimSlider){
+  V27_aimSlider.addEventListener("input",()=>{const v=Number(V27_aimSlider.value)/100;if(M)M.aimHeight=v;const r=$("shotAimReadout");if(r)r.textContent=(v<.25?"Low":v<.7?"Medium":"High")+" · "+V27_aimSlider.value+"%";});
+}
+// Set a sensible medium default for every new match, and keep the display in sync.
+const V27_startWithAim=startMatch;
+startMatch=function(key){V27_startWithAim(key);if(M&&!M.over){M.aimHeight=.4;const a=$("shotAimRange"),r=$("shotAimReadout");if(a)a.value="40";if(r)r.textContent="Medium · 40%";}};
+
+// Fix the random Maradona-style walkout: only a real pack pull can trigger a legendary reveal.
+
+
+
+// ================= KIKSTART PATCH 2: PACK SAFETY + REAL STADIUM + SHOT CONTROL =================
+// Pack rewards are the only way new cards can enter the club. This prevents unrelated UI
+// actions or match events from accidentally granting a player or replaying a player walkout.
+let V27_grantPermit=false;
+const V27_prePatchClaimStarter=claimStarter;
+const V27_prePatchBuyPack=buyPack;
+const V27_prePatchBuyManagerPack=buyManagerPack;
+claimStarter=function(){
+  if(!S||S.got[S.mode])return;
+  V27_grantPermit=true;
+  try{return V27_prePatchClaimStarter();}
+  finally{V27_grantPermit=false;}
+};
+buyPack=function(i){
+  if(!S||!PACKS[i])return;
+  V27_grantPermit=true;
+  try{return V27_prePatchBuyPack(i);}
+  finally{V27_grantPermit=false;}
+};
+buyManagerPack=function(i){
+  if(!S||!V27_MANAGER_PACKS[i])return;
+  V27_grantPermit=true;
+  try{return V27_prePatchBuyManagerPack(i);}
+  finally{V27_grantPermit=false;}
+};
+grant=function(list,title){
+  if(!V27_grantPermit||!S||!Array.isArray(list)||!list.length)return;
+  const mo=S.mode,seen=new Set(),valid=list.filter(p=>{
+    if(!p||!Number.isInteger(p.id))return false;
+    const exists=p.mg?MGRS[p.id]===p:POOL[mo]&&POOL[mo][p.id]===p;
+    const key=(p.mg?"m":"p")+p.id;
+    if(!exists||seen.has(key))return false;
+    seen.add(key);return true;
+  });
+  if(!valid.length)return;
+  const res=valid.map(p=>{
+    const store=p.mg?S.owm:S.owned[mo];
+    const isNew=!store[p.id];store[p.id]=(store[p.id]||0)+1;
+    return {p,isNew,done:false};
+  });
+  PK=res;save();
+  $("modalTitle").textContent=title||"Pack contents";
+  // No automatic legendary walkout. A card animation only happens when its actual pack card is tapped.
+  $("reveal").innerHTML=res.map((x,i)=>'<div class="card back" id="s'+i+'" onclick="flip('+i+')">?</div>').join("");
+  refresh();
+  $("modal").classList.add("on");
+};
+
+// Rebalance the rarity roll AND the player selection inside a rarity tier.
+// Headline Icons (including Maradona) are weighted far below ordinary cards.
+PACKS.forEach(pk=>{
+  if(pk.name==="Bronze Pack")pk.odds={bronze:77,silver:21.5,gold:1.4,ruby:.099,diamond:.001};
+  else if(pk.name==="Silver Pack")pk.odds={bronze:50,silver:44,gold:5.5,ruby:.49,diamond:.01};
+  else if(pk.name==="Gold Pack")pk.odds={silver:63,gold:32.5,ruby:4.4,diamond:.1};
+  else if(pk.name==="Diamond Pack")pk.odds={gold:79,ruby:20.25,diamond:.75};
+  else if(pk.name==="Icons & Heroes Pack")pk.odds={gold:58,ruby:40.5,diamond:1.5};
+});
+V27_weightedPlayer=function(pool){
+  const headline=new Set(["Lionel Messi","Cristiano Ronaldo","Neymar","Diego Maradona","Pelé","Zinedine Zidane","Ronaldinho","Paolo Maldini"]);
+  const eligible=pool.filter(p=>p&&!p.secret);
+  if(!eligible.length)throw new Error("No eligible players for this pack tier.");
+  const weights=eligible.map(p=>({p,w:headline.has(p.n)?.00008:(p.kind==="icon"?.006:(p.kind==="hero"?.035:1))}));
+  let total=weights.reduce((a,x)=>a+x.w,0),r=rnd()*total;
+  for(const x of weights){r-=x.w;if(r<=0)return x.p;}
+  return weights[weights.length-1].p;
+};
+
+// A proper curved canopy is added AFTER the existing stadium bowl has rebuilt.
+// This replaces the earlier wrappers that accidentally marked the roof as built too early.
+let V27_stadiumBuiltKey="";
+function V27_addStadiumDetails(){
+  if(!sw||typeof THREE==="undefined")return;
+  const c=CL[S.club],mat=(color,emissive=0)=>new THREE.MeshStandardMaterial({color,roughness:.58,metalness:.18,emissive});
+  const add=(w,h,d,x,y,z,m)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;sw.add(o);return o;};
+  const boardMats=[mat(0x0c1b32,0x07172a),mat(0x0a6d5f,0x06382d),mat(0x204d83,0x102a50),mat(0x8a6122,0x39250b)];
+  // Pitch-side LED advertising ribbon, split into panels for depth and colour.
+  for(const side of [-1,1]){
+    for(let x=-42;x<=42;x+=14){
+      add(13.4,.88,.48,x,.62,side*35.2,boardMats[(Math.floor((x+42)/14)+(side>0?1:0))%boardMats.length]);
+      add(13.4,.08,.52,x,1.08,side*35.2,mat(0x57f3d0,0x238c78));
+    }
+    for(let z=-25;z<=25;z+=12.5){
+      add(.48,.88,12,side*52.2,.62,z,boardMats[(Math.floor((z+25)/12.5))%boardMats.length]);
+    }
+  }
+  // Corner flags and small dugout shelters make the bowl read as a working venue.
+  for(const x of [-49.5,49.5])for(const z of [-32.5,32.5]){
+    const pole=add(.13,3,.13,x,1.5,z,mat(0xd7e3f0));
+    const flag=add(.95,.55,.08,x+(x>0?-.48:.48),2.55,z,mat(c.a,0x142a43));
+    flag.rotation.y=x*z>0?.18:-.18;
+  }
+  for(const side of [-1,1]){
+    const z=side*42.5;
+    add(18,3.8,4.5,0,1.9,z,mat(0x101b31,0x060b16));
+    add(19,.25,5,0,3.95,z,mat(c.a,0x122b43));
+    for(let x=-7;x<=7;x+=3.5)add(.12,2.4,.12,x,1.3,z+side*2.3,mat(0x8897ad));
+  }
+  // A compact entrance/tunnel structure behind one end of the ground.
+  add(18,5,8,0,2.5,-60,mat(0x101a2c,0x060b15));
+  add(19,.45,8,0,5.05,-60,mat(c.a,0x132c45));
+  const signCanvas=document.createElement("canvas");signCanvas.width=512;signCanvas.height=128;
+  const ctx=signCanvas.getContext("2d");ctx.fillStyle="#071323";ctx.fillRect(0,0,512,128);ctx.fillStyle="#eaf8ff";ctx.font="900 54px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("KIKSTART ARENA",256,64);
+  const texture=new THREE.CanvasTexture(signCanvas);const sign=new THREE.Mesh(new THREE.PlaneGeometry(16,4),new THREE.MeshBasicMaterial({map:texture,transparent:true}));sign.position.set(0,3.7,-55.8);sw.add(sign);
+}
+V27_addDetailedRoof=function(){
+  if(!sr||!sw||typeof THREE==="undefined"||S.st.a<8)return;
+  if(!V27_roofMat)V27_roofMat=new THREE.MeshStandardMaterial({color:0x263957,metalness:.68,roughness:.38,emissive:0x07101a,side:THREE.DoubleSide});
+  if(!V27_roofGlass)V27_roofGlass=new THREE.MeshStandardMaterial({color:0x6394a8,metalness:.22,roughness:.22,transparent:true,opacity:.5,side:THREE.DoubleSide});
+  const tier=2+S.st.a,edge=3.5+(tier-1)*2.8;
+  const innerZ=33+edge-13,outerZ=33+edge+19,innerX=50+edge-13,outerX=50+edge+19;
+  const topY=1.2+(tier-1)*1.5+8.2;
+  const longLen=2*(50+edge+7),endLen=2*(33+edge+7);
+  const fascia=new THREE.MeshStandardMaterial({color:0x0b172a,metalness:.72,roughness:.35,emissive:0x050b15});
+  const steel=new THREE.MeshStandardMaterial({color:0x687a92,metalness:.82,roughness:.28});
+  const led=new THREE.MeshBasicMaterial({color:0x43f0d1});
+  const lamp=new THREE.MeshBasicMaterial({color:0xfff2c5});
+  const box=(w,h,d,x,y,z,m=V27_roofMat)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;sw.add(o);return o;};
+  // Four continuous curved canopy sections cover the full seating bowl, leaving the pitch open.
+  [-1,1].forEach(side=>V27_roofStrip("x",side,innerZ,outerZ,longLen,topY,V27_roofMat));
+  [-1,1].forEach(side=>V27_roofStrip("z",side,innerX,outerX,endLen,topY,V27_roofMat));
+  // Reinforced outer fascia and bright inner LED edge.
+  [-1,1].forEach(side=>{
+    box(longLen,1.45,1.9,0,topY-.9,side*(outerZ+1),fascia);
+    box(1.9,1.45,endLen,side*(outerX+1),topY-.9,0,fascia);
+    box(longLen-5,.22,.42,0,topY-1.72,side*(innerZ+2),led);
+    box(.42,.22,endLen-5,side*(innerX+2),topY-1.72,0,led);
+    // Roof trusses and outer support columns.
+    for(let x=-longLen/2+7;x<=longLen/2-6;x+=14){
+      box(.8,.75,outerZ-innerZ,x,topY-1.25,side*((outerZ+innerZ)/2),steel);
+      box(1.1,.45,1.1,x,topY-2.1,side*(innerZ+4),steel);
+    }
+    for(let z=-endLen/2+7;z<=endLen/2-6;z+=14){
+      box(outerX-innerX,.75,.8,side*((outerX+innerX)/2),topY-1.25,z,steel);
+    }
+    [-longLen/2+6,0,longLen/2-6].forEach(x=>{
+      box(1.8,topY+1.5,1.8,x,(topY+1.5)/2,side*(outerZ+3.5),fascia);
+      const brace=box(.85,Math.hypot(7,5),.85,x,topY-2.6,side*(outerZ-3),steel);brace.rotation.x=side*.66;
+    });
+    [-endLen/2+6,0,endLen/2-6].forEach(z=>box(1.8,topY+1.5,1.8,side*(outerX+3.5),(topY+1.5)/2,z,fascia));
+    // Translucent skylight bands and underside floodlight strips.
+    V27_roofStrip("x",side,innerZ+8,outerZ-6,longLen-14,topY+.24,V27_roofGlass);
+    V27_roofStrip("z",side,innerX+8,outerX-6,endLen-14,topY+.24,V27_roofGlass);
+    for(let x=-longLen/2+13;x<=longLen/2-12;x+=24){
+      box(7,.22,1.25,x,topY-2.25,side*(innerZ+4),lamp);
+      const l=new THREE.PointLight(0xfff0c0,.45,34);l.position.set(x,topY-3,side*(innerZ+7));sw.add(l);
+    }
+  });
+  // A suspended, double-sided scoreboard beneath the roof.
+  const boardMat=new THREE.MeshStandardMaterial({color:0x07111f,metalness:.5,roughness:.3,emissive:0x07182b});
+  box(22,7,1.3,0,topY-6.5,0,boardMat);
+  const screenMat=new THREE.MeshBasicMaterial({color:0x0a3852});
+  box(19,4.8,.12,0,topY-6.5,.72,screenMat);
+  box(19,4.8,.12,0,topY-6.5,-.72,screenMat);
+  box(22,.3,1.4,0,topY-2.85,0,led);
+  // Four corner pylons make the canopy visibly supported by the stadium structure.
+  [-1,1].forEach(x=>[-1,1].forEach(z=>{
+    box(2.1,topY+2,2.1,x*(outerX+4),(topY+2)/2,z*(outerZ+4),fascia);
+    box(3.5,.35,3.5,x*(outerX+4),topY+2,z*(outerZ+4),steel);
+  }));
+};
+buildStad=function(){
+  if(!sr||typeof THREE==="undefined")return;
+  const key=JSON.stringify(S.st)+S.club;
+  if(V27_stadiumBuiltKey===key)return;
+  V27_baseBuildStad();
+  V27_stadiumBuiltKey=key;
+  V27_addStadiumDetails();
+  if(S.st.a>=8)V27_addDetailedRoof();
+};
+// Enable shadows and smoother colour output in the orbiting stadium viewer.
+const V27_prePatchInitStad=initStad;
+initStad=function(){
+  V27_prePatchInitStad();
+  if(sr){sr.shadowMap.enabled=true;sr.shadowMap.type=THREE.PCFSoftShadowMap;sr.outputEncoding=THREE.sRGBEncoding;}
+  if(ss)ss.children.forEach(o=>{if(o.isDirectionalLight){o.castShadow=true;o.shadow.mapSize.set(1024,1024);}});
+};
+
+// Shot loft is a real vertical-velocity adjustment. 0% is a driven effort; 100% is a high chip.
+shoot=function(p,pw,aimz,shotHeight){
+  if(!M||!p)return;
+  const m=M,F=m.F,attack=p.t?-1:1;
+  const targetZ=aimz!==undefined?aimz:(rnd()*2-1)*F.gw*.42;
+  const ang=Math.atan2(targetZ-p.z,attack*F.L/2-p.x)+(rnd()-.5)*(1.25-p.o/100)*.3/(p.sk||1);
+  const power=cl(Number(pw)||0,0,1),height=cl(Number.isFinite(shotHeight)?shotHeight:(p.t===0?(m.aimHeight??.4):.34),0,1);
+  const speed=24+power*14;
+  // Smooth curve makes the lower half useful for driven shots and the upper half for chips.
+  const lift=.85+Math.pow(height,1.08)*4.9+power*.28;
+  kick(p,Math.cos(ang)*speed,Math.sin(ang)*speed,lift);
+};
+// Q/E are optional keyboard aliases for lowering/raising loft while holding shoot.
+const V27_preShotCtrl=userCtrl;
+userCtrl=function(p,dt){
+  const m=M;
+  if(m&&(K.KeyF||K.KeyJ)){
+    if(K.KeyE)m.aimHeight=cl((m.aimHeight??.4)+dt*.7,0,1);
+    if(K.KeyQ)m.aimHeight=cl((m.aimHeight??.4)-dt*.7,0,1);
+  }
+  V27_preShotCtrl(p,dt);
+  if(m&&m.ctrl===p){
+    const slider=$("shotAimRange"),readout=$("shotAimReadout");
+    const value=Math.round(cl(m.aimHeight??.4,0,1)*100);
+    if(slider&&document.activeElement!==slider)slider.value=String(value);
+    if(readout)readout.textContent=(value<25?"Driven":value<70?"Balanced":"Lofted")+" · "+value+"%";
+  }
+};
+const V27_finalAimSlider=$("shotAimRange");
+if(V27_finalAimSlider){
+  V27_finalAimSlider.min="0";V27_finalAimSlider.max="100";V27_finalAimSlider.step="1";
+  V27_finalAimSlider.addEventListener("input",()=>{
+    const value=cl(Number(V27_finalAimSlider.value)/100,0,1);
+    if(M)M.aimHeight=value;
+    const readout=$("shotAimReadout");if(readout)readout.textContent=(value<.25?"Driven":value<.7?"Balanced":"Lofted")+" · "+Math.round(value*100)+"%";
+  });
+}
+const V27_finalShotStyle=document.createElement("style");
+V27_finalShotStyle.textContent=`
+#shotAimPanel{position:relative;display:flex;align-items:center;gap:14px;max-width:920px;margin:12px 0 16px;padding:14px 16px;border:1px solid #3a5b83;border-radius:15px;background:linear-gradient(125deg,#14294b,#0a1429 70%);box-shadow:0 12px 28px #0005}
+#shotAimPanel:before{content:"SHOT CONTROL";position:absolute;top:-8px;left:14px;padding:1px 7px;border-radius:5px;background:#00d9a2;color:#04251e;font-size:9px;font-weight:1000;letter-spacing:.12em}
+#shotAimPanel label{display:flex;flex-direction:column;gap:4px;min-width:125px;font-size:11px;letter-spacing:.09em;font-weight:900}
+#shotAimPanel label span{font-size:13px;letter-spacing:0;color:#7ff5d5;font-weight:900}
+#shotAimRange{flex:1;min-width:160px;accent-color:#00e0a4;cursor:pointer;height:22px}
+#shotAimPanel small{width:100%;font-size:11px;opacity:.74;line-height:1.35}
+@media(max-width:760px){#shotAimPanel{gap:8px;padding:14px 12px}#shotAimRange{min-width:100%;order:3}#shotAimPanel small{order:4}}
+#stad3d{background:radial-gradient(ellipse at 50% 35%,#203c5c,#060b18 72%);box-shadow:inset 0 0 45px #0009,0 14px 32px #0005}
+.v27-pack{transition:transform .2s ease,filter .2s ease}.v27-pack:hover{transform:translateY(-5px) perspective(800px) rotateX(2deg);filter:brightness(1.08)}
+.panel{box-shadow:0 10px 25px #0003}
+`;
+document.head.appendChild(V27_finalShotStyle);
+// Keep the initial loft in a sensible middle position on every fresh match.
+const V27_preFinalStartMatch=startMatch;
+startMatch=function(key){
+  const begin=()=>{
+    V27_preFinalStartMatch(key);
+    if(M&&!M.over){M.aimHeight=.38;const a=$("shotAimRange"),r=$("shotAimReadout");if(a)a.value="38";if(r)r.textContent="Balanced · 38%";}
+  };
+  if(window.THREE){begin();return;}
+  const msg=$("lobbyMsg");
+  if(msg)msg.textContent="Loading the 3D match engine…";
+  const buttons=document.querySelectorAll("#lobby button");
+  buttons.forEach(b=>b.disabled=true);
+  const retry=()=>buttons.forEach(b=>b.disabled=false);
+  const engine=window.__kikThreePromise;
+  if(!engine){if(msg)msg.textContent="The 3D engine could not start. Refresh the page and try again.";retry();return;}
+  engine.then(()=>{retry();if(msg)msg.textContent="";begin();}).catch(()=>{
+    retry();
+    if(msg)msg.textContent="Could not load the 3D engine. Your browser or network may be blocking the game’s graphics libraries. Try refreshing, or open the game on another network.";
+  });
+};
+
+// Existing saved clubs remain intact; only normalize malformed or stale ownership counts.
+if(S){
+  ["fb","fs"].forEach(mo=>{
+    const clean={};Object.entries(S.owned[mo]||{}).forEach(([id,count])=>{
+      const p=POOL[mo][Number(id)],n=Math.floor(Number(count)||0);
+      if(p&&n>0)clean[p.id]=Math.min(n,99);
+    });S.owned[mo]=clean;
+  });
+  const cleanManagers={};Object.entries(S.owm||{}).forEach(([id,count])=>{const m=MGRS[Number(id)],n=Math.floor(Number(count)||0);if(m&&n>0)cleanManagers[m.id]=Math.min(n,99);});S.owm=cleanManagers;
+  save();
+}
+
+// Boot is handled by the expansion block above.
+/* ============================================================
+   KIKSTART VISUAL UPDATE — PASTE BEFORE THE FINAL SCRIPT CLOSING TAG
+   This patch replaces the old stadium viewer and puts codes on Home.
+   It preserves the existing match simulation and save system.
+   ============================================================ */
+
+(function KIKSTART_VISUAL_UPDATE(){
+  if (window.__kikstartVisualUpdateV4) return;
+  window.__kikstartVisualUpdateV4 = true;
+
+  // ---------- Visual polish and always-visible match controls ----------
+  const visualStyle = document.createElement("style");
+  visualStyle.textContent = `
+    .v27-home-codes{max-width:700px;margin:18px 0 22px;background:radial-gradient(circle at 95% 0%,#245b7d55,transparent 42%),linear-gradient(135deg,#14294d,#0b1429);border:1px solid #42628e;box-shadow:0 16px 32px #0005}
+    .v27-home-codes h3{margin:0 0 8px;color:#b5ffe9}
+    .v27-home-codes .v27-code-note{font-size:12px;opacity:.72;line-height:1.5;margin:6px 0 12px}
+    .v27-code-success{color:#76f5c6;font-size:13px;font-weight:800;margin-top:10px;min-height:18px}
+    .v27-code-error{color:#ff9eae;font-size:13px;font-weight:800;margin-top:10px;min-height:18px}
+    #mobileControls{display:flex!important;visibility:visible!important;opacity:1!important;position:relative;z-index:8;align-items:center;justify-content:space-between;gap:16px;width:100%;max-width:920px;margin:14px 0 10px;padding:12px;border:1px solid #314c72;border-radius:18px;background:linear-gradient(135deg,#111f3b,#071223);box-shadow:0 12px 26px #0006;touch-action:none;user-select:none;-webkit-user-select:none}
+    #joyBase{flex:0 0 118px;width:118px;height:118px;border:2px solid #7cebd2cc;background:radial-gradient(circle,#27466b,#0a1427 75%);box-shadow:inset 0 0 22px #0007,0 0 20px #00e0a422}
+    #joyKnob{background:linear-gradient(145deg,#c2fff0,#00a77c);box-shadow:0 4px 18px #000b,0 0 14px #00e0a477}
+    .v27-mobile-actions{grid-template-columns:repeat(2,minmax(72px,1fr));gap:9px;flex:1;max-width:240px}
+    .v27-mobile-actions button{width:100%;height:58px;border:1px solid #ffffff2a;box-shadow:0 5px 14px #0005;font-weight:900;letter-spacing:.04em}
+    .v27-mobile-actions .shoot{background:linear-gradient(145deg,#ffd36a,#d96a28);color:#241506;border-color:#ffe09b}
+    .v27-mobile-actions .sprint{grid-column:span 2;width:100%;background:linear-gradient(145deg,#25588a,#15365e);color:#fff}
+    #mobileControls button:active{transform:scale(.96);filter:brightness(1.2)}
+    #shotAimPanel{max-width:920px}
+    #stad3d{height:min(70vh,560px);min-height:360px;background:radial-gradient(ellipse at 50% 40%,#243d5c,#050916 76%);border-color:#30486d}
+    @media(max-width:760px){
+      #mobileControls{position:sticky;bottom:6px;padding:9px;gap:8px;border-radius:15px}
+      #joyBase{flex-basis:102px;width:102px;height:102px}
+      .v27-mobile-actions{max-width:190px;grid-template-columns:repeat(2,minmax(64px,1fr));gap:7px}
+      .v27-mobile-actions button{height:52px;font-size:12px;padding:4px}
+      #stage{height:54vh;min-height:300px}
+      #stad3d{height:56vh;min-height:320px}
+    }
+  `;
+  document.head.appendChild(visualStyle);
+
+  // ---------- Club-specific stadium identity ----------
+  // These are original, club-coloured designs inspired by each venue's broad shape,
+  // not exact licensed 1:1 scans or official club assets.
+  const clubStadiumDesigns = {
+    MCI:{label:"Skyline continuous bowl",kind:"bowl",roof:"cantilever",long:14,end:13,accent:0x6cabdd},
+    ARS:{label:"North London oval bowl",kind:"oval",roof:"curved",long:14,end:13,accent:0xef0107},
+    LIV:{label:"Anfield-style steep Kop end",kind:"kop",roof:"classic",long:13,end:13,accent:0xc8102e},
+    CHE:{label:"West London compact bowl",kind:"compact",roof:"classic",long:12,end:12,accent:0x034694},
+    MUN:{label:"Theatre-style twin-deck stands",kind:"twin",roof:"cantilever",long:15,end:13,accent:0xda291c},
+    TOT:{label:"North London arch canopy",kind:"arch",roof:"arch",long:14,end:14,accent:0x132257},
+    NEW:{label:"Tyne-side steep grandstands",kind:"asymmetric",roof:"steel",long:13,end:15,accent:0x241f20},
+    AVL:{label:"Villa Park classic terraces",kind:"classic",roof:"classic",long:13,end:13,accent:0x670e36},
+    RMA:{label:"Bernabéu-inspired silver canopy",kind:"oval",roof:"silver",long:15,end:14,accent:0xfebe10},
+    BAR:{label:"Catalan three-tier bowl",kind:"bowl",roof:"open",long:16,end:15,accent:0xa50044},
+    ATM:{label:"Metropolitano radial roof",kind:"radial",roof:"radial",long:14,end:14,accent:0xcb3524},
+    JUV:{label:"Turin compact rectangular bowl",kind:"compact",roof:"steel",long:13,end:12,accent:0x111111},
+    INT:{label:"Milan tower-supported bowl",kind:"towers",roof:"tower",long:13,end:14,accent:0x0068a8},
+    MIL:{label:"Milan tower-supported bowl",kind:"towers",roof:"tower",long:13,end:14,accent:0xfb090b},
+    FCB:{label:"Munich luminous outer shell",kind:"luminous",roof:"ring",long:15,end:14,accent:0xdc052d},
+    BVB:{label:"Yellow Wall end stand",kind:"kop",roof:"steel",long:13,end:14,accent:0xfde100},
+    PSG:{label:"Paris enclosed oval",kind:"oval",roof:"classic",long:14,end:13,accent:0x004170},
+    OM:{label:"Marseille sweeping canopy",kind:"arch",roof:"arch",long:14,end:14,accent:0x2faee0},
+    OL:{label:"Lyon modern radial bowl",kind:"radial",roof:"radial",long:14,end:13,accent:0xffffff},
+    ASM:{label:"Monaco hillside grandstand",kind:"asymmetric",roof:"open",long:13,end:12,accent:0xe8112d}
+  };
+  const genericDesigns = [
+    {label:"Modern curved four-sided bowl",kind:"bowl",roof:"curved"},
+    {label:"Classic open-corner grandstand",kind:"classic",roof:"classic"},
+    {label:"Steep double-tier stadium",kind:"twin",roof:"cantilever"},
+    {label:"Steel-rib canopy stadium",kind:"radial",roof:"radial"},
+    {label:"Compact enclosed arena",kind:"compact",roof:"ring"},
+    {label:"Asymmetric city grandstand",kind:"asymmetric",roof:"steel"}
+  ];
+  function stadiumDesign(){
+    const club=CL[S.club];
+    const base=clubStadiumDesigns[club.k];
+    if(base)return Object.assign({},base);
+    const d=genericDesigns[(S.club*7+club.li*3)%genericDesigns.length];
+    return Object.assign({long:12+(S.club%3),end:11+((S.club+1)%4),accent:0x48a9c7},d);
+  }
+
+  // ---------- Rebuild the stadium from a clean scene group ----------
+  let builtStadiumKey="";
+  function disposeStadiumGroup(group){
+    if(!group)return;
+    group.traverse(obj=>{
+      if(obj.geometry&&obj.geometry.dispose)obj.geometry.dispose();
+      if(obj.material){
+        const mats=Array.isArray(obj.material)?obj.material:[obj.material];
+        mats.forEach(m=>{if(m&&m.dispose)m.dispose();});
+      }
+    });
+  }
+  function stadiumRoofPanel(axis,side,inner,outer,length,y,material,archHeight){
+    const along=38,across=10,positions=[],indices=[];
+    for(let i=0;i<=along;i++){
+      const u=-length/2+(length*i/along);
+      for(let j=0;j<=across;j++){
+        const v=j/across,span=inner+(outer-inner)*v;
+        const arch=Math.sin(v*Math.PI)*(archHeight||2.4)-v*1.1;
+        const yy=y+arch;
+        if(axis==="x")positions.push(u,yy,side*span);
+        else positions.push(side*span,yy,u);
+      }
+    }
+    for(let i=0;i<along;i++)for(let j=0;j<across;j++){
+      const a=i*(across+1)+j,b=a+across+1;
+      indices.push(a,b,a+1,b,b+1,a+1);
+    }
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));
+    geo.setIndex(indices);geo.computeVertexNormals();
+    const mesh=new THREE.Mesh(geo,material);mesh.castShadow=true;mesh.receiveShadow=true;sw.add(mesh);
+    return mesh;
+  }
+  function stadiumSign(textValue,club){
+    const canvas=document.createElement("canvas");canvas.width=1024;canvas.height=256;
+    const ctx=canvas.getContext("2d");
+    const grad=ctx.createLinearGradient(0,0,1024,256);grad.addColorStop(0,club.a);grad.addColorStop(1,club.b);
+    ctx.fillStyle="#071426";ctx.fillRect(0,0,1024,256);ctx.fillStyle=grad;ctx.fillRect(0,0,1024,22);ctx.fillRect(0,234,1024,22);
+    ctx.fillStyle="#ffffff";ctx.font="900 84px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(textValue.toUpperCase(),512,128);
+    const tex=new THREE.CanvasTexture(canvas);tex.anisotropy=4;
+    return new THREE.Mesh(new THREE.PlaneGeometry(30,7.5),new THREE.MeshBasicMaterial({map:tex,transparent:false,side:THREE.DoubleSide}));
+  }
+  buildStad=function(){
+    if(!sr||!ss||typeof THREE==="undefined"||!S)return;
+    const key=JSON.stringify(S.st)+"|"+S.club;
+    if(builtStadiumKey===key&&sw)return;
+    if(sw){ss.remove(sw);disposeStadiumGroup(sw);}
+    sw=new THREE.Group();ss.add(sw);
+    const club=CL[S.club],design=stadiumDesign(),level=Math.max(0,Math.min(10,Number(S.st.a)||0));
+    const rowsLong=Math.max(7,Math.round(7+level*.9+(design.long-12)*.35));
+    const rowsEnd=Math.max(7,Math.round(7+level*.85+(design.end-12)*.45));
+    const mat=(color,rough=.7,metal=0,emissive=0)=>new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive});
+    const concrete=mat(0x26364b,.88,.18),dark=mat(0x101b2d,.82,.22),glass=mat(0x315b79,.24,.35,0x071521);
+    const white=new THREE.MeshBasicMaterial({color:0xf1f7ff,side:THREE.DoubleSide});
+    const c1=mat(club.a,.6,.22),c2=mat(club.b,.62,.2),accent=mat(design.accent||club.a,.48,.35);
+    const seatPalette=[new THREE.Color(club.a),new THREE.Color(club.b),new THREE.Color(0xd9e3ee),new THREE.Color(0x1b2b43)];
+    const box=(w,h,d,x,y,z,material,rx=0,ry=0,rz=0)=>{
+      const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+      mesh.position.set(x,y,z);mesh.rotation.set(rx,ry,rz);mesh.castShadow=true;mesh.receiveShadow=true;sw.add(mesh);return mesh;
+    };
+
+    // Playing surface and clear, crisp pitch markings.
+    const turfA=mat(0x168248,.92),turfB=mat(0x1b9653,.92),turfBase=mat(0x116638,.96);
+    box(106,.65,72,0,-.38,0,turfBase);
+    for(let i=0;i<10;i++)box(10.6,.035,70,-47.7+i*10.6,.0,0,i%2?turfA:turfB);
+    box(104,.06,.18,0,.06,33.2,white);box(104,.06,.18,0,.06,-33.2,white);
+    box(.18,.06,66,0,.06,0,white);box(.18,.06,66,50,.06,0,white);box(.18,.06,66,-50,.06,0,white);
+    box(16,.06,.18,42,.06,0,white);box(16,.06,.18,-42,.06,0,white);
+    box(.18,.06,33,42,.06,0,white);box(.18,.06,33,-42,.06,0,white);
+    const centre=new THREE.Mesh(new THREE.RingGeometry(9.05,9.22,64),white);centre.rotation.x=-Math.PI/2;centre.position.y=.08;sw.add(centre);
+    const spot=new THREE.Mesh(new THREE.CircleGeometry(.42,24),white);spot.rotation.x=-Math.PI/2;spot.position.y=.085;sw.add(spot);
+    const addGoal=(side)=>{
+      const x=side*51.3,z1=-3.7,z2=3.7,y=2.35;
+      box(.22,4.7,.22,x,y,z1,white);box(.22,4.7,.22,x,y,z2,white);box(.22,.22,7.5,x,4.7,0,white);
+      const netMat=new THREE.MeshBasicMaterial({color:0xe6f1fb,wireframe:true,transparent:true,opacity:.42});
+      const net=new THREE.Mesh(new THREE.BoxGeometry(4.2,4.5,7.3),netMat);net.position.set(x+side*2.1,2.25,0);sw.add(net);
+    };
+    addGoal(-1);addGoal(1);
+
+    // Concrete bowl and upper concourse, shaped around four sides of the pitch.
+    box(130,5.5,8,0,3,-59,concrete);box(130,5.5,8,0,3,59,concrete);
+    box(8,5.5,112,-68,3,0,concrete);box(8,5.5,112,68,3,0,concrete);
+    box(134,.8,2,0,6.1,-63,dark);box(134,.8,2,0,6.1,63,dark);
+    box(2,.8,116,-72,6.1,0,dark);box(2,.8,116,72,6.1,0,dark);
+
+    // Instanced seats: thousands of coloured seats, drawn in a small number of calls.
+    const seatData=[];
+    const addSeat=(x,y,z,rotation,colour)=>seatData.push({x,y,z,rotation,colour});
+    for(const side of [-1,1]){
+      for(let r=0;r<rowsLong;r++){
+        const z=side*(38+r*1.42),walkway=r>=7?1.0:0;
+        for(let x=-59;x<=59;x+=1.85){
+          const band=Math.floor((x+59)/13),color=(r+band+(side>0?1:0))%4;
+          addSeat(x,2.3+r*.88+walkway,z,side*.035,color);
+        }
+      }
+      for(let r=0;r<rowsEnd+(design.kind==="kop"&&side===1?5:0);r++){
+        const x=side*(54+r*1.42),walkway=r>=7?1.0:0;
+        for(let z=-39;z<=39;z+=1.85){
+          const band=Math.floor((z+39)/13),color=(r+band+(side<0?2:0))%4;
+          addSeat(x,2.3+r*.88+walkway,z,side*Math.PI/2,color);
+        }
+      }
+    }
+    const seatGeo=new THREE.BoxGeometry(1.08,.58,.9);
+    const seatMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.82,metalness:.02});
+    const seats=new THREE.InstancedMesh(seatGeo,seatMat,seatData.length);
+    const dummy=new THREE.Object3D();
+    seatData.forEach((seat,i)=>{
+      dummy.position.set(seat.x,seat.y,seat.z);dummy.rotation.set(0,seat.rotation,0);dummy.updateMatrix();
+      seats.setMatrixAt(i,dummy.matrix);seats.setColorAt(i,seatPalette[seat.colour]);
+    });
+    seats.instanceMatrix.needsUpdate=true;if(seats.instanceColor)seats.instanceColor.needsUpdate=true;
+    seats.castShadow=false;seats.receiveShadow=true;sw.add(seats);
+
+    // Deck breaks, stair aisles and long fascia ribbons.
+    for(const side of [-1,1]){
+      box(122,.3,2.5,0,9.5,side*48,accent);
+      box(122,.28,1.4,0,16,side*59,dark);
+      for(let x=-57;x<=57;x+=14){
+        box(1.05,8.5,1.05,x,8,side*61,concrete);
+        box(1.25,.35,1.25,x,12.4,side*61,c1);
+      }
+      box(2.5,7,96,side*78,5.5,0,concrete);
+      for(let z=-42;z<=42;z+=14)box(1.05,8.5,1.05,side*78,8,z,concrete);
+    }
+
+    // Club-specific exterior cladding and illuminated windows.
+    const facadeMat=mat(0x15243b,.42,.55),windowMat=new THREE.MeshStandardMaterial({color:0x78c8ee,emissive:0x164d78,emissiveIntensity:.8,metalness:.25,roughness:.25});
+    for(const side of [-1,1]){
+      box(132,7,2,0,3.7,side*66,facadeMat);
+      box(132,.65,2.15,0,7.2,side*66,accent);
+      for(let x=-61;x<=61;x+=5.5){box(3.2,1.7,.16,x,4.4,side*67.08,windowMat);}
+    }
+    for(const side of [-1,1]){
+      box(2,7,112,side*76,3.7,0,facadeMat);
+      box(2.15,.65,112,side*76,7.2,0,accent);
+      for(let z=-51;z<=51;z+=5.5)box(.16,1.7,3.2,side*77.08,4.4,z,windowMat);
+    }
+
+    // Club signs on both long sides, using the selected club's name and colours.
+    const signFront=stadiumSign(club.n+" Stadium",club);signFront.position.set(0,5.1,-67.3);sw.add(signFront);
+    const signBack=stadiumSign(club.n+" Stadium",club);signBack.position.set(0,5.1,67.3);signBack.rotation.y=Math.PI;sw.add(signBack);
+
+    // Club-profile architecture: a Kop end, towers, a luminous skin or an arch frame.
+    if(design.kind==="kop"){
+      box(2.5,20,88,80,12,0,c1);box(2.5,20,88,82,12,0,accent);
+    }
+    if(design.kind==="towers"){
+      for(const x of [-74,-38,38,74])for(const z of [-61,61]){
+        box(2.4,25,2.4,x,12.5,z,accent);
+        box(5,.7,5,x,25.4,z,c1);
+      }
+    }
+    if(design.kind==="luminous"){
+      for(let x=-60;x<=60;x+=4){box(2.8,6,.55,x,11.2,66.8,(Math.floor((x+60)/4)%2)?c1:c2);}
+      for(let x=-60;x<=60;x+=4){box(2.8,6,.55,x,11.2,-66.8,(Math.floor((x+60)/4)%2)?c2:c1);}
+    }
+    if(design.kind==="arch"){
+      for(const side of [-1,1])for(const x of [-48,-24,0,24,48]){
+        box(.9,23,1.1,x,11.5,side*61,accent);
+        const brace=box(.85,Math.hypot(10,6),.85,x,20,side*56,accent);brace.rotation.x=side*.7;
