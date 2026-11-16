@@ -1,0 +1,1000 @@
+            camera.updateProjectionMatrix();
+          }
+        });
+        return result;
+      } catch (e) {
+        showMatchEngineError('The 3D match could not start. Try refreshing KIKSTART. Details: ' + (e && e.message ? e.message : e));
+        return;
+      }
+    }
+    if (waitingForEngine) return;
+    waitingForEngine = true;
+    const msg = document.getElementById('lobbyMsg');
+    if (msg) { msg.style.display = 'block'; msg.textContent = 'Loading the 3D match engine…'; }
+    const engine = window.__kikThreePromise;
+    if (!engine || typeof engine.then !== 'function') {
+      waitingForEngine = false;
+      showMatchEngineError('The 3D engine is unavailable. Check your internet connection, then refresh the app.');
+      return;
+    }
+    engine.then(() => {
+      waitingForEngine = false;
+      if (!window.THREE) {
+        showMatchEngineError('The 3D engine download finished but did not initialise. Check your internet connection and refresh.');
+        return;
+      }
+      if (msg) msg.textContent = '';
+      try { originalStartMatch.call(this, key); }
+      catch (e) { showMatchEngineError('The 3D match could not start. Details: ' + (e && e.message ? e.message : e)); }
+    }).catch(() => {
+      waitingForEngine = false;
+      showMatchEngineError('KIKSTART could not load its 3D graphics engine. Connect to the internet and reopen the app.');
+    });
+  };
+  window.KIKSTART_GAME_VERSION = '30.1';
+  document.title = 'KIKSTART v30.1 — Mac Gameplay';
+})();
+
+})();
+
+</script>
+
+<script>
+// KIKSTART PWA update check. Deploy new files to the same HTTPS site to publish updates.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      reg.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+    }).catch(err => console.warn('KIKSTART offline/update support unavailable:', err));
+  });
+}
+</script>
+
+<script>
+/* KIKSTART v31 — loading screen, named player indicators, skill moves, and safe app polish. */
+(function KIKSTART_V31_MATCHDAY_UPGRADE(){
+  if (window.__kikstartV31Installed) return;
+  window.__kikstartV31Installed = true;
+  const $ = id => document.getElementById(id);
+  const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+
+  // Consistent names for normal matches, player career, and the ball-carrier nameplate.
+  window.KIKSTART_playerName = function(player, match){
+    if (!player) return "No player selected";
+    const m = match || (typeof M !== "undefined" ? M : null);
+    if (player.isCareerAvatar || player.playerId === "career-avatar") {
+      return (typeof S !== "undefined" && S && S.career && S.career.person && S.career.person.name) || player.playerName || player.dataName || "Your Player";
+    }
+    const roster = (m && typeof lineup === "function") ? lineup(m.mo || (S && S.mode) || "fb") : [];
+    const card = roster && roster[player.i];
+    return player.playerName || player.dataName || (card && card.n) || player.n || player.name || ("Player " + (Number(player.i) + 1));
+  };
+
+  function updatePlayerStatus(match){
+    const status = $("playerStatus");
+    if (!status || !match || !Array.isArray(match.pl)) return;
+    const selected = match.careerControlPlayer || match.ctrl || (match.owner && match.owner.t === 0 ? match.owner : null);
+    const name = selected ? window.KIKSTART_playerName(selected, match) : "Waiting for selection";
+    let possession = "BALL LOOSE";
+    if (match.owner) {
+      if (match.owner === selected) possession = "IN POSSESSION";
+      else if (match.owner.t === 0) possession = "TEAM IN POSSESSION";
+      else possession = "OPPONENT IN POSSESSION";
+    }
+    status.textContent = "CONTROLLING · " + name + " · " + possession + " · " + (match.mo === "fs" ? "FUTSAL" : "FOOTBALL");
+  }
+
+  function showSkillToast(message, good){
+    const stage = $("stage");
+    if (!stage) return;
+    let toast = $("ksSkillToast");
+    if (!toast) { toast = document.createElement("div"); toast.id = "ksSkillToast"; stage.appendChild(toast); }
+    toast.textContent = message;
+    toast.classList.toggle("good", !!good);
+    toast.classList.remove("show");
+    void toast.offsetWidth;
+    toast.classList.add("show");
+  }
+
+  const skillMoves = {
+    stepovers: {name:"STEP-OVERS", duration:.82, cost:.075, cooldown:1.05, difficulty:.90},
+    feint: {name:"BODY FEINT", duration:.58, cost:.065, cooldown:.85, difficulty:.95},
+    elastico: {name:"ELASTICO", duration:.72, cost:.105, cooldown:1.25, difficulty:.78},
+    roulette: {name:"ROULETTE", duration:.92, cost:.14, cooldown:1.65, difficulty:.66}
+  };
+
+  function performSkill(kind){
+    const m = (typeof M !== "undefined") ? M : null;
+    const spec = skillMoves[kind];
+    if (!m || !spec || m.over || m.userPaused || m.wait || m.intro > 0 || m.pause > 0) return false;
+    const p = m.owner && m.owner.t === 0 ? m.owner : null;
+    if (!p) { showSkillToast("WIN THE BALL TO USE SKILL MOVES", false); return false; }
+    if ((Number(m.ksSkillCooldown) || 0) > 0) { showSkillToast("SKILL MOVES RECHARGING", false); return false; }
+    const stamina = Number.isFinite(Number(m.stam)) ? Number(m.stam) : 1;
+    if (stamina < spec.cost) { showSkillToast("LOW STAMINA · SLOW DOWN", false); return false; }
+
+    // Put the human controller on the actual ball carrier before starting the move.
+    m.ctrl = p;
+    if (m.careerAttached && m.careerModeType === "player") {
+      m.careerControlPlayer = p;
+      m.careerManualControl = true;
+    }
+    m.stam = clamp(stamina - spec.cost, 0, 1);
+
+    let nearest = null, nearestDistance = Infinity;
+    m.pl.forEach(q => {
+      if (!q || q.t === p.t || q.gk) return;
+      const d = Math.hypot(q.x - p.x, q.z - p.z);
+      if (d < nearestDistance) { nearestDistance = d; nearest = q; }
+    });
+    const underPressure = nearestDistance < 7.2 * (m.F && m.F.sc ? m.F.sc : 1);
+    const rating = clamp((Number(p.v32Stats && p.v32Stats.dribbling) || Number(p.o) || 50), 1, 100);
+    const chance = clamp((.30 + (rating - 50) * .009) * spec.difficulty, .18, .72);
+    const success = underPressure && Math.random() < chance;
+    const side = (Math.random() < .5 ? -1 : 1);
+    p.ksSkill = {kind, t:0, duration:spec.duration, startYaw:p.mesh ? p.mesh.rotation.y : 0, side, success};
+    p.ksSkillBurst = success ? .48 : .12;
+    m.ksSkillCooldown = spec.cooldown;
+    if (success && nearest) nearest.cool = Math.max(Number(nearest.cool) || 0, .34);
+    showSkillToast(spec.name + (success ? " · BEAT THE DEFENDER" : " · KEEP THE BALL CLOSE"), success);
+    try { if (typeof sfx !== "undefined" && sfx.pop) sfx.pop(); } catch (_) {}
+    return true;
+  }
+  window.KIKSTART_performSkill = performSkill;
+
+  // Keyboard controls: R step-overs, T body feint, G elastico, V roulette.
+  const keyToSkill = {KeyR:"stepovers", KeyT:"feint", KeyG:"elastico", KeyV:"roulette"};
+  function editable(target){ return !!(target && target.closest && target.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]')); }
+  window.addEventListener("keydown", event => {
+    let kind = keyToSkill[event.code];
+    const captureAction = window.__v32CaptureSkill;
+    if (captureAction && !editable(event.target)) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (event.code === "Escape") { window.__v32CaptureSkill = null; if (window.V32_captureResult) window.V32_captureResult(null); return; }
+      if (window.V32_captureResult) window.V32_captureResult(captureAction, event.code);
+      window.__v32CaptureSkill = null; return;
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem("kikstartV32Settings") || "null");
+      if (saved && saved.skillKeys) kind = Object.keys(saved.skillKeys).find(name => saved.skillKeys[name] === event.code) || null;
+    } catch (_) {}
+    if (!kind || event.repeat || editable(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (!M || M.over) return;
+    event.preventDefault();
+    performSkill(kind);
+  }, true);
+
+  // Add matching touch / mouse buttons below the existing match controls.
+  function attachSkillDock(){
+    const match = $("matchView");
+    if (!match) return;
+    let dock = $("ksSkillDock");
+    if (!dock) {
+      dock = document.createElement("section");
+      dock.id = "ksSkillDock";
+      dock.innerHTML = '<div class="ks-skill-head"><div><b>SKILL MOVES</b><small id="ksSkillHint">Only available while your team has the ball</small></div><span id="ksSkillCooldown">READY</span></div>' +
+        '<div class="ks-skill-buttons">' +
+        '<button type="button" data-skill="stepovers"><b>STEP-OVERS</b><small>R</small></button>' +
+        '<button type="button" data-skill="feint"><b>BODY FEINT</b><small>T</small></button>' +
+        '<button type="button" data-skill="elastico"><b>ELASTICO</b><small>G</small></button>' +
+        '<button type="button" data-skill="roulette"><b>ROULETTE</b><small>V</small></button>' +
+        '</div>';
+      match.appendChild(dock);
+      dock.querySelectorAll("[data-skill]").forEach(button => button.addEventListener("click", () => performSkill(button.dataset.skill)));
+    }
+    dock.style.display = M && !M.over ? "block" : "none";
+    const instructions = match.querySelector(".ks-control-help");
+    if (instructions && !instructions.dataset.v31Skills) {
+      instructions.dataset.v31Skills = "1";
+      const p = document.createElement("p");
+      p.innerHTML = '<b>Skill moves:</b> R step-overs · T body feint · G elastico · V roulette. Use them when your team has possession.';
+      instructions.appendChild(p);
+    }
+  }
+
+  function updateSkillDock(match){
+    const dock = $("ksSkillDock");
+    if (!dock) return;
+    const label = $("ksSkillCooldown");
+    const ready = !match || !match.owner || match.owner.t !== 0 ? false : (Number(match.ksSkillCooldown) || 0) <= 0;
+    if (label) {
+      const cooldown = Math.max(0, Number(match && match.ksSkillCooldown) || 0);
+      label.textContent = ready ? "READY" : cooldown > 0 ? cooldown.toFixed(1) + "s" : "GET THE BALL";
+      label.classList.toggle("ready", ready);
+    }
+    dock.querySelectorAll("[data-skill]").forEach(button => {
+      button.disabled = !match || match.over || match.userPaused || !match.owner || match.owner.t !== 0 || (Number(match.ksSkillCooldown) || 0) > 0;
+    });
+  }
+
+  const dockStyle = document.createElement("style");
+  dockStyle.id = "kikstartV31SkillStyle";
+  dockStyle.textContent = `
+    #ksSkillDock{display:none;grid-column:1/-1;width:100%;margin:2px 0 14px;padding:12px 14px;border:1px solid #4e806f;border-radius:14px;background:radial-gradient(circle at 90% 0%,#25d8a322,transparent 40%),linear-gradient(125deg,#0e2034,#0b1728);box-shadow:0 9px 22px #0005}
+    .ks-skill-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:9px}.ks-skill-head>div{display:grid;gap:3px}.ks-skill-head b{font-size:10px;letter-spacing:.16em;color:#a7ffe6}.ks-skill-head small{font-size:10px;color:#9ab4ca}
+    #ksSkillCooldown{padding:5px 9px;border:1px solid #52677b;border-radius:999px;background:#12263a;color:#d7e7f5;font-size:9px;font-weight:1000;letter-spacing:.12em}#ksSkillCooldown.ready{border-color:#46dcb1;background:#0f3c32;color:#aaffdf}
+    .ks-skill-buttons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.ks-skill-buttons button{display:flex;justify-content:space-between;align-items:center;gap:6px;min-width:0;padding:10px 11px;border:1px solid #55718a;border-radius:10px;background:linear-gradient(145deg,#203955,#14263e);color:#eef8ff;font-size:10px;font-weight:1000;letter-spacing:.04em}.ks-skill-buttons button small{flex:none;padding:3px 6px;border-radius:5px;background:#071827;color:#9bf5d8;font-size:9px}.ks-skill-buttons button:disabled{opacity:.38;filter:saturate(.4)}
+    #ksSkillToast{position:absolute;left:50%;bottom:78px;z-index:15;transform:translate(-50%,8px) scale(.94);opacity:0;pointer-events:none;padding:10px 16px;border:1px solid #86ffe1;border-radius:999px;background:#061e28ed;color:#eafff7;font-size:clamp(10px,1.4vw,14px);font-weight:1000;letter-spacing:.1em;white-space:nowrap;box-shadow:0 0 25px #00e5b355;transition:opacity .16s,transform .16s}
+    #ksSkillToast.good{border-color:#ffe18b;color:#fff1bd;box-shadow:0 0 25px #ffc94b66}#ksSkillToast.show{opacity:1;transform:translate(-50%,0) scale(1)}
+    @media(max-width:650px){.ks-skill-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}.ks-skill-buttons button{min-height:42px}#ksSkillToast{bottom:85px;max-width:calc(100% - 18px);white-space:normal;text-align:center}}
+  `;
+  document.head.appendChild(dockStyle);
+
+  // Animate the four moves using the game's existing articulated 3D player model.
+  const originalAnimate = window.V5_animate;
+  if (typeof originalAnimate === "function") {
+    window.V5_animate = function(match, dt){
+      const result = originalAnimate.apply(this, arguments);
+      if (!match || !Array.isArray(match.pl)) return result;
+      const delta = Math.max(0, Number(dt) || 0);
+      match.pl.forEach(player => {
+        const move = player && player.ksSkill;
+        if (!move || !player.mesh) return;
+        move.t = Math.min(move.duration, move.t + delta);
+        const progress = clamp(move.t / move.duration, 0, 1);
+        const envelope = Math.sin(Math.PI * progress);
+        const model = player.mesh, limbs = model.userData || {}, legs = limbs.l || [], arms = limbs.a || [];
+        const side = move.side || 1;
+        const baseYaw = Number(move.startYaw) || 0;
+        if (move.kind === "stepovers") {
+          const swing = Math.sin(move.t * 27) * 1.0 * envelope;
+          if (legs[0]) legs[0].rotation.x += swing;
+          if (legs[1]) legs[1].rotation.x -= swing;
+          if (arms[0]) arms[0].rotation.x -= swing * .22;
+          if (arms[1]) arms[1].rotation.x += swing * .22;
+          model.rotation.z += Math.sin(move.t * 13) * .12 * envelope;
+        } else if (move.kind === "feint") {
+          const fake = Math.sin(Math.PI * progress) * side;
+          model.rotation.y = baseYaw + fake * .72;
+          model.rotation.z += -fake * .28;
+          if (legs[0]) legs[0].rotation.x -= envelope * .95;
+          if (legs[1]) legs[1].rotation.x += envelope * .55;
+          if (arms[0]) arms[0].rotation.z += fake * .55;
+          if (arms[1]) arms[1].rotation.z -= fake * .55;
+        } else if (move.kind === "elastico") {
+          const wave = Math.sin(progress * Math.PI * 2) * side;
+          model.rotation.y = baseYaw + wave * .48;
+          model.rotation.z += wave * .24;
+          if (legs[0]) legs[0].rotation.x -= envelope * .7;
+          if (legs[1]) legs[1].rotation.x += wave * .85;
+          if (arms[0]) arms[0].rotation.x -= wave * .35;
+          if (arms[1]) arms[1].rotation.x += wave * .35;
+        } else if (move.kind === "roulette") {
+          const eased = progress * progress * (3 - 2 * progress);
+          model.rotation.y = baseYaw + Math.PI * 2 * eased;
+          model.rotation.z += Math.sin(progress * Math.PI * 2) * .2 * envelope;
+          if (legs[0]) legs[0].rotation.x -= envelope * .8;
+          if (legs[1]) legs[1].rotation.x += envelope * .8;
+          if (arms[0]) arms[0].rotation.z -= envelope * 1.1;
+          if (arms[1]) arms[1].rotation.z += envelope * 1.1;
+        }
+        if (progress >= 1) player.ksSkill = null;
+      });
+      return result;
+    };
+  }
+
+  // Move the ball around the foot during the animation so the move is visible in play.
+  const originalBallStep = ballStep;
+  ballStep = function(dt){
+    const result = originalBallStep.apply(this, arguments);
+    const match = M, player = match && match.owner;
+    if (!player || player.t !== 0 || !player.ksSkill || !match.ball) return result;
+    const move = player.ksSkill, progress = clamp(move.t / move.duration, 0, 1), f = match.F.sc || 1;
+    let dx = Number(player.dx) || (player.t ? -1 : 1), dz = Number(player.dz) || 0;
+    const mag = Math.hypot(dx,dz) || 1; dx /= mag; dz /= mag;
+    const sideX = -dz, sideZ = dx;
+    let forward = 1.08 * f, lateral = 0;
+    if (move.kind === "stepovers") lateral = Math.sin(move.t * 27) * .34 * f;
+    else if (move.kind === "feint") lateral = Math.sin(Math.PI * progress) * move.side * .72 * f;
+    else if (move.kind === "elastico") lateral = (progress < .5 ? -1 : 1) * Math.sin(Math.PI * progress) * .88 * f * move.side;
+    else if (move.kind === "roulette") { forward = Math.cos(progress * Math.PI * 2) * .62 * f; lateral = Math.sin(progress * Math.PI * 2) * .62 * f; }
+    match.ball.x = player.x + dx * forward + sideX * lateral;
+    match.ball.z = player.z + dz * forward + sideZ * lateral;
+    match.ball.y = .5 * f;
+    return result;
+  };
+
+  // Small burst after a successful move; the existing stamina bar remains authoritative.
+  const originalMove = move;
+  move = function(player, dx, dz, speed, dt){
+    if (player && player.ksSkillBurst > 0 && player.t === 0) {
+      speed *= 1.18;
+      player.ksSkillBurst = Math.max(0, player.ksSkillBurst - (Number(dt) || 0));
+    }
+    return originalMove.apply(this, [player, dx, dz, speed, dt]);
+  };
+
+  const originalStepMatch = stepMatch;
+  stepMatch = function(dt){
+    const result = originalStepMatch.apply(this, arguments);
+    const match = M;
+    if (match && !match.over && !match.userPaused) match.ksSkillCooldown = Math.max(0, (Number(match.ksSkillCooldown) || 0) - Math.max(0, Number(dt) || 0));
+    updatePlayerStatus(match);
+    updateSkillDock(match);
+    return result;
+  };
+
+  const originalStartMatch = startMatch;
+  startMatch = function(){
+    const result = originalStartMatch.apply(this, arguments);
+    requestAnimationFrame(() => requestAnimationFrame(attachSkillDock));
+    return result;
+  };
+  const originalBackToLobby = backToLobby;
+  backToLobby = function(){
+    const result = originalBackToLobby.apply(this, arguments);
+    const dock = $("ksSkillDock"); if (dock) dock.style.display = "none";
+    const toast = $("ksSkillToast"); if (toast) toast.remove();
+    return result;
+  };
+
+  // Loading screen: save restore and the actual asynchronous 3D engine are checked.
+  (function boot(){
+    const screen = $("ksBootScreen"), bar = $("ksBootProgress"), status = $("ksBootStatus"), percent = $("ksBootPercent"), enter = $("ksBootEnter");
+    if (!screen || !bar || !status || !percent) return;
+    const bootStartedAt = performance.now();
+    let finishing = false, finished = false;
+    const set = (value, message) => { bar.style.width = value + "%"; percent.textContent = value + "%"; status.textContent = message; };
+    const finish = message => {
+      if (finishing || finished) return;
+      finishing = true;
+      const hold = Math.max(0, 1800 - (performance.now() - bootStartedAt));
+      window.setTimeout(() => {
+        finished = true;
+        set(100, message);
+        if (enter) enter.classList.remove("show");
+        window.setTimeout(() => screen.classList.add("done"), 620);
+      }, hold);
+    };
+    set(16, "Initialising the KIKSTART matchday hub…");
+    window.requestAnimationFrame(() => {
+      set(42, (typeof S !== "undefined" && S) ? "Restoring your saved club and players…" : "Preparing a new club…");
+      window.requestAnimationFrame(() => set(68, "Preparing player database and game systems…"));
+    });
+    if (enter) {
+      window.setTimeout(() => enter.classList.add("show"), 2500);
+      enter.addEventListener("click", () => finish("Opening KIKSTART…"));
+    }
+    const engine = window.__kikThreePromise;
+    if (engine && typeof engine.then === "function") {
+      Promise.resolve(engine).then(
+        () => finish("Match engine ready · opening your club…"),
+        () => finish("Club menu ready · 3D graphics could not connect. Check your internet before a match.")
+      );
+    } else {
+      window.setTimeout(() => finish("Your club is ready · opening KIKSTART…"), 450);
+    }
+    window.setTimeout(() => finish("Opening the club hub · match graphics can finish loading when needed…"), 5600);
+  })();
+
+  // Correct visible version markers from older appended patches.
+  document.title = "KIKSTART v33.6 — Launch Event";
+  const versionBadge = document.querySelector("#top .ks-build-version");
+  if (versionBadge) versionBadge.textContent = "KIKSTART v33";
+  window.KIKSTART_GAME_VERSION = "33.0";
+  window.KIKSTART_V31_READY = true; window.KIKSTART_V32_READY = true; window.KIKSTART_V33_READY = true;
+})();
+</script>
+
+<script>
+/* KIKSTART v32 - gameplay, controls, platform and matchday improvements */
+(function(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+  const SETTINGS_KEY = 'kikstartV32Settings';
+  const defaults = {
+    duration: 2, offside: true, injuries: true, masterVolume: 78,
+    tactic: 'balanced', skillKeys: {stepovers:'KeyR',feint:'KeyT',elastico:'KeyG',roulette:'KeyV'}
+  };
+  function readSettings(){
+    try {
+      const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null') || {};
+      return Object.assign({}, defaults, saved, {skillKeys:Object.assign({},defaults.skillKeys,saved.skillKeys||{})});
+    } catch (_) { return JSON.parse(JSON.stringify(defaults)); }
+  }
+  const settings = readSettings();
+  function saveSettings(){ try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) { console.warn('KIKSTART settings could not be saved',e); } }
+  window.KIKSTART_V32_SETTINGS = settings;
+
+  // Platform detection: the iPad edition explicitly opts into touch controls.
+  const ua = navigator.userAgent || '';
+  const metaIpad = document.querySelector('meta[name="v32-ipad-app"]')?.content === '1';
+  const ipad = metaIpad || /iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const iphone = /iPhone|iPod/.test(ua);
+  const mac = !ipad && !iphone && (/Macintosh|Mac OS X/.test(ua) || /Mac/.test(navigator.platform || ''));
+  const platform = ipad ? 'ipad' : iphone ? 'ios-phone' : mac ? 'mac' : (navigator.maxTouchPoints > 1 ? 'touch' : 'desktop');
+  document.documentElement.dataset.v32Platform = platform;
+  document.documentElement.classList.add('v32-platform-' + platform);
+  window.KIKSTART_PLATFORM = platform;
+
+  // Expand the player pool with fictional prospects and squad players.
+  const prospects = [
+    ['Callum Reid','FWD',72,'🏴','0100','silver'],['Luca Moretti','MID',70,'🇮🇹','0100','silver'],
+    ['Mateo Silva','FWD',69,'🇵🇹','1100','silver'],['Ibrahim Nasser','DEF',68,'🇪🇬','0101','silver'],
+    ['Noah Bennett','GK',67,'🇦🇺','0101','silver'],['Ethan Marshall','DEF',65,'🏴','0100','bronze'],
+    ['Aarav Patel','MID',66,'🇦🇺','0100','bronze'],['Santiago Reyes','FWD',71,'🇪🇸','2100','silver'],
+    ['Milan Kovac','DEF',64,'🇭🇷','0101','bronze'],['Theo Laurent','MID',73,'🇫🇷','0100','silver'],
+    ['Omar Haddad','FWD',63,'🇲🇦','1100','bronze'],['Jayden Clarke','MID',62,'🇦🇺','0100','bronze'],
+    ['Rafael Costa','GK',70,'🇧🇷','0101','silver'],['Daniel Okafor','DEF',71,'🇳🇬','0101','silver'],
+    ['Hugo Svensson','MID',67,'🇸🇪','0100','bronze'],['Arlo Thompson','FWD',61,'🇳🇿','0100','bronze'],
+    ['Yusuf Demir','MID',74,'🇹🇷','0100','silver'],['Benji Walker','DEF',60,'🇦🇺','0101','bronze'],
+    ['Enzo Ricci','FWD',75,'🇮🇹','1100','gold'],['Kai Nakamura','MID',69,'🇯🇵','0100','silver'],
+    ['Mason Cole','GK',62,'🇺🇸','0101','bronze'],['Amir Rahman','DEF',66,'🇲🇾','0100','bronze'],
+    ['Leo Andersson','FWD',68,'🇸🇪','1100','silver'],['Dylan Hughes','MID',64,'🏴','0100','bronze'],
+    ['Nico Alvarez','DEF',72,'🇦🇷','0101','silver'],['Samir Benali','FWD',70,'🇩🇿','1100','silver']
+  ];
+  ['fb','fs'].forEach(mode=>{
+    if (!Array.isArray(POOL[mode])) return;
+    prospects.forEach((item,i)=>{
+      const [name,pos,overall,flag,look,rarity] = item;
+      if (POOL[mode].some(p=>p.n===name)) return;
+      const player = {id:POOL[mode].length, n:name, pos, o:overall, f:flag, look, r:rarity, kind:'prospect', v32Prospect:true};
+      POOL[mode].push(player);
+      if (S && S.stock && S.stock[mode]) S.stock[mode][player.id] = (i%4===0 ? 2 : 1);
+    });
+  });
+  const ayden = {id:0,n:'Ayden Xuereb',pos:'MID',o:1,f:'⚽',look:'0000',r:'bronze',kind:'special',v32Ayden:true,secret:false};
+  ['fb','fs'].forEach(mode=>{
+    if (!POOL[mode].some(p=>p.v32Ayden)) POOL[mode].push(Object.assign({},ayden,{id:POOL[mode].length}));
+    const p = POOL[mode].find(x=>x.v32Ayden);
+    if (S && S.stock && S.stock[mode]) S.stock[mode][p.id] = 0;
+  });
+  if (S) {
+    S.v32AydenStart = S.v32AydenStart || {fb:false,fs:false};
+    S.v32Fitness = S.v32Fitness || {};
+    S.v32InjuryDays = S.v32InjuryDays || {};
+    S.v32PlayerRecords = S.v32PlayerRecords || {};
+    try { save(); } catch (_) {}
+  }
+
+  // Make the rating-1 special card genuinely show rating 1 in its attribute panel.
+  const baseStats = V27_stats;
+  V27_stats = function(player){
+    if (player && player.v32Ayden) return player.pos==='GK'
+      ? {positioning:1,control:1,throwing:1,pace:1,passing:1,physical:1}
+      : {pace:1,shooting:1,passing:1,dribbling:1,defending:1,physical:1};
+    return baseStats.apply(this,arguments);
+  };
+  const baseTraits = V27_traits;
+  V27_traits = function(player){ return player && player.v32Ayden ? ['No special traits','Training-level card'] : baseTraits.apply(this,arguments); };
+  if (typeof cardHTML === 'function') {
+    const baseCardHTML = cardHTML;
+    cardHTML = function(player,extra,id,pop){
+      let html = baseCardHTML.apply(this,arguments);
+      if (player && player.v32Ayden) html = html.replace(' · PLAYER',' · SPECIAL').replace(' · MANAGER',' · SPECIAL');
+      return html;
+    };
+  }
+
+  // Injuries and the deliberately poor Ayden card feed into the same lineup that match creation uses.
+  window.__v32Lineups = window.__v32Lineups || {};
+  const baseLineup = lineup;
+  lineup = function(mode){
+    let xi = baseLineup.apply(this,arguments) || [];
+    if (!S || !S.owned || !POOL[mode]) { window.__v32Lineups[mode]=xi.slice(); return xi; }
+    const healthy = POOL[mode].filter(p=>S.owned[mode][p.id] && !(settings.injuries && Number(S.v32InjuryDays && (S.v32InjuryDays[mode+':'+p.id] ?? S.v32InjuryDays[p.id]))>0)).sort((a,b)=>b.o-a.o);
+    if (healthy.length) {
+      const gk = healthy.find(p=>p.pos==='GK') || healthy[0];
+      const rest = healthy.filter(p=>p!==gk).slice(0,Math.max(0,FORM[mode].n-1));
+      const next = new Array(FORM[mode].n); next[0]=gk;
+      const formation = (S.formation && S.formation[mode] && V27_FORMATIONS[mode][S.formation[mode]]) || V27_FORMATIONS[mode][Object.keys(V27_FORMATIONS[mode])[0]];
+      [...formation.fwd,...formation.mid,...formation.def].forEach((slot,i)=>{next[slot]=rest[i];});
+      if (next.filter(Boolean).length >= xi.filter(Boolean).length) xi=next;
+    }
+    const ay = POOL[mode].find(p=>p.v32Ayden);
+    if (ay && S.owned[mode][ay.id] && S.v32AydenStart && S.v32AydenStart[mode]) {
+      const current = xi.findIndex((p,i)=>i>0 && p && p.pos!=='GK');
+      let weakest=current, worst=Infinity;
+      xi.forEach((p,i)=>{ if(i>0 && p && p.pos!=='GK' && Number(p.o)<worst){worst=Number(p.o);weakest=i;} });
+      if (weakest>0) xi[weakest]=ay;
+    }
+    window.__v32Lineups[mode]=xi.slice();
+    return xi;
+  };
+
+  window.V32_signAyden = function(mode){
+    mode = mode || (S && S.mode) || 'fb';
+    const p=POOL[mode]?.find(x=>x.v32Ayden); if(!p || !S) return;
+    if (!S.owned[mode][p.id]) S.owned[mode][p.id]=1;
+    S.v32AydenStart=S.v32AydenStart||{fb:false,fs:false};
+    S.v32AydenStart[mode]=true;
+    if (S.stock && S.stock[mode]) S.stock[mode][p.id]=0;
+    save(); refresh(); showTab('index');
+  };
+  window.V32_toggleAydenStart = function(mode){
+    mode=mode||(S&&S.mode)||'fb'; const p=POOL[mode]?.find(x=>x.v32Ayden); if(!p||!S)return;
+    if(!S.owned[mode][p.id]){ window.V32_signAyden(mode); return; }
+    S.v32AydenStart=S.v32AydenStart||{fb:false,fs:false};
+    S.v32AydenStart[mode]=!S.v32AydenStart[mode]; save(); refresh(); showTab('index');
+  };
+
+  const baseRenderIndex = renderIndex;
+  renderIndex = function(){
+    const result=baseRenderIndex.apply(this,arguments);
+    const root=$('index'); if(!root || !S) return result;
+    const mode=S.mode, p=POOL[mode].find(x=>x.v32Ayden), toolbar=root.querySelector('.v27-toolbar');
+    if(p && !root.querySelector('#v32AydenPanel')){
+      const panel=document.createElement('section'); panel.id='v32AydenPanel'; panel.className='v32-special-panel';
+      const owned=!!S.owned[mode][p.id], starting=!!(S.v32AydenStart&&S.v32AydenStart[mode]);
+      const extras='<div class="v32-ayden-note">SPECIAL CARD · 1 OVERALL · ALL ATTRIBUTES: 1</div>' +
+        '<p class="v32-ayden-description">A deliberately plain, low-tier collector card. This is a fictional in-game rating, not a statement about anyone’s real-life ability or appearance.</p>'+
+        (owned?'<button class="'+(starting?'alt':'')+'" onclick="V32_toggleAydenStart(\''+mode+'\')">'+(starting?'Remove from starting XI':'Put in starting XI')+'</button>':'<button onclick="V32_signAyden(\''+mode+'\')">Sign special card · Free</button>');
+      panel.innerHTML='<div class="v32-special-heading"><div><small>KIKSTART SPECIAL EDITION</small><h2>AYDEN XUEREB</h2><p>Lowest-rated player in the collection</p></div><span class="v32-one">1</span></div><div class="v32-ayden-wrap">'+cardHTML(p,extras,'v32-ayden-card')+'</div>';
+      root.appendChild(panel);
+    } else if(p && root.querySelector('#v32AydenPanel')) {
+      const fresh=root.querySelector('#v32AydenPanel');
+      const owned=!!S.owned[mode][p.id], starting=!!(S.v32AydenStart&&S.v32AydenStart[mode]);
+      const btn=fresh.querySelector('button'); if(btn){btn.textContent=owned?(starting?'Remove from starting XI':'Put in starting XI'):'Sign special card · Free';btn.setAttribute('onclick',owned?`V32_toggleAydenStart('${mode}')`:`V32_signAyden('${mode}')`);btn.classList.toggle('alt',starting);}
+    }
+    return result;
+  };
+
+  // Matchday options and persistent settings.
+  window.V32_setOption = function(key,value){
+    if (!(key in settings)) return;
+    if (key==='duration') settings.duration=clamp(Number(value)||2,2,6);
+    else if (key==='masterVolume') settings.masterVolume=clamp(Number(value)||0,0,100);
+    else if (key==='offside'||key==='injuries') settings[key]=!!value;
+    else if (key==='tactic' && ['balanced','attack','defend','press'].includes(value)) settings.tactic=value;
+    saveSettings(); applyVolume();
+    const output=$('v32VolumeValue'); if(output) output.textContent=settings.masterVolume+'%';
+  };
+  function lobbyOptions(){
+    return '<section class="v32-match-options"><div class="v32-options-heading"><div><small>BEFORE KICK-OFF</small><h2>Matchday setup</h2><p>Choose how your next match plays. Your choices are saved on this device.</p></div><button class="alt" onclick="V22_openHub(\'settings\')">⚙ Controls & audio</button></div><div class="v32-option-grid">'+
+      '<label><span>Match length</span><select onchange="V32_setOption(\'duration\',this.value)"><option value="2" '+(settings.duration===2?'selected':'')+'>2 minutes</option><option value="4" '+(settings.duration===4?'selected':'')+'>4 minutes</option><option value="6" '+(settings.duration===6?'selected':'')+'>6 minutes</option></select></label>'+
+      '<label><span>Starting tactic</span><select onchange="V32_setOption(\'tactic\',this.value)"><option value="balanced" '+(settings.tactic==='balanced'?'selected':'')+'>Balanced</option><option value="attack" '+(settings.tactic==='attack'?'selected':'')+'>Attacking</option><option value="defend" '+(settings.tactic==='defend'?'selected':'')+'>Defensive</option><option value="press" '+(settings.tactic==='press'?'selected':'')+'>High press</option></select></label>'+
+      '<label class="v32-toggle"><input type="checkbox" '+(settings.offside?'checked':'')+' onchange="V32_setOption(\'offside\',this.checked)"><span><b>Offside rule</b><small>Whistles and indirect free kicks</small></span></label>'+
+      '<label class="v32-toggle"><input type="checkbox" '+(settings.injuries?'checked':'')+' onchange="V32_setOption(\'injuries\',this.checked)"><span><b>Player fatigue & injuries</b><small>Fitness carries between matches</small></span></label>'+
+      '<label><span>Match weather</span><select onchange="V22_setSetting(\'weather\',this.value)"><option value="auto" '+(window.V22_settings.weather==='auto'?'selected':'')+'>Automatic</option><option value="clear" '+(window.V22_settings.weather==='clear'?'selected':'')+'>Clear</option><option value="rain" '+(window.V22_settings.weather==='rain'?'selected':'')+'>Rain</option><option value="snow" '+(window.V22_settings.weather==='snow'?'selected':'')+'>Snow</option></select></label>'+
+      '<label><span>Crowd atmosphere</span><select onchange="V22_setSetting(\'crowd\',this.value)"><option value="low" '+(window.V22_settings.crowd==='low'?'selected':'')+'>Low</option><option value="medium" '+(window.V22_settings.crowd==='medium'?'selected':'')+'>Medium</option><option value="high" '+(window.V22_settings.crowd==='high'?'selected':'')+'>High</option></select></label>'+
+      '</div><div class="v32-options-foot">Choose weather and crowd levels here; substitutions, live tactics, referee events, career transfers, youth development, stadium tools and replays are in Club Hub.</div></section>';
+  }
+  const baseRenderPlay=renderPlay;
+  renderPlay=function(){
+    const result=baseRenderPlay.apply(this,arguments);
+    const lobby=$('lobby');
+    if(lobby && S && S.got[S.mode] && !lobby.querySelector('.v32-match-options')){
+      const hero=lobby.querySelector('.hero');
+      if(hero) hero.insertAdjacentHTML('afterend',lobbyOptions()); else lobby.insertAdjacentHTML('afterbegin',lobbyOptions());
+    }
+    return result;
+  };
+
+  // Skill move keys are remappable without changing the original basic movement remapper.
+  window.V32_captureSkillKey=function(action){
+    window.__v32CaptureSkill=action;
+    const hint=$('v32CaptureHint'); if(hint) hint.textContent='Press a key for '+action+' · Escape cancels';
+    const buttons=document.querySelectorAll('[data-v32-key="'+action+'"]'); buttons.forEach(b=>b.textContent='Press a key…');
+  };
+  window.V32_captureResult=function(action,code){
+    if(!action) { window.__v32CaptureSkill=null; if(window.V22_renderHub)window.V22_renderHub(); return; }
+    const duplicate=Object.keys(settings.skillKeys).find(k=>k!==action && settings.skillKeys[k]===code);
+    if(duplicate){window.__v32CaptureSkill=null; if(window.V22_renderHub)window.V22_renderHub(); if(window.V22_hubToast)window.V22_hubToast('⌨','KEY ALREADY USED','Choose a different key for that skill move.');return;}
+    settings.skillKeys[action]=code; saveSettings(); window.__v32CaptureSkill=null;
+    if(window.V22_renderHub)window.V22_renderHub();
+  };
+  window.V32_resetSkillKeys=function(){settings.skillKeys=Object.assign({},defaults.skillKeys);saveSettings();if(window.V22_renderHub)window.V22_renderHub();};
+  function keyName(code){return String(code||'').replace(/^Key/,'').replace(/^Digit/,'').replace('Space','Space').replace('ArrowUp','↑').replace('ArrowDown','↓').replace('ArrowLeft','←').replace('ArrowRight','→');}
+  const baseV22Render=window.V22_renderHub;
+  if(typeof baseV22Render==='function'){
+    window.V22_renderHub=function(){
+      const result=baseV22Render.apply(this,arguments);
+      const root=$('clubhub');
+      if(root && root.textContent.includes('Settings & Controls') && !root.querySelector('#v32AdvancedSettings')){
+        const panel=document.createElement('div'); panel.id='v32AdvancedSettings'; panel.className='v22-card v32-settings-card';
+        const rows=[['stepovers','Step-overs'],['feint','Body feint'],['elastico','Elastico'],['roulette','Roulette']];
+        panel.innerHTML='<div class="v22-eyebrow">V32 MATCHDAY OPTIONS</div><h3>⌨ Skill-move shortcuts</h3><p class="v22-muted">Choose any key for each move. These are separate from your movement, pass and shoot bindings.</p>'+rows.map(([key,label])=>'<div class="v32-key-row"><span>'+label+'</span><button class="alt v22-small" data-v32-key="'+key+'" onclick="V32_captureSkillKey(\''+key+'\')">'+keyName(settings.skillKeys[key])+' · Change</button></div>').join('')+'<div class="v32-settings-actions"><button class="alt v22-small" onclick="V32_resetSkillKeys()">Reset skill keys</button><span id="v32CaptureHint" class="v22-muted">Escape cancels key capture.</span></div><hr><h3>🔊 Game audio</h3><div class="v32-volume-line"><label for="v32Volume">Master volume</label><b id="v32VolumeValue">'+settings.masterVolume+'%</b></div><input id="v32Volume" type="range" min="0" max="100" value="'+settings.masterVolume+'" oninput="V32_setOption(\'masterVolume\',this.value)"><p class="v22-muted">Controls crowd ambience, whistles, kicks, menu sounds and music together.</p><hr><h3>Match rules</h3><p class="v22-muted">Offside and injuries can also be changed from Play → Matchday setup.</p>';
+        root.appendChild(panel);
+      }
+      return result;
+    };
+  }
+
+  // Native fullscreen bridge (Mac app), browser fullscreen, and a reliable CSS fallback.
+  function fullscreenState(){
+    const match=$('matchView'); return !!(document.fullscreenElement || window.__kikstartNativeFullscreen || (match&&match.classList.contains('v32-web-fullscreen')));
+  }
+  function refreshFullscreenButton(){
+    const button=$('ksFullscreenButton'); if(button)button.textContent=fullscreenState()?'⛶ EXIT FULL SCREEN':'⛶ FULL SCREEN';
+  }
+  window.KS_refreshFullscreenUI=refreshFullscreenButton;
+  window.KS_toggleFullscreen=async function(){
+    const match=$('matchView'); if(!match)return;
+    const bridge=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.kikstartNative;
+    if(bridge){ try{bridge.postMessage({action:'toggleFullscreen'});return;}catch(e){console.warn('Native fullscreen bridge failed',e);} }
+    if(document.fullscreenElement){
+      try{await (document.exitFullscreen||document.webkitExitFullscreen).call(document);}catch(_){match.classList.remove('v32-web-fullscreen');document.body.classList.remove('v32-fullscreen-no-scroll');}
+    }else{
+      const request=match.requestFullscreen||match.webkitRequestFullscreen;
+      if(request){try{await request.call(match);}catch(_){match.classList.add('v32-web-fullscreen');document.body.classList.add('v32-fullscreen-no-scroll');}}
+      else {match.classList.toggle('v32-web-fullscreen');document.body.classList.toggle('v32-fullscreen-no-scroll',match.classList.contains('v32-web-fullscreen'));}
+    }
+    refreshFullscreenButton();
+  };
+  document.addEventListener('fullscreenchange',refreshFullscreenButton);
+  document.addEventListener('webkitfullscreenchange',refreshFullscreenButton);
+  window.addEventListener('keydown',e=>{if(e.key==='Escape'){const match=$('matchView');if(match&&match.classList.contains('v32-web-fullscreen')){match.classList.remove('v32-web-fullscreen');document.body.classList.remove('v32-fullscreen-no-scroll');refreshFullscreenButton();}}},true);
+
+  // Native/browser keyboard controls and desktop touch-control suppression.
+  function applyPlatformControls(){
+    const isDesktop=platform==='mac'||platform==='desktop';
+    const hideTouch=(platform==='mac'||platform==='ios-phone'||platform==='desktop');
+    document.documentElement.classList.toggle('v32-hide-touch',hideTouch);
+    document.documentElement.classList.toggle('v32-ipad',platform==='ipad');
+    const touch=$('mobileControls'),aim=$('shotAimPanel'),dock=$('ksSkillDock');
+    if(hideTouch){if(touch)touch.style.display='none';if(aim)aim.style.display='none';if(dock)dock.style.display='none';}
+    else if(platform==='ipad'){
+      if(touch)touch.style.display='flex'; if(aim)aim.style.display='flex'; if(dock && M && !M.over)dock.style.display='block';
+    }
+    const subtitle=document.querySelector('.ks-match-subtitle');
+    if(subtitle){if(!subtitle.dataset.v32Base)subtitle.dataset.v32Base=subtitle.textContent.replace(/ · (Keyboard controls|iPad touch controls)$/,'');const next=subtitle.dataset.v32Base+(platform==='mac'?' · Keyboard controls':platform==='ipad'?' · iPad touch controls':'');if(subtitle.textContent!==next)subtitle.textContent=next;}
+  }
+  applyPlatformControls();
+  const platformObserver=new MutationObserver(()=>applyPlatformControls());
+  platformObserver.observe(document.body,{childList:true,subtree:true});
+
+  // Player attributes now directly influence the 3D match simulation.
+  function derivedStats(player){
+    const v=cl(Number(player&&player.o)||55,1,99), pos=player&&player.pos||'MID';
+    if(pos==='GK')return {positioning:cl(v+4,1,99),control:cl(v-4,1,99),throwing:cl(v+2,1,99),pace:cl(v-10,1,99),passing:cl(v-3,1,99),physical:cl(v+1,1,99),shooting:cl(v-30,1,99),dribbling:cl(v-8,1,99),defending:cl(v+1,1,99)};
+    const map={FWD:[v+5,v+4,v-2,v+4,v-20,v],MID:[v,v-2,v+5,v+3,v-5,v-2],DEF:[v-4,v-18,v-5,v-10,v+7,v+6]};
+    const a=map[pos]||map.MID;return {pace:cl(a[0],1,99),shooting:cl(a[1],1,99),passing:cl(a[2],1,99),dribbling:cl(a[3],1,99),defending:cl(a[4],1,99),physical:cl(a[5],1,99),positioning:cl(v,1,99),control:cl(v,1,99),throwing:cl(v,1,99)};
+  }
+  function attachPlayerStats(match){
+    if(!match||!Array.isArray(match.pl))return;
+    const mode=match.mo||S.mode,xi=(window.__v32Lineups[mode]||lineup(mode)||[]);
+    match.v32PlayerGoals=match.v32PlayerGoals||{};
+    match.v32Settings={duration:settings.duration,offside:settings.offside,injuries:settings.injuries,tactic:settings.tactic};
+    match.total=settings.duration*60;
+    match.v32OffsideCandidate=null;
+    match.pl.filter(p=>p.t===0).forEach(p=>{
+      const card=xi[p.i]; if(!card)return;
+      p.v32CardId=card.id; p.v32CardName=card.n; p.v32CardKey=mode+':'+card.id; p.v32Stats=V27_stats(card); p.v32Stats=Object.assign({},p.v32Stats); p.ksStats=p.v32Stats;
+      p.v32Energy=cl(Number(S.v32Fitness[p.v32CardKey]??S.v32Fitness[card.id]??100),15,100);
+      const pace=Number(p.v32Stats.pace)||1, dribble=Number(p.v32Stats.dribbling)||1;
+      p.v32SpeedFactor=.78+(pace/99)*.28;
+      p.spd*=p.v32SpeedFactor;
+      p.sk=cl(.45+dribble/155,.45,1.12);
+      p.v32Physical=Number(p.v32Stats.physical)||1;
+    });
+    match.pl.filter(p=>p.t===1).forEach(p=>{p.v32Stats=derivedStats({o:p.o,pos:p.gk?'GK':(p.i%4===0?'DEF':p.i%4===1?'MID':'FWD')});p.ksStats=p.v32Stats;p.v32SpeedFactor=.82+(p.v32Stats.pace/99)*.22;p.spd*=p.v32SpeedFactor;});
+    if(typeof window.V22_setMatchTactic==='function')window.V22_setMatchTactic(settings.tactic);
+    requestAnimationFrame(()=>{applyPlatformControls();refreshFullscreenButton();});
+  }
+  const baseStartMatch=startMatch;
+  startMatch=function(){const result=baseStartMatch.apply(this,arguments);if(M&&!M.over)attachPlayerStats(M);return result;};
+
+  const baseMove=move;
+  move=function(player,dx,dz,speed,dt){
+    if(player&&player.t===0&&player.v32Stats){
+      const delta=Math.max(0,Number(dt)||0),moving=Math.hypot(Number(dx)||0,Number(dz)||0)>.08,sprinting=!!(K.ShiftLeft||K.ShiftRight);
+      let energy=Number.isFinite(player.v32Energy)?player.v32Energy:100;
+      const physical=Number(player.v32Stats.physical)||1;
+      if(moving)energy-=delta*(sprinting?.31:.045)*(1.35-physical/220);else energy+=delta*.23;
+      player.v32Energy=clamp(energy,15,100);
+      speed*=.80+.20*(player.v32Energy/100);
+      if(sprinting)speed*=.97+physical/330;
+    }
+    return baseMove.apply(this,[player,dx,dz,speed,dt]);
+  };
+  function withRating(player,attribute,fn,args){
+    if(!player||!player.v32Stats)return fn.apply(this,args);
+    const original=player.o, stat=Number(player.v32Stats[attribute])||1;
+    player.o=clamp(original*.35+stat*.65,1,99);
+    try{return fn.apply(this,args);}finally{player.o=original;}
+  }
+  const baseShoot=shoot;
+  shoot=function(player){return withRating(player,'shooting',baseShoot,arguments);};
+  const basePassTo=passTo;
+  function offsideAtPass(p,q){
+    if(!settings.offside||!M||M.mo!=='fb'||!p||!q||p.t!==q.t||q.gk)return false;
+    const direction=(p.t===0?1:-1)*(M.half?-1:1), ballX=((M.ball&&Number(M.ball.x))||p.x)*direction, receiverX=q.x*direction;
+    if(receiverX<=0 || receiverX<=ballX+.05)return false;
+    const defenders=M.pl.filter(x=>x.t!==p.t).map(x=>x.x*direction).sort((a,b)=>b-a);
+    const secondLast=defenders.length>1?defenders[1]:-Infinity;
+    return receiverX>secondLast+.05;
+  }
+  passTo=function(player,target){
+    const offside=offsideAtPass(player,target);
+    const result=withRating(player,'passing',basePassTo,arguments);
+    if(M)M.v32OffsideCandidate=offside?{receiver:target,team:player.t,x:target.x,z:target.z,age:0}:null;
+    return result;
+  };
+
+  // Set-piece restarts: throw-ins, corners and goal kicks, with possession awarded to the right side.
+  function setPieceRestart(match,team,kind,x,z){
+    if(!match||!match.ball)return;
+    const F=match.F,rx=cl(x,-F.L/2+1,F.L/2-1),rz=cl(z,-F.W/2+1,F.W/2-1);
+    match.v32OffsideCandidate=null;match.owner=null;match.lastT=team;match.ball.x=rx;match.ball.z=rz;match.ball.y=.5*F.ps;match.ball.vx=match.ball.vy=match.ball.vz=0;match.pause=1.25;match.celeb=0;
+    match.after=function(){
+      let best=null,dist=Infinity;
+      match.pl.forEach(p=>{if(p.t===team&&!p.gk){const d=Math.hypot(p.x-rx,p.z-rz);if(d<dist){dist=d;best=p;}}});
+      if(best){best.x=rx-(team===0?1:-1)*1.15;best.z=rz;best.vx=best.vz=0;best.hold=0;match.owner=best;match.lastT=team;match.ball.x=rx;match.ball.z=rz;}
+    };
+    if(typeof banner==='function')banner(kind+' · '+(team===0?'YOUR TEAM':'OPPONENT'));
+    if(typeof sfx!=='undefined'&&sfx.whistle)sfx.whistle();
+  }
+  const baseOut=out;
+  out=function(){
+    const match=M;
+    if(!match||match.mo!=='fb')return baseOut.apply(this,arguments);
+    const rawX=match.ball.x,rawZ=match.ball.z,F=match.F,lastTouch=match.lastT;
+    baseOut.apply(this,arguments);
+    if(Math.abs(rawZ)>F.W/2){
+      const team=1-lastTouch; setPieceRestart(match,team,'THROW-IN',cl(rawX,-F.L/2+2,F.L/2-2),Math.sign(rawZ||1)*(F.W/2-1.2));
+    } else {
+      const attackingTeam=rawX>0?(match.half?1:0):(match.half?0:1);
+      if(lastTouch===attackingTeam){
+        const defending=1-attackingTeam;setPieceRestart(match,defending,'GOAL KICK',Math.sign(rawX)*(F.L/2-5),0);
+      } else {
+        setPieceRestart(match,attackingTeam,'CORNER',Math.sign(rawX)*(F.L/2-1.1),Math.sign(rawZ||1)*(F.W/2-1.1));
+      }
+    }
+  };
+  const baseBallStep=ballStep;
+  ballStep=function(dt){
+    const match=M; if(!match)return baseBallStep.apply(this,arguments);
+    const candidate=match.v32OffsideCandidate;
+    const saved=[];
+    if(match.owner){
+      match.pl.forEach(p=>{
+        if(!p.v32Stats)return;
+        const attr=p===match.owner?'dribbling':'defending';saved.push([p,p.o]);p.o=cl((Number(p.o)||1)*.38+(Number(p.v32Stats[attr])||1)*.62,1,99);
+      });
+    }
+    let result;
+    try{result=baseBallStep.apply(this,arguments);}finally{saved.forEach(([p,o])=>p.o=o);}
+    if(candidate){
+      candidate.age=(Number(candidate.age)||0)+Math.max(0,Number(dt)||0);
+      if(match.owner===candidate.receiver){
+        if(settings.offside)setPieceRestart(match,1-candidate.team,'OFFSIDE · INDIRECT FREE KICK',candidate.x,candidate.z);
+        match.v32OffsideCandidate=null;
+      } else if((match.owner && match.owner.t!==candidate.team)||candidate.age>4.5){match.v32OffsideCandidate=null;}
+    }
+    return result;
+  };
+  const baseGoal=goal;
+  goal=function(team){
+    if(M){const scorer=M.lastP||M.scorer;if(scorer&&scorer.v32CardId){M.v32PlayerGoals=M.v32PlayerGoals||{};M.v32PlayerGoals[scorer.v32CardId]=(M.v32PlayerGoals[scorer.v32CardId]||0)+1;}M.v32OffsideCandidate=null;}
+    return baseGoal.apply(this,arguments);
+  };
+
+  // Persist match fitness, appearances and rare injuries at full-time.
+  const baseFinish=finishMatch;
+  finishMatch=function(forfeit){
+    const match=M; if(!match||match.over)return baseFinish.apply(this,arguments);
+    const players=match.pl.filter(p=>p.t===0&&p.v32CardId);
+    const goals=match.v32PlayerGoals||{};
+    const won=match.score[0]>match.score[1];
+    const reports=[];
+    players.forEach(player=>{
+      const id=player.v32CardId, key=player.v32CardKey||((match.mo||S.mode)+':'+id), energy=Number(player.v32Energy??100);
+      S.v32Fitness[key]=cl(Math.round(energy+12),15,100);
+      if(!forfeit){
+        const record=S.v32PlayerRecords[key]||(S.v32PlayerRecords[key]={appearances:0,goals:0,ratingTotal:0});
+        const scored=Number(goals[id]||0),performance=cl(6.2+(scored*.8)+(won?.35:0)+(energy-70)/100,3,10);
+        record.appearances++;record.goals+=scored;record.ratingTotal+=performance;
+        if(scored||performance>=8)reports.push({name:player.v32CardName,rating:performance,goals:scored});
+        if(settings.injuries&&match.mo==='fb'){
+          const fatigue=1-energy/100,physical=Number(player.v32Stats&&player.v32Stats.physical)||1;
+          const chance=.0025+fatigue*.012+Math.max(0,60-physical)*.00008;
+          if(Math.random()<chance){const days=1+Math.floor(Math.random()*2);S.v32InjuryDays[key]=Math.max(Number(S.v32InjuryDays[key])||0,days);reports.push({name:player.v32CardName,injury:days});}
+        }
+      }
+    });
+    const injuryPrefix=(match.mo||S.mode)+':';
+    Object.keys(S.v32InjuryDays||{}).forEach(key=>{
+      if(key.startsWith(injuryPrefix) && !players.some(p=>p.v32CardKey===key) && S.v32InjuryDays[key]>0)
+        S.v32InjuryDays[key]=Math.max(0,S.v32InjuryDays[key]-1);
+    });
+    const result=baseFinish.apply(this,arguments);
+    try{
+      if(!forfeit&&reports.length){
+        const lines=reports.slice(0,4).map(r=>r.injury?'<div>🩹 '+String(r.name).replace(/[&<>"']/g,'')+' picked up a minor injury · out for '+r.injury+' match(es)</div>':'<div>⭐ '+String(r.name).replace(/[&<>"']/g,'')+' · '+r.rating.toFixed(1)+'/10'+(r.goals?' · '+r.goals+' goal(s)':'')+'</div>').join('');
+        $('endBox').insertAdjacentHTML('beforeend','<div class="v32-match-report"><b>PLAYER MATCH REPORT</b>'+lines+'</div>');
+      }
+      save();
+    }catch(e){console.warn('v32 match report could not be saved',e);}
+    return result;
+  };
+
+  // Audio master slider scales synthesized sound, crowd and music in one place.
+  const baseTone=tone, baseCheer=cheer, baseBoom=boom;
+  function volumeFactor(){return settings.masterVolume/100;}
+  function applyVolume(){
+    if(typeof MUTE!=='undefined'&&MUTE)return;
+  }
+  tone=function(){if((typeof MUTE!=='undefined'&&MUTE)||volumeFactor()<=0)return;const args=Array.from(arguments);args[4]=(Number(args[4])||.06)*volumeFactor();return baseTone.apply(this,args);};
+  cheer=function(){if((typeof MUTE!=='undefined'&&MUTE)||volumeFactor()<=0)return;const args=Array.from(arguments);args[1]=(Number(args[1])||.1)*volumeFactor();return baseCheer.apply(this,args);};
+  boom=function(){if((typeof MUTE!=='undefined'&&MUTE)||volumeFactor()<=0)return;const args=Array.from(arguments);args[0]=(Number(args[0])||.1)*volumeFactor();return baseBoom.apply(this,args);};
+
+  // Polished fullscreen, device-specific, iPad landscape and accessibility styles.
+  const style=document.createElement('style'); style.id='kikstartV32Styles'; style.textContent=`
+    .v32-match-options,.v32-special-panel,.v32-settings-card{margin:18px 0;padding:18px;border-radius:18px;border:1px solid #385678;background:linear-gradient(145deg,#142943,#081321);box-shadow:0 14px 32px #0004;color:#eaf3ff}
+    .v32-options-heading,.v32-special-heading{display:flex;align-items:center;justify-content:space-between;gap:14px}.v32-options-heading small,.v32-special-heading small{font-size:9px;letter-spacing:.18em;font-weight:1000;color:#8cebd4}.v32-options-heading h2,.v32-special-heading h2{margin:5px 0;font-size:22px}.v32-options-heading p,.v32-special-heading p{margin:0;color:#9fb5ca;font-size:12px}
+    .v32-option-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:15px}.v32-option-grid>label{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #304d6e;border-radius:12px;background:#091729}.v32-option-grid>label>span{font-size:11px;font-weight:900;color:#bbcee0}.v32-option-grid select{width:100%;padding:10px;border-radius:8px;border:1px solid #476383;background:#132944;color:#fff}.v32-option-grid .v32-toggle{flex-direction:row;align-items:center;gap:9px}.v32-toggle input{width:18px;height:18px;accent-color:#63dfc0}.v32-toggle b,.v32-toggle small{display:block}.v32-toggle b{font-size:11px}.v32-toggle small{font-size:9px;color:#91a9c0;margin-top:3px}.v32-options-foot{font-size:10px;color:#8fa6bd;margin-top:13px;line-height:1.5}
+    .v32-special-panel{border:2px dashed #9bff00!important;background:repeating-linear-gradient(135deg,#262626 0 9px,#383838 9px 18px,#292929 18px 27px)!important;box-shadow:0 0 8px #b6ff00,0 0 22px #ff00e6,0 0 34px #00e5ff!important;animation:aydenUglyGlow 1.7s steps(2,end) infinite alternate}.v32-special-heading .v32-one{font-size:48px;font-weight:1000;color:#d6ff00;text-shadow:3px 3px 0 #ff00d9,-2px -2px 0 #00e5ff,0 0 14px #d6ff00}.v32-special-panel .v32-ayden-wrap{display:flex;align-items:flex-start;gap:16px;margin-top:12px}.v32-special-panel #v32-ayden-card,.v32-special-panel .card,.v33-ayden-card{max-width:175px;min-width:140px;filter:grayscale(.92) saturate(.22) contrast(1.35);opacity:1!important;background:repeating-linear-gradient(0deg,#8d9297 0 5px,#777 5px 10px,#a1a1a1 10px 15px)!important;border:3px ridge #d9ff00!important;outline:2px dotted #ff00d9;box-shadow:0 0 5px #d6ff00,0 0 13px #ff00e6,0 0 25px #00e5ff,inset 0 0 16px #000!important;text-shadow:1px 1px #fff,-1px -1px #555!important}.v32-special-panel .v32-ayden-note{font-size:10px;font-weight:1000;letter-spacing:.12em;color:#d6ff00;margin-top:8px;text-shadow:0 0 7px #ff00e6}.v32-ayden-description{max-width:440px;font-size:11px;line-height:1.5;color:#e2e2e2}@keyframes aydenUglyGlow{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(80deg)}}
+    .v32-key-row,.v32-volume-line{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0}.v32-key-row{padding:6px 0;border-bottom:1px solid #ffffff13}.v32-settings-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}.v32-settings-card hr{border:0;border-top:1px solid #ffffff1b;margin:16px 0}.v32-settings-card input[type=range]{width:100%;accent-color:#67dfc3}.v32-match-report{margin-top:14px;padding:13px;border-radius:12px;border:1px solid #426987;background:#081929;color:#dcefff;font-size:12px;line-height:1.7}.v32-match-report>b{display:block;color:#8cebd4;letter-spacing:.1em;margin-bottom:6px}
+    #matchView.v32-web-fullscreen{position:fixed!important;inset:0!important;z-index:999999!important;width:100vw!important;height:100dvh!important;max-width:none!important;overflow-y:auto!important;padding:12px max(12px,env(safe-area-inset-right)) 20px max(12px,env(safe-area-inset-left))!important;background:#050b16!important;border-radius:0!important}.v32-fullscreen-no-scroll{overflow:hidden!important}#matchView.v32-web-fullscreen #stage{height:calc(100dvh - 190px)!important;min-height:360px!important;max-height:none!important}
+    .v32-hide-touch #mobileControls,.v32-hide-touch #shotAimPanel,.v32-hide-touch #ksSkillDock{display:none!important}.v32-hide-touch #ksControlDeck{grid-template-columns:1fr!important}.v32-hide-touch .ks-control-help{display:block!important}.v32-hide-touch #ksSkillDock .ks-skill-buttons{display:none!important}
+    .v32-ipad body{padding-bottom:env(safe-area-inset-bottom)}.v32-ipad #matchView{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}.v32-ipad #stage{height:min(64dvh,680px)!important;min-height:360px!important}.v32-ipad #mobileControls{display:flex!important;min-height:144px;gap:16px;align-items:center;justify-content:space-between;touch-action:none;user-select:none;-webkit-user-select:none}.v32-ipad #joyBase{width:118px!important;height:118px!important;flex:0 0 118px}.v32-ipad .v27-mobile-actions{display:grid!important;grid-template-columns:repeat(3,minmax(80px,1fr));gap:12px;flex:1}.v32-ipad .v27-mobile-actions button{min-height:68px!important;font-size:13px!important;touch-action:manipulation}.v32-ipad #ksSkillDock .ks-skill-buttons{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))}.v32-ipad #ksSkillDock button{min-height:50px}
+    .v32-rotate-notice{display:none;padding:8px 12px;border-radius:10px;background:#102a43;border:1px solid #4b779a;color:#cfe9fa;font-size:11px;text-align:center;margin:8px 0}.v32-ipad #v32RotateNotice{display:block}@media (orientation:landscape){.v32-ipad #v32RotateNotice{display:none}}
+    @media(max-width:900px){.v32-option-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v32-ipad .ks-control-deck{grid-template-columns:1fr!important}}
+    @media(max-width:580px){.v32-options-heading,.v32-special-heading{align-items:flex-start;flex-direction:column}.v32-option-grid{grid-template-columns:1fr}.v32-special-panel .v32-ayden-wrap{flex-wrap:wrap}.v32-special-panel .card{max-width:150px}}
+    @media(prefers-reduced-motion:reduce){.v32-special-panel *{animation:none!important;transition:none!important}}
+  `;document.head.appendChild(style);
+
+  // Ensure touch-control re-creation by v31 is followed by the correct platform policy.
+  if(!$('v32RotateNotice')){const note=document.createElement('div');note.id='v32RotateNotice';note.className='v32-rotate-notice';note.textContent='For the best match experience, rotate your iPad to landscape.';$('matchView')?.insertBefore(note,$('stage'));}
+  window.addEventListener('resize',()=>{applyPlatformControls();refreshFullscreenButton();});
+
+  // Upgrade the game's control/settings page with skill key bindings and master audio.
+  if(S && typeof save==='function')save();
+  try{if(typeof refresh==='function')refresh();}catch(e){console.warn('KIKSTART v32 UI refresh skipped',e);}
+  if(typeof baseV22Render==='function' && $('clubhub') && $('clubhub').textContent.includes('Settings & Controls')) window.V22_renderHub();
+  saveSettings();
+  window.KIKSTART_V32_READY=true;
+})();
+
+</script>
+<script>
+/* KIKSTART v33 - fullscreen, player data, controls and platform reliability */
+(function(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
+  const settings = window.KIKSTART_V32_SETTINGS || {masterVolume:78,skillKeys:{}};
+
+  // Reliable in-window fullscreen. Avoids relying on a native WKWebView bridge
+  // that older Mac app builds do not register.
+  function isFullscreen(){const el=$('matchView');return !!(window.__kikstartNativeFullscreen||(el&&el.classList.contains('v33-game-fullscreen')));}
+  function syncFullscreen(){
+    const active=isFullscreen();
+    const button=$('ksFullscreenButton');
+    if(button){button.textContent=active?'⛶ EXIT FULL SCREEN':'⛶ FULL SCREEN';button.setAttribute('aria-pressed',active?'true':'false');}
+    document.documentElement.classList.toggle('v33-fullscreen-active',active);
+    document.body.classList.toggle('v33-lock-scroll',active);
+  }
+  window.KS_nativeFullscreenChanged=function(active){
+    window.__kikstartNativeFullscreen=!!active;
+    const match=$('matchView');if(match)match.classList.toggle('v33-game-fullscreen',!!active);
+    syncFullscreen();
+    requestAnimationFrame(()=>window.dispatchEvent(new Event('resize')));
+  };
+  window.KS_toggleFullscreen=function(force){
+    const match=$('matchView'); if(!match)return false;
+    const next=typeof force==='boolean'?force:!isFullscreen();
+    const nativeBridge=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.kikstartNative;
+    if(nativeBridge){try{nativeBridge.postMessage({action:'toggleFullscreen'});window.__kikstartNativeFullscreen=next;}catch(e){console.warn('Native fullscreen bridge unavailable; using in-window fallback.',e);}}
+    match.classList.toggle('v33-game-fullscreen',next);
+    match.classList.remove('ks-fallback-fullscreen','v32-web-fullscreen');
+    syncFullscreen();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      window.dispatchEvent(new Event('resize'));
+      if(typeof window.KS_refreshFullscreenUI==='function')window.KS_refreshFullscreenUI();
+    }));
+    return true;
+  };
+  // Capture phase prevents stale click listeners from invoking the old handler.
+  document.addEventListener('click',event=>{
+    const button=event.target&&event.target.closest&&event.target.closest('#ksFullscreenButton');
+    if(!button)return;
+    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+    window.KS_toggleFullscreen();
+  },true);
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&isFullscreen()){
+      event.preventDefault();window.KS_toggleFullscreen(false);
+    }
+  },true);
+  document.addEventListener('fullscreenchange',syncFullscreen);
+  document.addEventListener('webkitfullscreenchange',syncFullscreen);
+  window.addEventListener('resize',syncFullscreen);
+
+  // Give Ayden's fictional 1-OVR index card its deliberately plain, low-tier look.
+  if(typeof cardHTML==='function'){
+    const baseCardHTML=cardHTML;
+    cardHTML=function(player){
+      const markup=baseCardHTML.apply(this,arguments);
+      return player&&player.v32Ayden?markup.replace('class="card','class="card v33-ayden-card'):markup;
+    };
+  }
+
+  // Device policy: no on-screen controls on Mac or iPhone; retain full touch UI
+  // for the dedicated iPad build and touch-first devices.
+  const ua=navigator.userAgent||'';
+  const isIpad=document.querySelector('meta[name="v32-ipad-app"]')?.content==='1' || /iPad/.test(ua) || (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const isIphone=/iPhone|iPod/.test(ua);
+  const isMac=!isIpad&&!isIphone&&(/Macintosh|Mac OS X/.test(ua)||/Mac/.test(navigator.platform||''));
+  const device=isIpad?'ipad':isIphone?'ios-phone':isMac?'mac':(navigator.maxTouchPoints>1?'touch':'desktop');
+  window.KIKSTART_PLATFORM=device;
+  document.documentElement.dataset.v33Platform=device;
+  document.documentElement.classList.toggle('v32-ipad',isIpad);
+  document.documentElement.classList.toggle('v32-hide-touch',isMac||isIphone||device==='desktop');
+  function applyDeviceControls(){
+    const hide=isMac||isIphone||device==='desktop';
+    const touch=$('mobileControls'),aim=$('shotAimPanel'),dock=$('ksSkillDock');
+    if(hide){if(touch)touch.style.display='none';if(aim)aim.style.display='none';if(dock)dock.style.display='none';}
+    else if(isIpad){if(touch)touch.style.display='flex';if(aim)aim.style.display='flex';if(dock&&M&&!M.over)dock.style.display='block';}
+    const subtitle=document.querySelector('.ks-match-subtitle');
+    if(subtitle){const base=(subtitle.dataset.v33Base||(subtitle.textContent||'').replace(/ · (Keyboard controls|iPad touch controls|iPhone layout)$/,''));subtitle.dataset.v33Base=base;const next=base+(isMac?' · Keyboard controls':isIpad?' · iPad touch controls':isIphone?' · iPhone layout':'');if(subtitle.textContent!==next)subtitle.textContent=next;}
+  }
+  applyDeviceControls();
+  // v32 already watches match-chrome creation; avoid a second DOM observer.
+
+  // Add more fictional squad/market variety. IDs are append-only, so existing
+  // saved ownership IDs are never shifted.
+  const extraPlayers=[
+    ['Oliver Price','FWD',76,'🏴','1100','gold'],['Rayan Bensaïd','MID',72,'🇫🇷','0101','silver'],
+    ['Sora Kimura','MID',68,'🇯🇵','2100','silver'],['Tariq Mahmoud','DEF',70,'🇯🇴','0101','silver'],
+    ['Liam O’Connell','GK',73,'🇮🇪','0100','silver'],['Gabriel Santos','FWD',74,'🇧🇷','1101','gold'],
+    ['Benjamin Fox','DEF',62,'🇦🇺','0100','bronze'],['Mikael Petrov','MID',65,'🇧🇬','1100','bronze'],
+    ['Emilio Vargas','FWD',71,'🇨🇱','2101','silver'],['Idris Bello','DEF',67,'🇳🇬','0100','bronze'],
+    ['Callan Murray','MID',61,'🇳🇿','0101','bronze'],['Nikolai Jensen','GK',75,'🇩🇰','1100','gold'],
+    ['Adrian Popescu','DEF',69,'🇷🇴','0101','silver'],['Zayd Hassan','FWD',66,'🇦🇪','2100','bronze'],
+    ['Oscar Lind','MID',77,'🇸🇪','1101','gold'],['Matteo Greco','DEF',63,'🇮🇹','0100','bronze'],
+    ['Kofi Mensah','FWD',73,'🇬🇭','1100','silver'],['Eli Rosen','MID',64,'🇮🇱','0101','bronze'],
+    ['Ruben Costa','GK',68,'🇵🇹','0100','silver'],['Arman Dastan','DEF',72,'🇰🇿','1101','silver'],
+    ['Jasper de Vries','FWD',69,'🇳🇱','0101','silver'],['Haris Iqbal','MID',60,'🇵🇰','0100','bronze'],
+    ['Sami Al-Khatib','DEF',66,'🇸🇦','1100','bronze'],['Dante Romano','FWD',78,'🇮🇹','2101','gold']
+  ];
+  ['fb','fs'].forEach(mode=>{
+    if(!Array.isArray(POOL[mode]))return;
+    extraPlayers.forEach((row,index)=>{
+      const [n,pos,o,f,look,r]=row;
+      if(POOL[mode].some(p=>p.n===n))return;
+      const id=POOL[mode].length;
+      POOL[mode].push({id,n,pos,o,f,look,r,kind:'prospect',v33Prospect:true});
+      if(S&&S.stock&&S.stock[mode])S.stock[mode][id]=(index%5===0?2:1);
+    });
+  });
+
+  // Ensure every on-pitch player carries the correct attribute object. This is
+  // what makes pace, shooting, passing, defending and dribbling affect play.
+  function syncPlayerStats(match){
+    if(!match||!Array.isArray(match.pl))return;
+    match.pl.forEach(p=>{
+      if(p.v32Stats)p.ksStats=p.v32Stats;
+      if(p.t===0&&p.v32CardId!==undefined){
+        p.v32CardKey=p.v32CardKey||(match.mo||S.mode)+':'+p.v32CardId;
+        p.ksStats=p.v32Stats||p.ksStats;
+      }
+    });
+  }
+  const oldStart=window.startMatch;
+  if(typeof oldStart==='function')window.startMatch=function(){const result=oldStart.apply(this,arguments);syncPlayerStats(M);return result;};
+  const oldSub=window.V22_substitute;
+  if(typeof oldSub==='function')window.V22_substitute=function(){
+    const mode=(M&&M.mo)||S.mode||'fb';
+    const outValue=$('v22SubOut')&&$('v22SubOut').value;
+    const inValue=$('v22SubIn')&&$('v22SubIn').value;
+    if(!outValue||!inValue)return oldSub.apply(this,arguments);
+    const slot=Number(outValue),incomingId=Number(inValue);
+    const incoming=POOL[mode]&&POOL[mode][incomingId];
+    const result=oldSub.apply(this,arguments);
+    const player=M&&M.pl&&M.pl.find(p=>p.t===0&&p.i===slot);
+    if(player&&incoming&&Number(player.playerId)===incomingId){
+      const key=mode+':'+incoming.id;
+      player.v32CardId=incoming.id;player.v32CardName=incoming.n;player.v32CardKey=key;
+      player.v32Stats=V27_stats(incoming);player.ksStats=player.v32Stats;
+      player.v32Energy=clamp(Number(S.v32Fitness&& (S.v32Fitness[key]??S.v32Fitness[incoming.id]))||100,15,100);
+      player.v32Physical=Number(player.v32Stats.physical)||1;
+      const pace=Number(player.v32Stats.pace)||1,dribble=Number(player.v32Stats.dribbling)||1;
+      player.v32SpeedFactor=.78+(pace/99)*.28;
+      player.baseSpd=(6.2+(incoming.o-40)/60*3)*M.F.sp0*(1+.02*(S.st&&S.st.b||0));
+      player.spd=player.baseSpd*player.v32SpeedFactor*(M.v22TacticMultiplier||1)*(M.v22ChemMultiplier||1);
+      player.sk=clamp(.45+dribble/155,.45,1.12);
+    }
+    syncPlayerStats(M);
+    return result;
+  };
+
+  // Avoid collisions between skill keys and the existing movement/pass/shoot keys.
+  const oldCaptureResult=window.V32_captureResult;
+  window.V32_captureResult=function(action,code){
+    if(!action)return oldCaptureResult&&oldCaptureResult.apply(this,arguments);
+    const forbidden=new Set(['Escape','Tab','MetaLeft','MetaRight','ControlLeft','ControlRight','AltLeft','AltRight','ShiftLeft','ShiftRight','F11']);
+    const defaultReserved=new Set(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyF','ShiftLeft','KeyC']);
