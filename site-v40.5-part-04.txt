@@ -1,0 +1,1000 @@
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:28px">🤝</span><div><div class="v27-eyebrow">CLUB FINANCES</div><h3 style="margin:4px 0">Local club sponsor</h3></div></div>' +
+      '<p class="v27-muted">Collect a modest sponsor payment once every 24 hours. Base payment: 150 coins, plus 25 coins per Facilities level (' + facilities + '/5). Maximum: 275 coins per day.</p>' +
+      '<button ' + (remaining > 0 ? 'disabled' : '') + ' onclick="V10_claimClubSponsor()">' + buttonLabel + '</button>' +
+      '</section>'
+    );
+  };
+
+  // Keep the claim timer accurate in the Home tab without forcing a full re-render.
+  const V10_previousRefresh = refresh;
+  refresh = function(){
+    V10_previousRefresh();
+    if (tabOn === "home" && $("home")) {
+      // renderHome is called by the normal refresh path; this keeps the sponsor button state current.
+    }
+  };
+})();
+</script>
+<script>
+/* KIKSTART ALAMANDA 10-WIN STREAK GATE · v11 */
+(function KIKSTART_ALAMANDA_STREAK_GATE_V11(){
+  if (window.__kikstartAlamandaStreakGateV11) return;
+  window.__kikstartAlamandaStreakGateV11 = true;
+
+  const REQUIRED_WINS = 10;
+  const streak = () => {
+    if (!S) return 0;
+    const value = Math.floor(Number(S.alamandaWinStreak) || 0);
+    return Math.max(0, Math.min(REQUIRED_WINS, value));
+  };
+  // The normal route is 10 consecutive wins. Adminalamanda permanently bypasses that gate.
+  const unlocked = () => streak() >= REQUIRED_WINS || !!(S && S.alamandaAdminAccess);
+
+  // Existing saves start at zero; the streak is persisted in the existing save object.
+  if (S && !Number.isFinite(Number(S.alamandaWinStreak))) {
+    S.alamandaWinStreak = 0;
+    save();
+  }
+
+  const gateStyle = document.createElement('style');
+  gateStyle.id = 'alamandaStreakGateV11Style';
+  gateStyle.textContent = `
+    .ak-streak-gate{position:relative;overflow:hidden;margin-top:14px;padding:18px 20px;border-radius:18px;border:1px solid #6ddfff88;background:radial-gradient(circle at 92% 0%,#5cecff28,transparent 42%),linear-gradient(125deg,#152c4d,#12172e 72%);box-shadow:0 14px 32px #0007,inset 0 1px 0 #ffffff22}
+    .ak-streak-gate h3{margin:6px 0 8px;color:#f0fbff}
+    .ak-streak-track{height:12px;border-radius:999px;background:#050d1c;border:1px solid #83dfff66;overflow:hidden;margin:12px 0 8px;box-shadow:inset 0 2px 5px #0009}
+    .ak-streak-fill{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#11c99a,#57eaff,#d9f8ff);box-shadow:0 0 18px #66eaff99;transition:width .3s ease}
+    .ak-streak-meta{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#d2e8f7}
+    .ak-streak-lock{font-weight:900;color:#ffdc8a;text-shadow:0 0 12px #ffca5844}
+    .ak-streak-open{font-weight:1000;color:#9bffdb;text-shadow:0 0 14px #48ffc088}
+    .ak-streak-result{margin-top:12px;padding:10px 12px;border-radius:10px;background:#0b1b2e;border:1px solid #5edcff55;color:#dffaff;font-weight:800}
+    @media(prefers-reduced-motion:reduce){.ak-streak-fill{transition:none}}
+  `;
+  document.head.appendChild(gateStyle);
+
+  function refreshStreakDisplay(){
+    const current = streak();
+    const isOpen = current >= REQUIRED_WINS;
+    const card = document.getElementById('alamandaWinStreakCard');
+    if (card) {
+      const fill = card.querySelector('.ak-streak-fill');
+      const counter = card.querySelector('[data-ak-streak-count]');
+      const status = card.querySelector('[data-ak-streak-status]');
+      const action = card.querySelector('[data-ak-streak-action]');
+      if (fill) fill.style.width = (current / REQUIRED_WINS * 100) + '%';
+      if (counter) counter.textContent = current + ' / ' + REQUIRED_WINS + ' consecutive wins';
+      if (status) {
+        status.textContent = isOpen ? (S && S.alamandaAdminAccess ? 'ADMIN CODE · FULL ACCESS GRANTED' : 'UNLOCKED · ACCESS GRANTED') : 'LOCKED · WIN 10 MATCHES IN A ROW';
+        status.className = isOpen ? 'ak-streak-open' : 'ak-streak-lock';
+      }
+      if (action) action.textContent = isOpen ? 'Enter Alamanda Secrets →' : '🔒 Win ' + (REQUIRED_WINS-current) + ' more in a row';
+      if (action) action.disabled = !isOpen;
+    }
+    const side = document.getElementById('nav-alamanda');
+    if (side) side.innerHTML = isOpen ? '<span class="ni">🎓</span>Alamanda Secrets' : '<span class="ni">🔒</span>Alamanda Secrets';
+    const title = document.querySelector('#start .sitems [data-t="alamanda"]');
+    if (title) title.textContent = isOpen ? '🎓 Alamanda Secrets' : '🔒 Alamanda Secrets';
+  }
+
+  // Add a persistent progress panel to Home after all existing Home additions.
+  const previousRenderHome = renderHome;
+  renderHome = function(){
+    previousRenderHome();
+    const home = document.getElementById('home');
+    if (!home || !S) return;
+    const current = streak();
+    const isOpen = current >= REQUIRED_WINS;
+    const old = document.getElementById('alamandaWinStreakCard');
+    if (old) old.remove();
+    const section = document.createElement('section');
+    section.id = 'alamandaWinStreakCard';
+    section.className = 'panel ak-streak-gate';
+    section.innerHTML = `
+      <div class="ak-eyebrow">🔐 HIDDEN ACADEMY ACCESS</div>
+      <h3>Alamanda College Secrets</h3>
+      <div class="ak-streak-meta"><span data-ak-streak-count>${current} / ${REQUIRED_WINS} consecutive wins</span><b data-ak-streak-status class="${isOpen?'ak-streak-open':'ak-streak-lock'}">${isOpen?(S.alamandaAdminAccess?'ADMIN CODE · FULL ACCESS GRANTED':'UNLOCKED · ACCESS GRANTED'):'LOCKED · WIN 10 MATCHES IN A ROW'}</b></div>
+      <div class="ak-streak-track"><div class="ak-streak-fill" style="width:${current/REQUIRED_WINS*100}%"></div></div>
+      <p class="ak-note">Win 10 completed matches consecutively to enter Alamanda Secrets, or redeem <b>Adminalamanda</b> on Home for full access without the win requirement. A draw, loss or forfeit resets only your normal win streak.</p>
+      <button class="alt" data-ak-streak-action ${isOpen?'':'disabled'} onclick="showTab('alamanda')">${isOpen?'Enter Alamanda Secrets →':'🔒 Win '+(REQUIRED_WINS-current)+' more in a row'}</button>`;
+    home.appendChild(section);
+    refreshStreakDisplay();
+  };
+
+  // Block access from the sidebar, title screen, Home link and direct showTab calls.
+  const previousShowTab = showTab;
+  showTab = function(name){
+    if (name === 'alamanda' && !unlocked()) {
+      if (M && !M.over) return previousShowTab(name);
+      previousShowTab('home');
+      const current = streak();
+      ask('🎓 Alamanda College Secrets is locked. You need 10 consecutive match wins to enter. Current streak: ' + current + '/10. A draw, loss or forfeit resets your streak.');
+      refreshStreakDisplay();
+      return;
+    }
+    return previousShowTab(name);
+  };
+
+  // Count every completed match, including cup matches. Only a win continues the run.
+  const previousFinishMatch = finishMatch;
+  finishMatch = function(forfeit){
+    const match = M;
+    if (!match || match.over) return previousFinishMatch(forfeit);
+    const goalsFor = Number(match.score && match.score[0]) || 0;
+    const goalsAgainst = Number(match.score && match.score[1]) || 0;
+    const won = !forfeit && goalsFor > goalsAgainst;
+    const previous = streak();
+    previousFinishMatch(forfeit);
+    if (!S) return;
+    S.alamandaWinStreak = won ? Math.min(REQUIRED_WINS, previous + 1) : 0;
+    const current = streak();
+    save();
+    refreshStreakDisplay();
+
+    const endBox = document.getElementById('endBox');
+    if (endBox && endBox.style.display !== 'none') {
+      const message = won
+        ? (current >= REQUIRED_WINS ? '🎓 TEN WINS IN A ROW! ALAMANDA SECRETS IS NOW UNLOCKED.' : '🔥 Win streak: ' + current + '/10.')
+        : 'Streak reset to 0/10. You need 10 consecutive wins to unlock Alamanda Secrets.';
+      const block = document.createElement('div');
+      block.className = 'ak-streak-result';
+      block.textContent = message;
+      endBox.appendChild(block);
+      if (current >= REQUIRED_WINS && previous < REQUIRED_WINS) {
+        const button = document.createElement('button');
+        button.style.marginTop = '10px';
+        button.textContent = '🎓 Enter Alamanda Secrets';
+        button.onclick = () => showTab('alamanda');
+        endBox.appendChild(button);
+      }
+    }
+  };
+
+  // Make the gate apply if users select the section from the title menu too.
+  const previousMenuGo = menuGo;
+  menuGo = function(name){
+    if (name === 'alamanda' && S && !unlocked()) {
+      previousMenuGo('home');
+      ask('🎓 Alamanda College Secrets is locked. Win 10 consecutive matches first. Current streak: ' + streak() + '/10.');
+      return;
+    }
+    return previousMenuGo(name);
+  };
+
+  refreshStreakDisplay();
+})();
+
+/* KIKSTART v13 — Friend 1v1 Online mode
+   PeerJS handles connection signalling; the host runs the authoritative match
+   and sends compact state snapshots. Only gameplay inputs are accepted from guest.
+*/
+(function KIKSTART_ONLINE_1V1_V13(){
+  if (window.__kikstartOnlineV13) return;
+  window.__kikstartOnlineV13 = true;
+
+  const NET = window.KIKSTART_NET = {
+    peer:null, conn:null, role:null, peerId:"", roomCode:"", status:"Not connected",
+    localProfile:null, remoteProfile:null, hostProfile:null, guestProfile:null,
+    remoteKeys:Object.create(null), latestSnapshot:null, lastAppliedSeq:0,
+    snapshotTimer:null, inputTimer:null, peerTimer:null, connTimer:null, helloTimer:null,
+    snapshotSeq:0, lastInputAt:0, started:false, pendingEnd:null, mode:null, reconnecting:false
+  };
+  const NET_KEYS = ["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space","KeyF","KeyJ","KeyQ","KeyE","KeyC","ShiftLeft","ShiftRight"];
+  const NET_safeName = (value, fallback) => String(value || fallback || "Player").replace(/[<>\u0000-\u001f]/g, "").slice(0,32);
+  const NET_isHex = value => /^#[0-9a-f]{6}$/i.test(String(value || ""));
+  const NET_status = message => { NET.status = String(message || ""); const el = document.getElementById("netStatus"); if (el) el.textContent = NET.status; };
+  const NET_send = payload => { try { if (NET.conn && NET.conn.open) NET.conn.send(payload); } catch (e) { NET_status("Connection send failed. Check your internet connection."); } };
+
+  // PeerJS is loaded only when the Online section is opened. The default PeerJS
+  // Cloud signalling service is used; game-state data travels directly peer-to-peer.
+  function NET_loadPeerJS(){
+    if (window.Peer) return Promise.resolve(window.Peer);
+    if (window.__kikstartPeerPromise) return window.__kikstartPeerPromise;
+    const attempt = new Promise((resolve,reject)=>{
+      const urls = [
+        "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js",
+        "https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"
+      ];
+      let index=0;
+      const next=()=>{
+        if(window.Peer)return resolve(window.Peer);
+        if(index>=urls.length)return reject(new Error("PeerJS could not load from either CDN. Check your connection or browser content blockers."));
+        const script=document.createElement("script");script.src=urls[index++];script.async=true;
+        let settled=false;
+        const timer=setTimeout(()=>{if(settled)return;settled=true;script.remove();next();},10000);
+        script.onload=()=>{if(settled)return;settled=true;clearTimeout(timer);window.Peer?resolve(window.Peer):next();};
+        script.onerror=()=>{if(settled)return;settled=true;clearTimeout(timer);script.remove();next();};
+        document.head.appendChild(script);
+      };
+      next();
+    });
+    window.__kikstartPeerPromise=attempt;
+    attempt.catch(()=>{if(window.__kikstartPeerPromise===attempt)window.__kikstartPeerPromise=null;});
+    return attempt;
+  }
+
+  function NET_profile(){
+    if (!S || !Number.isInteger(S.club) || !CL[S.club]) throw new Error("Choose a club first.");
+    const club=CL[S.club], squad=lineup(S.mode).filter(Boolean).map(p=>({name:NET_safeName(p.n,"Player"),o:cl(Number(p.o)||40,1,99),pos:String(p.pos||"MID").slice(0,4),r:String(p.r||"bronze")}));
+    return {name:NET_safeName(club.n,"Club"),k:String(club.k||"CLB").slice(0,4),a:club.a,b:club.b,clubIndex:S.club,mode:S.mode,rating:cl(Number(rating())||40,1,99),squad:squad};
+  }
+  function NET_sanitizeProfile(data){
+    if (!data || typeof data!=="object" || !NET_isHex(data.a) || !NET_isHex(data.b)) return null;
+    const mode=data.mode==="fs"?"fs":data.mode==="fb"?"fb":null;
+    if (!mode || !Array.isArray(data.squad) || data.squad.length>(mode==="fb"?11:5)) return null;
+    const squad=data.squad.map(p=>({name:NET_safeName(p&&p.name,"Player"),o:cl(Math.round(Number(p&&p.o)||40),1,99),pos:String(p&&p.pos||"MID").slice(0,4),r:String(p&&p.r||"bronze").slice(0,12)}));
+    return {name:NET_safeName(data.name,"Friend"),k:NET_safeName(data.k,"CLB").slice(0,4),a:data.a,b:data.b,clubIndex:Number.isInteger(data.clubIndex)?data.clubIndex:-1,mode,rating:cl(Math.round(Number(data.rating)||40),1,99),squad:squad};
+  }
+  function NET_team(profile){ return {n:profile.name,k:profile.k,a:profile.a,b:profile.b,str:profile.rating,li:-1}; }
+  function NET_clearTimers(){
+    if(NET.snapshotTimer){clearInterval(NET.snapshotTimer);NET.snapshotTimer=null;}
+    if(NET.inputTimer){clearInterval(NET.inputTimer);NET.inputTimer=null;}
+    ["peerTimer","connTimer","helloTimer"].forEach(k=>{if(NET[k]){clearTimeout(NET[k]);NET[k]=null;}});
+  }
+  const NET_PEER_OPTIONS={
+    host:"0.peerjs.com",port:443,path:"/",secure:true,debug:1,
+    // PeerJS Cloud's documented ICE relay pair supplements STUN. TURN relays
+    // help friends whose routers/firewalls cannot establish a direct data path.
+    config:{iceServers:[
+      {urls:"stun:stun.l.google.com:19302"},
+      {urls:["turn:eu-0.turn.peerjs.com:3478","turn:us-0.turn.peerjs.com:3478"],username:"peerjs",credential:"peerjsp"}
+    ],sdpSemantics:"unified-plan"}
+  };
+  function NET_resetSession(closePeer){
+    NET_clearTimers();
+    try { if(NET.conn){NET.conn.close();} } catch(e){}
+    try { if(closePeer && NET.peer){NET.peer.destroy();} } catch(e){}
+    NET.peer=null;NET.conn=null;NET.role=null;NET.peerId="";NET.roomCode="";NET.localProfile=null;NET.remoteProfile=null;NET.hostProfile=null;NET.guestProfile=null;
+    NET.remoteKeys=Object.create(null);NET.latestSnapshot=null;NET.lastAppliedSeq=0;NET.snapshotSeq=0;NET.started=false;NET.pendingEnd=null;NET.mode=null;
+  }
+  function NET_copyRoom(){
+    const input=document.getElementById("netRoomDisplay"); if(!input || !NET.roomCode)return;
+    input.focus();input.select();
+    try { if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(NET.roomCode).then(()=>NET_status("Room code copied. Send it to your friend."),()=>document.execCommand("copy")); else document.execCommand("copy"); }
+    catch(e){NET_status("Select the room code and copy it manually.");}
+  }
+  window.NET_copyRoom=NET_copyRoom;
+
+  function NET_bindConnection(conn, isHost){
+    NET.conn=conn;
+    if(isHost){
+      if(NET.connTimer)clearTimeout(NET.connTimer);
+      NET.connTimer=setTimeout(()=>{if(NET.conn===conn&&!conn.open){NET_status("The friend connection did not open. Ask them to rejoin with the room code.");try{conn.close();}catch(_){}NET_render();}},22000);
+    }
+    conn.on("open",()=>{
+      if(NET.connTimer){clearTimeout(NET.connTimer);NET.connTimer=null;}
+      if (isHost) {
+        NET_status("Friend connected. Checking their team…");
+        if(NET.helloTimer)clearTimeout(NET.helloTimer);
+        NET.helloTimer=setTimeout(()=>{if(NET.conn===conn&&!NET.remoteProfile){NET_status("The friend connected but did not send a team. Ask them to rejoin using this room code.");try{conn.close();}catch(_){}NET_render();}},15000);
+      } else {
+        NET_status("Connected. Sending your club and squad…");
+        NET_send({type:"hello",profile:NET_profile()});
+        if(NET.helloTimer)clearTimeout(NET.helloTimer);
+        NET.helloTimer=setTimeout(()=>{if(NET.role==="guest"&&!NET.remoteProfile){NET_status("Connected, but the host did not reply. Ask them to recreate the room and send a fresh code.");try{if(NET.conn)NET.conn.close();}catch(_){}NET_render();}},12000);
+      }
+      NET_render();
+    });
+    conn.on("data",data=>NET_receive(data));
+    conn.on("close",()=>NET_connectionLost());
+    conn.on("error",err=>NET_status("Connection issue: "+NET_safeName(err&&err.message,"try reconnecting")));
+  }
+  function NET_connectionLost(){
+    NET_clearTimers();
+    if (M && M.onlineRole && !M.over) {
+      M.over=true; M=null;
+      const box=$("endBox"); if(box){box.style.display="block";box.textContent="Online match ended because the connection closed. No result was added.";}
+      $("matchView").style.display="none";$("lobby").style.display="block";
+    }
+    NET.conn=null; NET.remoteProfile=null; NET.started=false; NET.latestSnapshot=null;
+    const liveBadge=document.getElementById("netMatchBadge");if(liveBadge)liveBadge.remove();
+    NET_status("Friend disconnected. You can create a new room or reconnect."); NET_render();
+  }
+  function NET_receive(data){
+    if (!data || typeof data!=="object" || typeof data.type!=="string") return;
+    if (data.type==="hello" && NET.role==="host"){
+      if(NET.helloTimer){clearTimeout(NET.helloTimer);NET.helloTimer=null;}
+      const profile=NET_sanitizeProfile(data.profile); if(!profile){NET_send({type:"deny",reason:"Invalid team profile."});return;}
+      if (NET.remoteProfile){NET_send({type:"deny",reason:"This room already has a player."});return;}
+      NET.remoteProfile=profile;NET.guestProfile=profile;NET.localProfile=NET_profile();
+      NET_send({type:"welcome",profile:NET.localProfile,mode:S.mode});
+      NET_status(profile.name+" joined with "+profile.rating+" OVR. "+(profile.mode===S.mode?"Ready to play.":"Choose the same mode first."));
+      NET_render();return;
+    }
+    if (data.type==="welcome" && NET.role==="guest"){
+      if(NET.helloTimer){clearTimeout(NET.helloTimer);NET.helloTimer=null;}
+      const profile=NET_sanitizeProfile(data.profile);if(!profile){NET_status("The host sent an invalid team profile.");return;}
+      NET.hostProfile=profile;NET.remoteProfile=profile;NET.localProfile=NET_profile();
+      NET_status("Connected to "+profile.name+". "+(profile.mode===S.mode?"Waiting for the host to start.":"Switch to the same mode as the host."));NET_render();return;
+    }
+    if (data.type==="deny"){NET_status(String(data.reason||"Room connection was declined."));return;}
+    if (data.type==="input" && NET.role==="host" && M && M.onlineRole==="host"){
+      const keys=Object.create(null);NET_KEYS.forEach(k=>{keys[k]=!!(data.keys&&data.keys[k]);});NET.remoteKeys=keys;NET.lastInputAt=Date.now();
+      if(Number.isFinite(Number(data.aim)))M.remoteAimHeight=cl(Number(data.aim),0,1);
+      return;
+    }
+    if (data.type==="start" && NET.role==="guest"){
+      const host=NET_sanitizeProfile(data.hostProfile),guest=NET_sanitizeProfile(data.guestProfile);
+      if(!host||!guest){NET_status("The match setup was invalid. Reconnect and try again.");return;}
+      NET.hostProfile=host;NET.guestProfile=guest;NET.remoteProfile=host;NET_startGuest(data.mode||host.mode);return;
+    }
+    if (data.type==="snapshot" && NET.role==="guest") { NET.latestSnapshot=data; return; }
+    if (data.type==="forfeit" && NET.role==="host" && M && M.onlineRole==="host" && !M.over){M.score=[3,0];finishMatch(false);return;}
+    if (data.type==="end" && NET.role==="guest"){
+      if(!M || M.onlineRole!=="guest" || M.over){NET.pendingEnd=data;return;}
+      NET_endGuest(data);return;
+    }
+    if (data.type==="leave") NET_connectionLost();
+  }
+
+  async function NET_createRoom(requestedCode){
+    // The party leader chooses a private, shareable code. PeerJS reserves this
+    // exact ID on its signalling service, so friends can join with the same code.
+    const code=String(requestedCode ?? document.getElementById("netHostCodeInput")?.value ?? "")
+      .trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
+    if(!/^[A-Z0-9]{4,10}$/.test(code)){
+      NET_status("Choose a party code with 4–10 letters or numbers.");NET_render();return;
+    }
+    if(!S || !S.got[S.mode]){NET_status("Claim your starter pack before playing online.");NET_render();return;}
+    NET_resetSession(true);NET.role="host";NET.mode=S.mode;NET.localProfile=NET_profile();NET_status("Creating your private party…");NET_render();
+    try{
+      const PeerClass=await NET_loadPeerJS();
+      const peer=new PeerClass(code,NET_PEER_OPTIONS);NET.peer=peer;
+      NET.peerTimer=setTimeout(()=>{if(NET.peer===peer&&!NET.peerId){NET_status("The online room service timed out. Check your connection and try again.");NET_resetSession(true);NET_render();}},18000);
+      peer.on("open",id=>{if(NET.peerTimer){clearTimeout(NET.peerTimer);NET.peerTimer=null;}NET.reconnecting=false;NET.peerId=id;NET.roomCode=id;NET_status("Private party created. Share your code with one friend.");NET_render();});
+      peer.on("connection",conn=>{
+        if(NET.conn){conn.close();return;}
+        NET_bindConnection(conn,true);NET_status("Friend is connecting…");NET_render();
+      });
+      peer.on("error",err=>{
+        const message=(err&&err.type==="unavailable-id"?"That party code is already taken. Choose another code.":"Online room error: "+NET_safeName(err&&err.type?err.type:(err&&err.message),"try again"));
+        if(NET.peerTimer){clearTimeout(NET.peerTimer);NET.peerTimer=null;}
+        NET_status(message);
+        if(NET.peer===peer&&!NET.peerId){NET_resetSession(true);NET_status(message);}
+        NET_render();
+      });
+      peer.on("disconnected",()=>{
+        if(NET.peer===peer&&!peer.destroyed&&!NET.reconnecting){NET.reconnecting=true;NET_status("Reconnecting to the room service…");try{peer.reconnect();}catch(_){NET_status("Room service disconnected. Create a new room and share a new code.");NET_render();}}
+        else{NET_status("Signalling service disconnected. Create a new room to continue.");NET_render();}
+      });
+    }catch(err){NET_status(err.message||"Could not start online mode.");NET_resetSession(true);NET_render();}
+  }
+  async function NET_joinRoom(roomId){
+    roomId=String(roomId ?? document.getElementById("netJoinInput")?.value ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
+    if(!/^[A-Z0-9]{4,10}$/.test(roomId)){NET_status("Enter your friend's 4–10 character party code.");NET_render();return;}
+    if(!S || !S.got[S.mode]){NET_status("Claim your starter pack before playing online.");return;}
+    NET_resetSession(true);NET.role="guest";NET.mode=S.mode;NET.localProfile=NET_profile();NET_status("Connecting to your friend…");NET_render();
+    try{
+      const PeerClass=await NET_loadPeerJS();const peer=new PeerClass(NET_PEER_OPTIONS);NET.peer=peer;
+      NET.peerTimer=setTimeout(()=>{if(NET.peer===peer){NET_status("Could not reach the room service. Check your internet connection and try again.");NET_resetSession(true);NET_render();}},18000);
+      peer.on("open",()=>{
+        if(NET.peerTimer){clearTimeout(NET.peerTimer);NET.peerTimer=null;}
+        NET.reconnecting=false;
+        const conn=peer.connect(roomId,{reliable:true});NET_bindConnection(conn,false);
+        NET.connTimer=setTimeout(()=>{if(NET.conn===conn&&!conn.open){NET_status("The friend room did not accept the connection. Check the code or ask for a new one.");try{conn.close();}catch(_){}NET_render();}},22000);
+      });
+      peer.on("error",err=>{
+        const message="Could not connect: "+NET_safeName(err&&err.type?err.type:(err&&err.message),"check the room code");
+        if(NET.peerTimer){clearTimeout(NET.peerTimer);NET.peerTimer=null;}
+        NET_status(message);
+        if(NET.peer===peer&&!NET.peerId){NET_resetSession(true);NET_status(message);}
+        NET_render();
+      });
+      peer.on("disconnected",()=>{if(NET.peer===peer&&!peer.destroyed&&!NET.reconnecting){NET.reconnecting=true;NET_status("Reconnecting to the room service…");try{peer.reconnect();}catch(_){NET_status("Room service disconnected. Try joining again.");NET_render();}}});
+    }catch(err){NET_status(err.message||"Could not load online networking.");NET_resetSession(true);NET_render();}
+  }
+  window.NET_createRoom=NET_createRoom;
+  window.NET_joinRoom=()=>NET_joinRoom(document.getElementById("netJoinInput")?.value);
+
+  function NET_render(){
+    const root=document.getElementById("online");if(!root||!S)return;
+    const local=NET.localProfile||(()=>{try{return NET_profile()}catch(e){return null}})();
+    const connected=!!(NET.conn&&NET.conn.open),host=NET.role==="host",guest=NET.role==="guest";
+    const remote=NET.remoteProfile;
+    const sameMode=!!(remote&&local&&remote.mode===local.mode);
+    const profileCard=p=>p?'<div class="net-team"><div class="net-crest" style="background:linear-gradient(145deg,'+p.a+','+p.b+')">'+esc(p.k||"CLB")+'</div><div><b>'+esc(p.name)+'</b><small>'+ (p.mode==="fs"?"Futsal":"Football")+' · '+p.rating+' OVR · '+(p.squad||[]).length+' players</small></div></div>':'<div class="net-team net-empty"><div class="net-crest">?</div><div><b>Waiting for friend</b><small>Share your room code</small></div></div>';
+    let h=hero("1v1 Online","Challenge a friend using your own saved club, formation and squad.","⚔️");
+    const stats=S.onlineStats||{played:0,w:0,d:0,l:0};
+    h+='<div class="net-hero"><div class="net-eyebrow">REAL-TIME FRIEND MATCHES</div><h2>YOUR CLUB. THEIR CLUB. ONE PITCH.</h2><p>Invite one friend, choose Football or Futsal, and play a live head-to-head match. No random teams.</p><div class="net-record"><span>ONLINE MATCHES <b>'+stats.played+'</b></span><span>W <b>'+stats.w+'</b></span><span>D <b>'+stats.d+'</b></span><span>L <b>'+stats.l+'</b></span></div></div>';
+    h+='<div class="net-columns"><section class="panel net-panel"><h3>🏠 Create a private party</h3><p>Choose the code your friend will enter to join your 1v1.</p><label for="netHostCodeInput">SET YOUR PARTY CODE</label><input id="netHostCodeInput" maxlength="10" minlength="4" autocomplete="off" autocapitalize="characters" placeholder="E.G. KICK24" '+(host?'disabled':'')+'><small>4–10 letters or numbers. Codes must be unique.</small><button onclick="NET_createRoom()" '+(connected||host?'disabled':'')+'>CREATE PARTY</button>';
+    if(host&&NET.roomCode)h+='<div class="net-code-wrap"><label for="netRoomDisplay">YOUR PARTY CODE</label><input id="netRoomDisplay" readonly value="'+esc(NET.roomCode)+'"><button class="alt" onclick="NET_copyRoom()">COPY CODE</button></div>';
+    h+='</section><section class="panel net-panel"><h3>🔗 Join a friend</h3><p>Enter the party code chosen by the leader.</p><input id="netJoinInput" maxlength="10" minlength="4" autocomplete="off" autocapitalize="characters" placeholder="ENTER PARTY CODE"><button onclick="NET_joinRoom()" '+(connected?'disabled':'')+'>JOIN PARTY</button></section></div>';
+    h+='<section class="panel net-panel net-match-panel"><div class="net-eyebrow">MATCH LOBBY</div><div class="net-teams">'+profileCard(local)+'<div class="net-vs">VS</div>'+profileCard(remote)+'</div>';
+    h+='<div class="net-status" id="netStatus" aria-live="polite">'+esc(NET.status)+'</div>';
+    if(host)h+='<button class="net-start" onclick="NET_hostStart()" '+(!connected||!remote||!sameMode||NET.started||!S.got[S.mode]?'disabled':'')+'>⚽ START 1V1 MATCH</button><p class="net-help">Both players must use the same mode. The host starts the match.</p>';
+    else if(guest)h+='<p class="net-help">You are the challenger. The host will start when both clubs are ready.</p>';
+    else h+='<p class="net-help">Create a room or join a friend to begin.</p>';
+    if(connected)h+='<button class="alt" onclick="NET_leaveRoom()">Leave room</button>';
+    h+='</section><section class="net-notes"><b>How it works</b><p>Both players use their own saved squad. The host runs the match simulation and sends live pitch updates to the other player. Game controls work on keyboard and mobile touch controls.</p><p>Requires internet on both devices. This version uses PeerJS Cloud for connection setup and a direct encrypted WebRTC data connection for gameplay. Some strict networks may block peer-to-peer connections.</p></section>';
+    root.innerHTML=h;
+  }
+  window.NET_render=NET_render;
+
+  function NET_canStart(){
+    if(NET.role!=="host"||!NET.conn||!NET.conn.open||!NET.remoteProfile)return false;
+    if(NET.remoteProfile.mode!==S.mode)return false;
+    if(!S.got[S.mode])return false;
+    return !NET.started;
+  }
+  async function NET_startLocal(role,hostProfile,guestProfile){
+    if(!window.THREE && window.__kikThreePromise) await window.__kikThreePromise;
+    if(!window.THREE)throw new Error("The 3D match engine did not load. Refresh and try again.");
+    if(!init3D())throw new Error("Your browser could not start 3D graphics.");
+    const own=role==="host"?hostProfile:guestProfile;
+    const enemy=role==="host"?guestProfile:hostProfile;
+    if(!own||!enemy||own.mode!==enemy.mode)throw new Error("Both players must have a squad in the same game mode.");
+    S.mode=own.mode;NET.mode=own.mode;save();
+    NET.localProfile=own;NET.remoteProfile=enemy;NET.hostProfile=hostProfile;NET.guestProfile=guestProfile;NET.role=role;
+    LV.online={n:"Online 1v1",fee:0,win:120,sk:1};NX.online=NET_team(enemy);
+    startMatch("online");
+    if(!M||M.over)throw new Error("The match could not start. Return to the Online lobby and try again.");
+    M.onlineRole=role;M.onlineMode=true;M.remoteAimHeight=.38;M.remoteChg=0;M.remoteKeys=Object.create(null);
+    const ownLine=own.squad||[],enemyLine=enemy.squad||[];
+    M.pl.filter(p=>p.t===0).forEach((p,i)=>{const d=ownLine[i];if(d)p.playerName=d.name;});
+    M.pl.filter(p=>p.t===1).forEach((p,i)=>{const d=enemyLine[i];if(d){p.playerName=d.name;p.o=cl(Number(d.o)||40,1,99);p.spd=(6.2+(p.o-40)/60*3)*M.F.sp0;p.pos=d.pos||"MID";}});
+    M.hh="";NET.started=true;NET.latestSnapshot=null;NET.lastAppliedSeq=0;
+    const stage=document.getElementById("stage");
+    if(stage&&!document.getElementById("netMatchBadge")){const badgeEl=document.createElement("div");badgeEl.id="netMatchBadge";badgeEl.textContent="● LIVE ONLINE · 1V1";stage.appendChild(badgeEl);}
+    $("lobby").style.display="none";$("matchView").style.display="block";$("endBox").style.display="none";
+    showTab("play");
+    if(role==="guest")NET_startInputTimer();
+    return true;
+  }
+  async function NET_hostStart(){
+    if(!NET_canStart()){NET_status("Connect one friend, choose the same mode, and claim your starter squad first.");NET_render();return;}
+    try{
+      NET.status="Starting match…";NET_render();
+      const host=NET_profile(),guest=NET.remoteProfile;
+      await NET_startLocal("host",host,guest);
+      NET_send({type:"start",mode:S.mode,hostProfile:host,guestProfile:guest});
+      NET_startSnapshotTimer();
+    }catch(err){NET.started=false;NET_status(err.message||"Could not start the online match.");NET_render();}
+  }
+  window.NET_hostStart=NET_hostStart;
+  async function NET_startGuest(mode){
+    if(!NET.hostProfile||!NET.guestProfile)return;
+    if(mode!==NET.hostProfile.mode || mode!==NET.guestProfile.mode){NET_status("The host and guest must be in the same mode. Reconnect after switching modes.");return;}
+    try{
+      NET_status("Loading the 3D pitch…");
+      await NET_startLocal("guest",NET.hostProfile,NET.guestProfile);
+      if(NET.pendingEnd){const end=NET.pendingEnd;NET.pendingEnd=null;NET_endGuest(end);}
+      else if(NET.latestSnapshot)NET_applySnapshot(NET.latestSnapshot,0.016);
+    }catch(err){NET_status(err.message||"Could not join the match.");NET.started=false;NET_render();}
+  }
+
+  // Guest inputs are sent at 25 Hz. No chat, microphone, camera, or personal data is sent.
+  function NET_startInputTimer(){
+    NET_clearTimers();NET.inputTimer=setInterval(()=>{
+      if(!NET.conn||!NET.conn.open||!M||M.over||M.onlineRole!=="guest")return;
+      const keys={};NET_KEYS.forEach(k=>keys[k]=!!K[k]);
+      NET_send({type:"input",keys:keys,aim:Number.isFinite(M.aimHeight)?M.aimHeight:.38});
+    },40);
+  }
+  function NET_playerIndex(player){return M&&player?M.pl.indexOf(player):-1;}
+  function NET_snapshot(){
+    const m=M;if(!m||m.over||m.onlineRole!=="host")return;
+    NET_send({type:"snapshot",seq:++NET.snapshotSeq,stamp:Date.now(),t:m.t,total:m.total,score:m.score.slice(),
+      players:m.pl.map(p=>[p.x,p.z,p.vx,p.vz,p.dx,p.dz,p.o]),
+      ball:[m.ball.x,m.ball.y,m.ball.z,m.ball.vx,m.ball.vy,m.ball.vz],
+      owner:NET_playerIndex(m.owner),ctrl:NET_playerIndex(m.ctrl),remoteCtrl:NET_playerIndex(m.remoteCtrl),lastT:m.lastT,
+      wait:!!m.wait,intro:m.intro||0,pause:m.pause||0,half:m.half||0,chg:m.chg||0,remoteChg:m.remoteChg||0,aim:m.aimHeight||.38,remoteAim:m.remoteAimHeight||.38,
+      cel:m.cel||"",celT:m.celT||0,scorer:NET_playerIndex(m.scorer)});
+  }
+  function NET_startSnapshotTimer(){NET_clearTimers();NET.snapshotTimer=setInterval(NET_snapshot,33);}
+
+  // The host selects one live guest-controlled outfield player. All other players retain the existing AI.
+  function NET_pickRemoteCtrl(){
+    const m=M;if(!m||!m.ball)return null;
+    if(m.owner&&m.owner.t===1&&!m.owner.gk){m.remoteCtrl=m.owner;return m.remoteCtrl;}
+    const current=m.remoteCtrl;
+    if(current&&current.t===1&&!current.gk&&hyp(current.x-m.ball.x,current.z-m.ball.z)<hyp(FORM[m.mo].L*.22,FORM[m.mo].W*.22))return current;
+    let best=null,bd=1e9;m.pl.forEach(p=>{if(p.t===1&&!p.gk){const d=hyp(p.x-m.ball.x,p.z-m.ball.z);if(d<bd){bd=d;best=p;}}});
+    m.remoteCtrl=best;return best;
+  }
+  function NET_remotePass(p,ix,iz,len){
+    let best=null,bs=-1e9;
+    M.pl.forEach(q=>{
+      if(q.t!==1||q===p||q.gk)return;
+      const dx=q.x-p.x,dz=q.z-p.z,d=hyp(dx,dz);if(d<3*M.F.sc)return;
+      const attackDir=(p.t?-1:1)*(M.half?-1:1);let score=-d*.08+(len?(dx*ix+dz*iz)/d*10:dx*attackDir/d*6);
+      M.pl.forEach(o=>{if(o.t===0&&hyp(o.x-q.x,o.z-q.z)<4*M.F.sc)score-=4;});
+      if(score>bs){bs=score;best=q;}
+    });
+    if(best)passTo(p,best);
+  }
+  function NET_remoteControl(p,dt){
+    const m=M,k=NET.remoteKeys||{},halfDir=m.half?-1:1,ix=((k.KeyD||k.ArrowRight?1:0)-(k.KeyA||k.ArrowLeft?1:0))*halfDir,iz=(k.KeyS||k.ArrowDown?1:0)-(k.KeyW||k.ArrowUp?1:0),len=hyp(ix,iz),dx=len?ix/len:0,dz=len?iz/len:0;
+    const sprint=!!(k.ShiftLeft||k.ShiftRight),speed=p.spd*(sprint?1.28:1)*(p.lunge>0?1.5:1);
+    move(p,dx,dz,speed,dt);if(len){p.dx=dx;p.dz=dz;}
+    if(k.KeyC&&!m.remoteSwitchDown){m.remoteSwitchDown=true;const list=m.pl.filter(q=>q.t===1&&!q.gk);if(list.length){const idx=list.indexOf(m.remoteCtrl);m.remoteCtrl=list[(idx+1+list.length)%list.length];}}
+    if(!k.KeyC)m.remoteSwitchDown=false;
+    const space=!!k.Space;
+    if(space&&!m.remoteSpaceDown){if(m.owner===p)NET_remotePass(p,dx,dz,len);else p.lunge=.35;}
+    m.remoteSpaceDown=space;
+    if(k.KeyQ)m.remoteAimHeight=cl((m.remoteAimHeight??.38)-dt*.55,0,1);
+    if(k.KeyE)m.remoteAimHeight=cl((m.remoteAimHeight??.38)+dt*.55,0,1);
+    const shooting=!!(k.KeyF||k.KeyJ);
+    if(shooting)m.remoteChg=Math.min(1,(m.remoteChg||0)+dt*1.5);
+    else if(m.remoteChg>0){
+      if(m.owner===p){const vertical=(k.ArrowDown?1:0)-(k.ArrowUp?1:0),aimZ=cl(p.z+vertical*M.F.gw*.4,-M.F.gw*.45,M.F.gw*.45);shoot(p,m.remoteChg,aimZ,m.remoteAimHeight??.38);}
+      m.remoteChg=0;
+    }
+  }
+  const NET_previousAI=ai;
+  ai=function(p,dt){
+    if(M&&M.onlineRole==="host"&&p.t===1){const active=NET_pickRemoteCtrl();if(active===p){NET_remoteControl(p,dt);return;}}
+    return NET_previousAI(p,dt);
+  };
+
+  function NET_mapHostIndex(index,n){return index<0?-1:(index<n?index+n:index-n);}
+  function NET_applySnapshot(snapshot,dt){
+    const m=M;if(!m||m.onlineRole!=="guest"||!snapshot||Number(snapshot.seq)<NET.lastAppliedSeq)return;
+    if(!Array.isArray(snapshot.players)||snapshot.players.length!==m.pl.length||!Array.isArray(snapshot.ball))return;
+    // Re-apply the latest target every render frame so the guest smoothly converges
+    // between network packets instead of stepping once per packet at 30 Hz.
+    NET.lastAppliedSeq=Math.max(NET.lastAppliedSeq,Number(snapshot.seq)||0);
+    const k=1-Math.exp(-Math.max(.001,dt||.016)*28),n=m.F.n;
+    snapshot.players.forEach((state,hostIndex)=>{
+      const localIndex=NET_mapHostIndex(hostIndex,n),p=m.pl[localIndex];if(!p||!Array.isArray(state))return;
+      const tx=-Number(state[0]||0),tz=-Number(state[1]||0);
+      p.x+=(tx-p.x)*k;p.z+=(tz-p.z)*k;p.vx=-Number(state[2]||0);p.vz=-Number(state[3]||0);p.dx=-Number(state[4]||0);p.dz=-Number(state[5]||0);
+      p.mesh.position.set(p.x,0,p.z);
+    });
+    const b=m.ball;b.x+=( -Number(snapshot.ball[0]||0)-b.x)*k;b.y+=(Number(snapshot.ball[1]||.5)-b.y)*k;b.z+=( -Number(snapshot.ball[2]||0)-b.z)*k;b.vx=-Number(snapshot.ball[3]||0);b.vy=Number(snapshot.ball[4]||0);b.vz=-Number(snapshot.ball[5]||0);
+    m.score=[Number(snapshot.score&&snapshot.score[1])||0,Number(snapshot.score&&snapshot.score[0])||0];m.t=Number(snapshot.t)||0;m.total=Number(snapshot.total)||120;
+    m.wait=!!snapshot.wait;m.intro=Number(snapshot.intro)||0;m.pause=Number(snapshot.pause)||0;m.half=Number(snapshot.half)||0;m.chg=Number(snapshot.remoteChg)||0;m.remoteChg=Number(snapshot.chg)||0;
+    m.aimHeight=cl(Number.isFinite(Number(snapshot.remoteAim))?Number(snapshot.remoteAim):.38,0,1);m.remoteAimHeight=cl(Number.isFinite(Number(snapshot.aim))?Number(snapshot.aim):.38,0,1);m.lastT=1-(Number(snapshot.lastT)||0);
+    const ownerIndex=NET_mapHostIndex(Number.isInteger(snapshot.owner)?snapshot.owner:-1,n);m.owner=ownerIndex>=0?m.pl[ownerIndex]:null;
+    const ctrlIndex=NET_mapHostIndex(Number.isInteger(snapshot.remoteCtrl)?snapshot.remoteCtrl:-1,n);m.ctrl=ctrlIndex>=0?m.pl[ctrlIndex]:null;
+    const remoteCtrlIndex=NET_mapHostIndex(Number.isInteger(snapshot.ctrl)?snapshot.ctrl:-1,n);m.remoteCtrl=remoteCtrlIndex>=0?m.pl[remoteCtrlIndex]:null;
+    const scorerIndex=NET_mapHostIndex(Number.isInteger(snapshot.scorer)?snapshot.scorer:-1,n);m.scorer=scorerIndex>=0?m.pl[scorerIndex]:null;m.cel=snapshot.cel||"";m.celT=Number(snapshot.celT)||0;
+    if(typeof V5_animate==="function")V5_animate(m,dt||.016);
+    m.pl.forEach(p=>p.mesh.position.set(p.x,0,p.z));
+    b.mesh.position.set(b.x,Math.max(.5*m.F.ps,b.y||.5*m.F.ps),b.z);b.mesh.rotation.x+=b.vz*(dt||.016)*.6;b.mesh.rotation.z-=b.vx*(dt||.016)*.6;b.sh.position.set(b.x,.04,b.z);
+    if(m.ctrl&&!m.wait&&m.intro<=0){ring.visible=true;ring.position.set(m.ctrl.x,.1,m.ctrl.z);}else ring.visible=false;
+    const min=Math.min(90,Math.floor(m.t/m.total*90)),html=m.cr0+' <b>'+esc(CL[S.club].n)+'</b> <b style="font-size:24px">'+m.score[0]+' - '+m.score[1]+'</b> <b>'+esc(m.team.n)+'</b> '+m.cr1+' ⏱ '+min+"'";
+    if(html!==m.hh){$("hud").innerHTML=html;m.hh=html;}
+    const chg=$("chg");if(chg)chg.style.width=(m.chg*100)+"%";
+  }
+  const NET_previousStep=stepMatch;
+  stepMatch=function(dt){
+    if(M&&M.onlineRole==="guest"){if(NET.latestSnapshot)NET_applySnapshot(NET.latestSnapshot,dt);return;}
+    return NET_previousStep(dt);
+  };
+
+  // Mark the connection role on the match created by the existing 3D match engine.
+  const NET_previousStart=startMatch;
+  startMatch=function(key){
+    const result=NET_previousStart(key);
+    if(key==="online"&&M&&!M.over){M.onlineRole=NET.role;M.onlineMode=true;M.remoteAimHeight=.38;M.remoteChg=0;}
+    return result;
+  };
+
+  function NET_endGuest(data){
+    if(!M||M.onlineRole!=="guest"||M.over)return;
+    M.score=data.hostForfeit?[3,0]:[Number(data.score&&data.score[1])||0,Number(data.score&&data.score[0])||0];
+    NET_clearTimers();finishMatch(false);
+  }
+  const NET_previousRecord=record;
+  record=function(opp,y,o){
+    if(M&&M.onlineRole){
+      S.onlineStats=S.onlineStats||{played:0,w:0,d:0,l:0,goalsFor:0,goalsAgainst:0};
+      S.onlineStats.played++;
+      S.onlineStats.goalsFor+=Number(y)||0;S.onlineStats.goalsAgainst+=Number(o)||0;
+      if(y>o)S.onlineStats.w++;else if(y===o)S.onlineStats.d++;else S.onlineStats.l++;
+      return;
+    }
+    return NET_previousRecord(opp,y,o);
+  };
+
+  const NET_previousFinish=finishMatch;
+  finishMatch=function(forfeit){
+    const match=M,role=match&&match.onlineRole;
+    if(!role)return NET_previousFinish(forfeit);
+    if(role==="host"){
+      NET_send({type:"end",hostForfeit:!!forfeit,score:(match.score||[0,0]).slice()});
+      if(NET.snapshotTimer){clearInterval(NET.snapshotTimer);NET.snapshotTimer=null;}
+    } else if(role==="guest"&&forfeit){NET_send({type:"forfeit"});if(NET.inputTimer){clearInterval(NET.inputTimer);NET.inputTimer=null;}}
+    const result=NET_previousFinish(forfeit);
+    const end=$("endBox");if(end&&end.style.display!=="none"){
+      const main=end.innerHTML.split("<br><br>")[0];
+      end.innerHTML=main+'<br><br><button onclick="NET_backToLobby()">Back to Online lobby</button>';
+    }
+    return result;
+  };
+  window.NET_backToLobby=function(){
+    NET_clearTimers();M=null;if(ring)ring.visible=false;
+    $("matchView").style.display="none";$("lobby").style.display="block";
+    const liveBadge=document.getElementById("netMatchBadge");if(liveBadge)liveBadge.remove();
+    NET.started=false;NET.latestSnapshot=null;NET.lastAppliedSeq=0;NET_status(NET.role==="host"?"Match finished. You can start a rematch with your friend.":"Match finished. Waiting for the host to start a rematch.");
+    showTab("online");
+  };
+  window.NET_leaveRoom=function(){
+    try{NET_send({type:"leave"});}catch(e){}
+    if(M&&M.onlineRole&&!M.over){M.over=true;M=null;$("matchView").style.display="none";$("lobby").style.display="block";}
+    NET_resetSession(true);NET_status("You left the room.");NET_render();
+  };
+
+  // Make the Online section available in both the title menu and the permanent sidebar.
+  const main=document.getElementById("main");
+  if(main&&!document.getElementById("online")){const section=document.createElement("div");section.id="online";section.className="tab";main.appendChild(section);}
+  const sideItems=document.querySelector("#side .sitems");
+  if(sideItems&&!document.getElementById("nav-online")){const button=document.createElement("button");button.id="nav-online";button.innerHTML="🌐 1v1 Online";button.onclick=()=>showTab("online");sideItems.appendChild(button);}
+  const titleItems=document.querySelector("#start .sitems");
+  if(titleItems&&!titleItems.querySelector('[data-t="online"]')){const button=document.createElement("button");button.dataset.t="online";button.textContent="🌐 1v1 Online";button.onclick=()=>menuGo("online");titleItems.appendChild(button);}
+
+  const netStyle=document.createElement("style");netStyle.textContent=`
+    .net-hero{position:relative;overflow:hidden;margin:0 0 18px;padding:24px 26px;border-radius:18px;background:radial-gradient(circle at 88% 12%,#39e8d744,transparent 42%),linear-gradient(120deg,#102b4a,#10152e 76%);border:1px solid #64d9ef66;box-shadow:0 16px 35px #0006,inset 0 1px #ffffff22}
+    .net-hero h2{font-size:clamp(22px,3vw,34px);margin:7px 0;text-shadow:0 0 20px #5de8ff44}
+    .net-hero p,.net-panel p,.net-help,.net-notes p{color:#bfcede;line-height:1.5;font-size:13px}
+    .net-eyebrow{font-size:10px;letter-spacing:.18em;font-weight:900;color:#74edda}
+    .net-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px}
+    .net-panel{background:linear-gradient(145deg,#172849,#0d162a);border-color:#314e73;box-shadow:0 12px 28px #0004}
+    .net-panel h3{margin:2px 0 8px;color:#f0f7ff}
+    .net-panel input{width:100%;padding:12px;border-radius:10px;border:1px solid #3b5c80;background:#071326;color:#fff;margin:7px 0 10px;font:700 13px system-ui}
+    .net-code-wrap{margin-top:14px;padding-top:12px;border-top:1px solid #ffffff20;display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+    .net-code-wrap label{display:block;width:100%;font-size:10px;font-weight:900;letter-spacing:.12em;color:#7fe9d7}
+    .net-code-wrap input{flex:1;min-width:150px;margin:0}
+    .net-match-panel{margin-bottom:14px}
+    .net-teams{display:grid;grid-template-columns:minmax(0,1fr) 48px minmax(0,1fr);gap:12px;align-items:center;margin:16px 0}
+    .net-team{display:flex;align-items:center;gap:10px;min-width:0;padding:12px;border-radius:14px;background:#071326;border:1px solid #345273;box-shadow:inset 0 1px #ffffff18}
+    .net-team b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+    .net-team small{display:block;color:#a9bdd2;font-size:11px;margin-top:4px}
+    .net-crest{width:44px;height:44px;flex:0 0 44px;border-radius:13px;display:grid;place-items:center;color:white;font-weight:1000;text-shadow:0 2px 5px #000;box-shadow:0 0 18px #62dfff35;border:1px solid #ffffff55}
+    .net-vs{text-align:center;font-size:14px;font-weight:1000;color:#75e8dc;text-shadow:0 0 14px #75e8dc88}
+    .net-status{padding:11px 13px;border-radius:11px;background:#061426;border:1px solid #64d9ef55;color:#a8f5e4;font-size:13px;font-weight:800;min-height:42px}
+    .net-start{width:100%;margin-top:13px;background:linear-gradient(100deg,#00b887,#6be9d5);color:#061b21;box-shadow:0 0 22px #27d9b844}
+    .net-record{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;color:#b6d7e8;font-size:11px;font-weight:900;letter-spacing:.06em}
+    .net-record b{color:#fff;font-size:15px;margin-left:4px;text-shadow:0 0 10px #7df2df66}
+    #netMatchBadge{position:absolute;right:12px;top:12px;z-index:4;padding:8px 11px;border-radius:999px;background:#071b2bdc;border:1px solid #55e9c9aa;color:#90ffe3;font-size:10px;font-weight:1000;letter-spacing:.1em;box-shadow:0 0 18px #2cf5c544;pointer-events:none}
+    .net-help{margin:9px 0 0}.net-notes{margin:14px 0;padding:12px 15px;border-left:3px solid #3b9eaa;background:#0c182b;border-radius:0 12px 12px 0}.net-notes b{color:#e9f7ff}.net-notes p{margin:6px 0}
+    @media(max-width:760px){.net-columns{grid-template-columns:1fr}.net-teams{grid-template-columns:1fr}.net-vs{padding:0}.net-code-wrap{align-items:stretch}.net-code-wrap button{width:100%}}
+  `;document.head.appendChild(netStyle);
+
+  const NET_previousShowTab=showTab;
+  showTab=function(name){
+    if(name==="online"){
+      if(M&&!M.over)return;
+      tabOn="online";
+      document.querySelectorAll("#main > .tab").forEach(el=>el.classList.toggle("on",el.id==="online"));
+      document.querySelectorAll("#side .sitems button").forEach(el=>el.classList.toggle("on",el.id==="nav-online"));
+      NET_render();return;
+    }
+    const result=NET_previousShowTab(name);
+    const onlineSection=document.getElementById("online");if(onlineSection)onlineSection.classList.remove("on");
+    const onlineNav=document.getElementById("nav-online");if(onlineNav)onlineNav.classList.remove("on");
+    return result;
+  };
+  const NET_previousMenuGo=menuGo;
+  menuGo=function(name){
+    if(name==="online"){
+      audio();music(true);$("start").classList.add("hide");
+      document.querySelectorAll("#start .sitems button").forEach(b=>b.classList.toggle("sel",b.dataset.t==="online"));
+      if(S){refresh();showTab("online");}else{pending="online";openPick();}return;
+    }
+    return NET_previousMenuGo(name);
+  };
+  const NET_previousRenderHome=renderHome;
+  renderHome=function(){NET_previousRenderHome();};
+  NET_render();
+})();
+
+</script>
+
+
+<script>
+/* KIKSTART v14 — club-specific 3D stadium architecture upgrade
+   Adds original, game-ready architectural interpretations for all 40 clubs.
+   Uses the existing Three.js scene, stadium upgrades, and camera interaction. */
+(function KIKSTART_STADIUM_V14_BOOT(){
+  if (window.__kikstartStadiumV14Boot) return;
+  window.__kikstartStadiumV14Boot = true;
+  const install = () => {
+    if (window.__kikstartStadiumV14) return;
+    if (typeof THREE === "undefined" || typeof buildStad !== "function") return;
+    window.__kikstartStadiumV14 = true;
+
+  const profiles = {
+    MCI:{venue:"Etihad Stadium",style:"cableBowl",label:"Continuous bowl · cable-net roof",note:"Blue continuous bowl, higher side stands, large end stands and a cable-supported roof with a taller expanded end."},
+    ARS:{venue:"Emirates Stadium",style:"ovalTruss",label:"Oval bowl · white roof trusses",note:"Smooth oval seating bowl, white perimeter trusses, four corner screens and red-and-white seating bands."},
+    LIV:{venue:"Anfield",style:"kop",label:"Steep Kop · expanded main stand",note:"A steep, uninterrupted Kop end opposite a taller multi-tier main stand, with red fascia and traditional close-to-pitch proportions."},
+    CHE:{venue:"Stamford Bridge",style:"compactClassic",label:"Compact enclosed ground",note:"A tight urban ground with close stands, traditional brick-and-steel exterior and compact blue seating decks."},
+    MUN:{venue:"Old Trafford",style:"asymTwin",label:"Three-tier asymmetric stands",note:"Tall multi-tier stands, a larger west-side stand, deep red roof trusses and a strong cantilevered roof edge."},
+    TOT:{venue:"Tottenham Hotspur Stadium",style:"singleSouth",label:"Single-tier South Stand · cable roof",note:"A towering single-tier home end, steep seating rake, continuous roof canopy and dark glazed outer concourse."},
+    NEW:{venue:"St James’ Park",style:"asymGrandstand",label:"Asymmetric high grandstand",note:"A visibly taller east-side stand, steep roofline, contrasting black-and-white cladding and exposed support ribs."},
+    AVL:{venue:"Villa Park",style:"heritageGable",label:"Classic gabled stands",note:"Traditional enclosed stands, a pronounced Holte End and a high gabled main-stand roof with brick-toned details."},
+    RMA:{venue:"Santiago Bernabéu",style:"metalLouvre",label:"Stainless-steel wraparound shell",note:"A continuous silver louvre skin, radial roof cables, retractable-roof tracks and a continuous digital display band."},
+    BAR:{venue:"Spotify Camp Nou",style:"grandBowl",label:"Huge multi-tier open bowl",note:"A very large, steep three-tier bowl with long continuous seating decks and a broad perimeter roof canopy."},
+    ATM:{venue:"Riyadh Air Metropolitano",style:"radialCanopy",label:"Radial cable-supported canopy",note:"A broad white roof membrane supported by radial steel members and a strong ring-shaped perimeter structure."},
+    SEV:{venue:"Ramón Sánchez-Pizjuán",style:"redWhiteFacade",label:"Compact red-and-white façade",note:"A compact rectangular bowl with repeated vertical façade fins and red-and-white seating bands."},
+    VAL:{venue:"Mestalla",style:"steepMestalla",label:"Very steep asymmetric stands",note:"Tall, sharply rising side stands, exposed concrete edges and orange-white façade accents."},
+    VIL:{venue:"Estadio de la Cerámica",style:"ceramicYellow",label:"Yellow ceramic outer skin",note:"A compact modern bowl wrapped in glossy yellow ceramic panels and yellow-and-blue seating sections."},
+    RSO:{venue:"Reale Arena",style:"blueShell",label:"Continuous blue-white roof shell",note:"A compact, close-to-pitch bowl with a smooth continuous canopy and blue-white translucent façade panels."},
+    ATH:{venue:"San Mamés",style:"meshSkin",label:"Illuminated mesh envelope",note:"A rounded bowl enclosed by a luminous mesh-like outer skin, with repeated vertical structural ribs."},
+    JUV:{venue:"Allianz Stadium Torino",style:"compactModern",label:"Compact modern football bowl",note:"A tight rectangular bowl with rounded corners, two clear seating decks and a clean steel roof ring."},
+    INT:{venue:"Stadio Giuseppe Meazza · San Siro",style:"sanSiroTowers",label:"Eleven spiral access towers",note:"The shared Milan ground’s signature cylindrical external towers, helical access ramps and deep red roof beams."},
+    MIL:{venue:"Stadio Giuseppe Meazza · San Siro",style:"sanSiroTowers",label:"Eleven spiral access towers",note:"The shared Milan ground’s signature cylindrical external towers, helical access ramps and deep red roof beams."},
+    NAP:{venue:"Stadio Diego Armando Maradona",style:"olympicTrack",label:"Open oval sports bowl",note:"An open oval stadium form with an athletics track ring, separated concrete decks and sky-blue seating."},
+    ROM:{venue:"Stadio Olimpico",style:"olympicTrack",label:"Olympic oval · covered grandstands",note:"A broad oval sports bowl with an athletics track, curved upper decks and a continuous pale roof edge."},
+    LAZ:{venue:"Stadio Olimpico",style:"olympicTrack",label:"Olympic oval · covered grandstands",note:"A broad oval sports bowl with an athletics track, curved upper decks and a continuous pale roof edge."},
+    ATA:{venue:"New Balance Arena · Gewiss Stadium",style:"compactStand",label:"Rebuilt compact grandstands",note:"A compact renovated ground with steep stands close to the pitch and alternating blue-black exterior bands."},
+    FIO:{venue:"Stadio Artemio Franchi",style:"marathonTower",label:"Concrete tower · exposed roof",note:"An architectural concrete stand with an exposed cantilever canopy, vertical tower and open structural details."},
+    FCB:{venue:"Allianz Arena",style:"etfeDiamond",label:"Illuminated diamond-panel façade",note:"A smooth oval outer shell covered in glowing diamond-shaped ETFE-style panels, with a luminous white roof edge."},
+    BVB:{venue:"Signal Iduna Park",style:"yellowWall",label:"The Yellow Wall · steep south terrace",note:"A huge steep single-tier south stand in bright yellow, framed by tall corner pylons and exposed roof trusses."},
+    B04:{venue:"BayArena",style:"roundArena",label:"Compact rounded arena",note:"A compact rounded bowl with a circular roof edge, glass corner towers and tight seating geometry."},
+    RBL:{venue:"Red Bull Arena",style:"innerBowl",label:"Oval inner bowl · outer concourse",note:"An oval inner seating bowl framed by a taller outer concourse ring and four entrance towers."},
+    SGE:{venue:"Deutsche Bank Park",style:"retractableCanopy",label:"Retractable centre canopy",note:"A broad oval roof with a central opening, radial cable spokes and a suspended centre canopy detail."},
+    VFB:{venue:"MHPArena",style:"tensionCanopy",label:"Tensioned roof membrane",note:"A curved translucent roof edge supported by repeated steel masts and tension members."},
+    WOB:{venue:"Volkswagen Arena",style:"vArena",label:"Angular V-frame supports",note:"A symmetrical rectangular bowl with large V-shaped façade supports and a clean cantilever roof."},
+    BMG:{venue:"Borussia-Park",style:"cornerMasts",label:"Four-corner mast structure",note:"A simple modern four-sided bowl with visible corner masts, white roof beams and green seating accents."},
+    PSG:{venue:"Parc des Princes",style:"concreteRibs",label:"Sculptural concrete rib ring",note:"A rounded concrete bowl with repeated sweeping external ribs and a tight enclosed roof overhang."},
+    OM:{venue:"Orange Vélodrome",style:"waveCanopy",label:"Sweeping wave-shaped white roof",note:"A dramatic white canopy that rises and falls in long waves around the bowl, above sky-blue seating."},
+    OL:{venue:"Groupama Stadium",style:"radialCanopy",label:"Large radial-roof arena",note:"A large modern bowl with a deep upper deck, broad roof spans and external radial support frames."},
+    ASM:{venue:"Stade Louis II",style:"archedOpen",label:"Open stand · repeated concrete arches",note:"A compact open stadium with repeated monumental arches and a distinctive exposed end structure."},
+    LIL:{venue:"Decathlon Arena · Stade Pierre-Mauroy",style:"slidingRoof",label:"Convertible sliding roof",note:"A rectangular multi-tier bowl with roof rails and two visibly separated sliding canopy panels."},
+    RCL:{venue:"Stade Bollaert-Delelis",style:"classicTerrace",label:"Traditional steep four stands",note:"A traditional close-to-pitch ground with steep separate stands, exposed steel roof trusses and red-yellow seating."},
+    OGC:{venue:"Allianz Riviera",style:"meshSkin",label:"Timber-and-mesh outer envelope",note:"A modern rounded bowl with a translucent lattice-like façade, repeated ribs and pale roof panels."},
+    REN:{venue:"Roazhon Park",style:"compactTerrace",label:"Compact steep-sided ground",note:"A compact traditional ground with close stands, dark steel roof beams and red-black fascia details."},
+    WHU:{venue:"London Stadium",style:"londonOlympicBowl",label:"Large converted Olympic bowl",note:"A broad elliptical bowl with a light cable-supported roof, upper concourse ring and large video screens."},
+    EVE:{venue:"Hill Dickinson Stadium",style:"waterfrontBrick",label:"Waterfront brick-and-steel arena",note:"A robust modern rectangular bowl with brick-toned exterior panels, exposed diagonal steel frames and a deep continuous roof."},
+    BHA:{venue:"American Express Stadium",style:"compactModern",label:"Open-sided modern bowl",note:"A compact modern bowl set into its landscape, with pale roof trusses and blue-white seating sections."},
+    CRY:{venue:"Selhurst Park",style:"compactTerrace",label:"Traditional close-quarters ground",note:"A tight urban stadium with steep stands, a more prominent main stand and simple exposed roof trusses."},
+    FUL:{venue:"Craven Cottage",style:"cottageHeritage",label:"Historic riverside ground",note:"A small traditional football ground with brickwork, a white gabled pavilion detail and close stands."},
+    BRE:{venue:"Gtech Community Stadium",style:"compactStand",label:"Compact enclosed modern bowl",note:"A tight two-tier bowl with rounded corners, dark glazed concourses and a crisp steel roof ring."},
+    WOL:{venue:"Molineux Stadium",style:"compactModern",label:"Four-stand modern bowl",note:"A compact four-sided stadium with gold-and-black seating bands, angular roof corners and strong corner supports."},
+    LEI:{venue:"King Power Stadium",style:"grandBowl",label:"Rounded two-tier bowl",note:"A symmetrical enclosed bowl with two clear seating tiers, broad roof edges and blue-and-white exterior panels."},
+    LEE:{venue:"Elland Road",style:"steepMestalla",label:"Steep traditional grandstands",note:"A close traditional stadium with high rising stands, a taller main stand and exposed steel roof structure."},
+    SOU:{venue:"St Mary's Stadium",style:"grandBowl",label:"Enclosed modern bowl",note:"A rounded four-sided bowl with curved roof corners, red-and-white seating bands and a broad upper concourse."},
+    BET:{venue:"Estadio Benito Villamarín",style:"grandBowl",label:"Large green-and-white bowl",note:"A broad multi-tier bowl with a high main stand and green-and-white seating blocks."},
+    GIR:{venue:"Estadi Montilivi",style:"compactTerrace",label:"Compact open stadium",note:"A smaller open ground with a steep home end, compact covered stands and red-white seating."},
+    CEL:{venue:"Estadio Abanca-Balaídos",style:"blueShell",label:"Renovated steel-roof bowl",note:"A partly renovated, asymmetrical bowl with blue seats, clean steel roof edges and open corners."},
+    GET:{venue:"Estadio Coliseum",style:"compactStand",label:"Compact concrete bowl",note:"A small enclosed concrete ground with steep blue seating and simple covered stands."},
+    OSA:{venue:"Estadio El Sadar",style:"compactTerrace",label:"Steep all-red bowl",note:"A tight, steep-sided bowl with continuous red seating and a strong roofline around the pitch."},
+    MLL:{venue:"Estadi Mallorca Son Moix",style:"compactModern",label:"Renovated compact bowl",note:"A modernised compact ground with a strong main stand, open corners and red-black seating details."},
+    ESP:{venue:"RCDE Stadium",style:"ovalTruss",label:"Modern oval stadium",note:"A large oval bowl with two seating tiers, glass concourses and a continuous steel roof structure."},
+    RAY:{venue:"Estadio de Vallecas",style:"classicTerrace",label:"Tight city-ground terraces",note:"A traditional compact urban ground with one more prominent main stand and simple close-set terraces."},
+    ALA:{venue:"Estadio de Mendizorrotza",style:"compactTerrace",label:"Traditional compact terraces",note:"A small four-sided stadium with steep covered terraces and blue-white seating."},
+    GRA:{venue:"Estadio Nuevo Los Cármenes",style:"compactStand",label:"Open modern bowl",note:"A compact open bowl with simple concrete stands, red-and-white seating and corner gaps."},
+    BOL:{venue:"Stadio Renato Dall’Ara",style:"dallAraTower",label:"Historic brick tower and grandstand",note:"A historic Italian stadium with a prominent brick Marathon Tower, covered main stand and exposed concrete structure."},
+    TOR:{venue:"Stadio Olimpico Grande Torino",style:"olympicTrack",label:"Oval sports-ground form",note:"A renovated oval stadium with a covered seating ring, a visible track-like perimeter and maroon seating."},
+    UDI:{venue:"Bluenergy Stadium · Stadio Friuli",style:"grandBowl",label:"Open oval concrete bowl",note:"A wide oval ground with low open corners, a roofed upper deck and a strong concrete perimeter."},
+    GEN:{venue:"Stadio Luigi Ferraris",style:"gothicFerraris",label:"Old-school towered football ground",note:"A traditional enclosed rectangle with four prominent corner towers, steep stands and red-blue façade bands."},
+    PAR:{venue:"Stadio Ennio Tardini",style:"cottageHeritage",label:"Historic open-air ground",note:"A traditional open stadium with older concrete stands, brick details and a modest roof over the main stand."},
+    SAM:{venue:"Stadio Luigi Ferraris",style:"gothicFerraris",label:"Old-school towered football ground",note:"A traditional enclosed rectangle with four prominent corner towers, steep stands and blue-red façade bands."},
+    SAS:{venue:"Mapei Stadium · Città del Tricolore",style:"compactModern",label:"Modern rectangular stadium",note:"A rectangular ground with separate stands, open corner gaps and clean white steel roof framing."},
+    CAG:{venue:"Unipol Domus",style:"modularArena",label:"Modular steel-and-seat arena",note:"A compact temporary-style football ground with visible modular steel frames, stacked seating blocks and close pitch-side stands."},
+    LEC:{venue:"Stadio Via del Mare",style:"olympicTrack",label:"Open oval stadium",note:"An open oval stadium with large separated stands and yellow-red seating sections."},
+    PAL:{venue:"Stadio Renzo Barbera",style:"compactStand",label:"Traditional oval concrete bowl",note:"A classic Italian stadium with curved concrete stands, open upper edges and pink-black seating."},
+    SCF:{venue:"Europa-Park Stadion",style:"tensionCanopy",label:"Modern rectangular tension-roof stadium",note:"A modern rectangular bowl with a strong single-tier end, roof membrane and steel cable supports."},
+    M05:{venue:"MEWA Arena",style:"compactModern",label:"Compact red-seated arena",note:"A tight modern bowl with red seating, rounded corners and a broad roof edge."},
+    FCU:{venue:"Stadion An der Alten Försterei",style:"classicTerrace",label:"Traditional standing terraces",note:"A steep, intimate old-school ground with open corners, exposed steel and terrace-style stands."},
+    TSG:{venue:"PreZero Arena",style:"compactModern",label:"Compact enclosed arena",note:"A neat oval bowl with two compact tiers, covered stands and blue seating accents."},
+    SVW:{venue:"Weserstadion",style:"solarShell",label:"Green solar-panel stadium shell",note:"A riverside oval ground with green outer panels, a roof-edge solar array and white-green seating."},
+    FCA:{venue:"WWK Arena",style:"compactStand",label:"Steep enclosed football bowl",note:"A compact modern ground with steep stands, red-white seating sections and a strong roof ring."},
+    BOC:{venue:"Vonovia Ruhrstadion",style:"classicTerrace",label:"Traditional close-to-pitch ground",note:"A traditional four-stand stadium with blue seating, exposed roof trusses and very little space between stands and pitch."},
+    HSV:{venue:"Volksparkstadion",style:"ovalTruss",label:"Large oval roofed bowl",note:"A broad oval stadium with steep side tiers, a continuous roof and a large central scoreboard."},
+    S04:{venue:"Veltins-Arena",style:"slidingRoof",label:"Retractable roof and moving pitch system",note:"A modern enclosed arena with sliding roof panels, strong steel rails and a large central roof opening."},
+    H96:{venue:"Heinz von Heiden Arena",style:"radialCanopy",label:"Oval roofed stadium",note:"A large oval ground with a continuous roof edge, radial support structure and red seating accents."},
+    NAN:{venue:"Stade de la Beaujoire",style:"ovalTruss",label:"Four-stand steel-roof bowl",note:"A large four-sided French ground with steep stands, curved roof corners and yellow-green seating sections."},
+    TFC:{venue:"Stadium de Toulouse",style:"grandBowl",label:"Compact oval football bowl",note:"A clean oval bowl with two main tiers, rounded corners and purple seating details."},
+    RCS:{venue:"Stade de la Meinau",style:"grandBowl",label:"Traditional oval bowl",note:"A compact oval ground with steep stands, a broad main stand roof and blue-white seating."},
+    MHSC:{venue:"Stade de la Mosson",style:"compactStand",label:"Open-corner concrete ground",note:"A concrete stadium with open corners, several separate covered stands and orange-blue accents."},
+    SB29:{venue:"Stade Francis-Le Blé",style:"classicTerrace",label:"Compact traditional terraces",note:"A small close-to-pitch ground with traditional steep stands, modest roofs and red-white seating."},
+    SDR:{venue:"Stade Auguste-Delaune",style:"compactModern",label:"Modern compact bowl",note:"A compact enclosed bowl with red-and-white seating, clean roof geometry and glass concourses."},
+    AJA:{venue:"Stade de l’Abbé-Deschamps",style:"classicTerrace",label:"Small open riverside ground",note:"A traditional compact stadium with one larger main stand, open corners and simple steel roof trusses."},
+    ASSE:{venue:"Stade Geoffroy-Guichard",style:"greenCauldron",label:"The Cauldron · steep green stands",note:"A compact four-sided stadium with steep green stands, distinct roof trusses and an enclosed, atmospheric bowl."},
+    HAC:{venue:"Stade Océane",style:"meshSkin",label:"Blue modern shell",note:"A modern oval arena with a blue translucent outer envelope, curved roof and illuminated façade ribs."},
+    FCL:{venue:"Stade du Moustoir",style:"compactTerrace",label:"Compact urban ground",note:"A tight city stadium with close stands, an asymmetric main stand and orange-black detailing."}
+  };
+  const generic={venue:"Club Stadium",style:"compactStand",label:"Club-specific modern stadium",note:"A custom ground with club colours, detailed seating decks, roof supports and a matching outer façade."};
+  const profile=()=>Object.assign({},generic,profiles[CL[S.club].k]||{});
+  const colour=(hex)=>new THREE.Color(hex);
+  const material=(hex,roughness=.55,metalness=.25,emissive=0,opacity=1)=>new THREE.MeshStandardMaterial({color:hex,roughness,metalness,emissive,transparent:opacity<1,opacity,side:THREE.DoubleSide});
+  const box=(group,w,h,d,x,y,z,mat,rx=0,ry=0,rz=0)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=true;m.receiveShadow=true;group.add(m);return m;};
+  const cylinder=(group,r1,r2,h,x,y,z,mat,segments=16)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,segments),mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;group.add(m);return m;};
+  const tube=(group,points,radius,mat,segments=48)=>{const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(p[0],p[1],p[2])));const m=new THREE.Mesh(new THREE.TubeGeometry(curve,segments,radius,7,false),mat);m.castShadow=true;m.receiveShadow=true;group.add(m);return m;};
+  const between=(group,a,b,r,mat)=>{const av=new THREE.Vector3(...a),bv=new THREE.Vector3(...b),dir=bv.clone().sub(av),m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,dir.length(),8),mat);m.position.copy(av.add(bv).multiplyScalar(.5));m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());group.add(m);return m;};
+  function board(group,text,club,x,y,z,w=28,h=5,rotY=0){
+    const c=document.createElement("canvas");c.width=1024;c.height=256;const ctx=c.getContext("2d");
+    const bg=ctx.createLinearGradient(0,0,1024,0);bg.addColorStop(0,club.a);bg.addColorStop(1,club.b);
+    ctx.fillStyle="#071323";ctx.fillRect(0,0,1024,256);ctx.fillStyle=bg;ctx.fillRect(0,0,1024,17);ctx.fillRect(0,239,1024,17);
+    ctx.fillStyle="#fff";ctx.font="900 76px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.shadowColor="#7deaff";ctx.shadowBlur=12;ctx.fillText(text.toUpperCase(),512,130);
+    const tex=new THREE.CanvasTexture(c);tex.anisotropy=4;if("colorSpace" in tex&&THREE.SRGBColorSpace)tex.colorSpace=THREE.SRGBColorSpace;
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide,toneMapped:false}));mesh.position.set(x,y,z);mesh.rotation.y=rotY;group.add(mesh);return mesh;
+  }
+  function roundedLoop(rx,rz,y,steps=96){const pts=[];for(let i=0;i<steps;i++){const t=i/steps*Math.PI*2,c=Math.cos(t),s=Math.sin(t);pts.push([rx*c,y,rz*s]);}return pts;}
+  function ring(group,rx,rz,y,r,mat,steps=96){return tube(group,roundedLoop(rx,rz,y,steps),r,mat,steps);}
+  function panelMesh(group,points,mat){const geo=new THREE.BufferGeometry();const verts=[];points.forEach(p=>verts.push(...p));geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));geo.setIndex([0,1,2,0,2,3]);geo.computeVertexNormals();const mesh=new THREE.Mesh(geo,mat);mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);return mesh;}
+  function waveRoof(group,side,club,metal){
+    const nx=34,nv=7,verts=[],idx=[];for(let i=0;i<=nx;i++){const u=i/nx,x=-74+148*u,fade=Math.sin(Math.PI*u),wave=2.6+2.3*Math.sin(u*Math.PI*4);for(let j=0;j<=nv;j++){const v=j/nv,z=side*(42+27*v),y=26+wave+fade*1.8+Math.sin(v*Math.PI)*1.6;verts.push(x,y,z);}}
+    for(let i=0;i<nx;i++)for(let j=0;j<nv;j++){const a=i*(nv+1)+j,b=a+nv+1;idx.push(a,b,a+1,b,b+1,a+1);}
+    const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));geo.setIndex(idx);geo.computeVertexNormals();group.add(new THREE.Mesh(geo,metal));
+    for(let x=-68;x<=68;x+=17){tube(group,[[x,24,side*43],[x,29,side*53],[x,28,side*68]],.32,club);between(group,[x,11,side*69],[x,28,side*66],.48,club);}
+  }
+  function addCommonClubDetail(g,club,p,level){
+    const steel=material(0x70839a,.36,.78),darkSteel=material(0x17263a,.48,.65),glass=material(0x75b8d8,.2,.38,0x0b2638,.55),clubMat=material(club.a,.45,.32),white=material(0xeaf3ff,.34,.3),led=new THREE.MeshBasicMaterial({color:0x65eaff});
+    // More convincing multi-deck fascia, concourse glazing and roof-edge lighting.
+    for(const side of [-1,1]){
+      box(g,132,.72,1.2,0,9.7,side*62,clubMat);box(g,132,.36,1.0,0,16.8,side*65,darkSteel);
+      for(let x=-62;x<=62;x+=4.8){box(g,2.6,1.45,.18,x,5.6,side*67.25,glass);box(g,2.6,.16,.22,x,6.45,side*67.3,steel);}
+      // LED ribbon just under the main roof edge.
+      box(g,128,.22,.42,0,22.2,side*66.2,led);
+    }
+    for(const side of [-1,1]){
+      box(g,1.15,.72,110,side*76,9.7,0,clubMat);box(g,1.0,.36,110,side*79,16.8,0,darkSteel);
+      for(let z=-51;z<=51;z+=5){box(g,.18,1.45,2.7,side*77.2,5.6,z,glass);}
+    }
+    // Exterior entrance frames, turnstile bays and lit signage.
+    for(const x of [-48,-24,24,48]){
+      box(g,3.2,8,3.2,x,4,-77,clubMat);box(g,4.1,.35,3.8,x,8.2,-77,steel);
+      box(g,1.1,4.4,.18,x,3.8,-78.8,glass);
+    }
+    board(g,p.venue,club,0,11,-79,38,5,0);
+    board(g,club.n+" HOME",club,0,11,79,32,4,Math.PI);
+    // Light towers with multiple lamp housings, not plain single cubes.
+    for(const sx of [-1,1])for(const sz of [-1,1]){
+      const x=sx*83,z=sz*75;
+      cylinder(g,.9,.45,19,x,10,z,steel,12);box(g,8,1.1,2.2,x,20.1,z,darkSteel);
+      for(let i=0;i<7;i++){const lamp=new THREE.MeshBasicMaterial({color:0xfff5d8});box(g,.72,.26,.34,x-2.55+i*.85,20.8,z,lamp);}
+    }
+    // Fine roof truss tie-lines to make the structure legible in close views.
+    if(level>=8){
+      for(const side of [-1,1])for(let x=-60;x<=60;x+=20){between(g,[x,23,side*43],[x,28,side*65],.22,steel);between(g,[x,28,side*65],[x+10,23,side*43],.16,darkSteel);}
+      ring(g,80,67,25.5,.55,steel,120);ring(g,54,39,25.2,.24,led,100);
+    }
+  }
+  function addProfileDetail(g,club,p,level){
+    const steel=material(0x8798aa,.34,.8),silver=material(0xc3cfdb,.28,.72),black=material(0x111b28,.55,.5),white=material(0xf0f3f7,.32,.28),red=material(0xb8263d,.4,.48),yellow=material(0xf2d51b,.4,.22),blue=material(0x297dbd,.4,.25),concrete=material(0x566273,.86,.1),glass=material(0x8cd2ef,.18,.45,0x123d56,.45);
+    const cmat=material(club.a,.42,.28),xmat=material(club.b,.48,.2);
+    const text=(s,x,y,z,w=32,h=5,rot=0)=>board(g,s,club,x,y,z,w,h,rot);
+    const addArches=(count=7,axis="x",span=68,top=31,mat=steel)=>{
+      for(let i=0;i<count;i++){const u=-span+2*span*i/(count-1);if(axis==="x")tube(g,[[u,7,-66],[u,top*.72,-54],[u,top,-35],[u,top+2,0],[u,top,35],[u,top*.72,54],[u,7,66]],.62,mat,42);else tube(g,[[-76,7,u],[-61,top*.72,u],[-43,top,u],[0,top+2,u],[43,top,u],[61,top*.72,u],[76,7,u]],.62,mat,42);}
+    };
+    const addRadialCables=(count=28,outerX=80,outerZ=68,innerX=53,innerZ=38,y=28,mat=steel)=>{
+      for(let i=0;i<count;i++){const a=i/count*Math.PI*2;const ox=Math.cos(a)*outerX,oz=Math.sin(a)*outerZ,ix=Math.cos(a)*innerX,iz=Math.sin(a)*innerZ;tube(g,[[ox,y-1,oz],[ox*.72+ix*.28,y+1,oz*.72+iz*.28],[ix,y,iz]],.16,mat,12);}
+    };
+    switch(p.style){
+      case "cableBowl":{
+        // Etihad-inspired cable-net roof and a more pronounced north-end stand profile.
+        addRadialCables(36,84,70,55,39,29,steel);
+        ring(g,84,70,28,.72,steel);ring(g,55,39,28,.38,silver);
+        for(let z=-48;z<=48;z+=16){between(g,[83,5,z],[83,28,z],.72,blue);between(g,[83,28,z],[55,29,z],.28,steel);}
+        box(g,7,15,100,80,14,0,blue);box(g,8,.9,102,80,22,0,white);text("NORTH STAND",80,19,-4,32,4,Math.PI/2);
+        text("ETIHAD",0,22,-68,25,3);break;
+      }
+      case "ovalTruss":{
+        ring(g,83,70,27,.9,white,128);ring(g,56,39,27,.35,steel,100);addArches(11,"x",68,31,white);
+        for(const x of [-1,1])for(const z of [-1,1]){const boardMesh=box(g,13,5,1.2,x*63,18,z*53,black);board(g,"ARSENAL",club,x*63,18,z*53+z*.7,12,4,z<0?0:Math.PI);}
+        text("EMIRATES",0,10,-68,28,3);break;
+      }
+      case "kop":{
+        // Anfield: massive steep end terrace and a deep Main Stand roof.
+        box(g,8,22,98,83,13,0,red);box(g,10,2,102,83,25,0,black);
+        for(let i=0;i<15;i++){box(g,6,.55,94,78+i*.48,3+i*1.25,0,i%2?red:cmat);}
+        for(let z=-56;z<=56;z+=14){between(g,[68,9,z],[81,27,z],.48,red);}
+        text("THE KOP",83,22,0,26,5,Math.PI/2);text("ANFIELD",0,21,-68,24,3);break;
+      }
+      case "compactClassic":{
+        for(let x=-58;x<=58;x+=12){box(g,1.2,19,2,x,10,65,red);box(g,1.8,1.2,2.4,x,20,65,white);}
+        box(g,126,2,8,0,25,63,steel);text("STAMFORD BRIDGE",0,13,-69,34,4);break;
+      }
+      case "asymTwin":{
+        // Old Trafford's high west side and deep three-deck silhouette.
+        box(g,7,24,132,-80,13,0,red);box(g,9,2.4,140,-80,26,0,steel);
+        for(let tier=0;tier<3;tier++){box(g,3,2,126,-74,8+tier*7,0,tier===1?red:cmat);}
+        for(let z=-56;z<=56;z+=18){between(g,[-82,8,z],[-82,29,z],.55,red);}
+        text("SIR ALEX FERGUSON STAND",-82,24,0,48,5,Math.PI/2);text("OLD TRAFFORD",0,10,-69,28,3);break;
+      }
+      case "singleSouth":{
+        // Tottenham's exceptionally tall, single-tier South Stand behind one goal.
+        box(g,10,29,104,82,16,0,black);box(g,12,2,108,82,31,0,steel);
+        for(let z=-48;z<=48;z+=8){between(g,[74,7,z],[82,30,z],.42,steel);}
+        tube(g,[[-80,27,-64],[-36,35,-68],[0,38,-70],[36,35,-68],[80,27,-64]],1.15,white,70);
+        for(let x=-70;x<=70;x+=14)between(g,[x,27,-64],[x,35,-58],.18,steel);
+        text("SOUTH STAND",83,19,0,30,5,Math.PI/2);text("TOTTENHAM HOTSPUR",0,12,-69,38,3);break;
+      }
+      case "asymGrandstand":{
+        box(g,8,25,124,-79,13,0,white);box(g,9,1.5,132,-79,26,0,black);
+        for(let i=0;i<13;i++){const z=-58+i*9;box(g,1.4,22,1.5,-74,12,z,i%2?black:white);}
+        text("ST JAMES' PARK",0,11,-69,33,4);break;
+      }
+      case "heritageGable":{
+        for(const side of [-1,1]){tube(g,[[-72,23,side*65],[-42,29,side*67],[0,34,side*67],[42,29,side*67],[72,23,side*65]],.72,red,54);}
+        tube(g,[[70,5,-62],[78,23,-52],[78,30,0],[78,23,52],[70,5,62]],.7,steel,42);
+        for(let z=-52;z<=52;z+=13)box(g,1.1,10,1.1,-76,6,z,concrete);
+        text("VILLA PARK",0,11,-69,25,4);break;
+      }
+      case "metalLouvre":{
+        // Bernabéu-inspired wrap-around stainless louvres and radial retractable roof ribs.
+        for(const side of [-1,1])for(let x=-70;x<=70;x+=3.8){const fin=box(g,.42,11,1.0,x,12,side*69,silver);fin.rotation.z=(x%2?-.035:.035);}
+        for(const side of [-1,1])for(let z=-55;z<=55;z+=4){box(g,1,11,.42,side*79,12,z,silver);}
+        addRadialCables(44,82,72,52,36,31,steel);ring(g,84,72,24,.95,silver,144);ring(g,48,34,30,.42,white,120);
+        for(const side of [-1,1]){box(g,140,.6,1.3,0,23,side*72,black);box(g,138,.24,.35,0,22.5,side*71.6,led);}
+        text("SANTIAGO BERNABÉU",0,13,-72,42,4);break;
+      }
+      case "grandBowl":{
+        ring(g,86,73,23,.8,steel,128);ring(g,77,65,15,.48,white,120);
+        for(let i=0;i<18;i++){const a=i/18*Math.PI*2,x=Math.cos(a),z=Math.sin(a);between(g,[x*83,9,z*69],[x*83,27,z*69],.42,steel);}
+        text("BARÇA",0,11,-69,25,4);break;
+      }
+      case "radialCanopy":{
+        ring(g,84,70,27,.75,white,128);ring(g,52,37,27,.4,steel,100);addRadialCables(42,84,70,52,37,29,steel);addArches(9,"x",70,31,white);
+        for(let i=0;i<8;i++){const a=i*Math.PI/4,x=Math.cos(a)*82,z=Math.sin(a)*67;cylinder(g,1.1,.6,24,x,12,z,steel,12);}
+        text("HOME OF THE CLUB",0,11,-70,35,3);break;
+      }
+      case "redWhiteFacade":{
+        for(const side of [-1,1])for(let x=-68;x<=68;x+=4){const m=(Math.floor((x+68)/4)%2)?red:white;box(g,2.5,12,.65,x,9,side*69,m);}
+        for(let z=-52;z<=52;z+=4){box(g,.65,12,2.5,-78,9,z,z%2?red:white);box(g,.65,12,2.5,78,9,z,z%2?white:red);}
+        text("SEVILLA",0,13,-70,25,4);break;
+      }
+      case "steepMestalla":{
+        for(const side of [-1,1]){const stand=box(g,10,30,124,side*79,15,0,concrete);stand.rotation.z=side*.04;for(let z=-54;z<=54;z+=12)between(g,[side*76,6,z],[side*81,29,z],.45,steel);}
+        text("MESTALLA",0,12,-70,27,4);break;
+      }
+      case "ceramicYellow":{
+        for(const side of [-1,1])for(let x=-70;x<=70;x+=3.6){box(g,3.0,5.8,.5,x,9,side*69,yellow);}
+        ring(g,80,67,22,.55,yellow,120);text("ESTADIO DE LA CERÁMICA",0,12,-70,43,4);break;
+      }
+      case "blueShell":{
+        for(const side of [-1,1])for(let x=-70;x<=70;x+=6){box(g,1.1,16,.55,x,12,side*68,glass);}
+        ring(g,82,69,23,.85,white,120);addArches(9,"x",68,28,blue);text("REALE ARENA",0,11,-70,28,4);break;
+      }
+      case "meshSkin":{
+        const meshMat=new THREE.MeshStandardMaterial({color:club.a,wireframe:true,transparent:true,opacity:.45,metalness:.25,roughness:.35});
+        for(const side of [-1,1])for(let x=-72;x<=72;x+=9){box(g,.18,18,1,x,12,side*70,meshMat);}
+        for(const side of [-1,1])for(let x=-72;x<=72;x+=8){between(g,[x,3,side*68],[x,27,side*68],.28,steel);}
+        ring(g,82,69,24,.6,glass,120);text("SAN MAMÉS",0,11,-70,30,4);break;
+      }
+      case "compactModern":{
+        ring(g,80,67,23,.8,steel,120);for(let x=-60;x<=60;x+=20){between(g,[x,9,-65],[x,25,-65],.5,steel);between(g,[x,25,-65],[x+8,27,-50],.26,white);}text("ALLIANZ STADIUM",0,11,-68,34,3);break;
+      }
+      case "sanSiroTowers":{
+        // Eleven cylindrical external towers with visible spiral access ramps.
+        for(let i=0;i<11;i++){const a=i/11*Math.PI*2,x=Math.cos(a)*86,z=Math.sin(a)*73;cylinder(g,2.1,2.1,29,x,14.5,z,red,20);cylinder(g,2.55,2.55,1.3,x,29.5,z,black,20);
+          const helix=[];for(let k=0;k<=96;k++){const u=k/96,t=u*Math.PI*4.6;helix.push([x+Math.cos(t)*3.1,2+u*25,z+Math.sin(t)*3.1]);}tube(g,helix,.36,red,100);
+        }
+        for(const side of [-1,1])for(let x=-60;x<=60;x+=20)between(g,[x,26,side*65],[x+8,29,side*58],.48,red);
+        text("SAN SIRO",0,13,-70,25,4);break;
+      }
+      case "olympicTrack":{
+        const track=new THREE.Mesh(new THREE.TorusGeometry(61,5.2,8,128),material(0x8e5547,.88,.05));track.rotation.x=Math.PI/2;track.position.y=.05;track.scale.z=.72;g.add(track);
+        const inner=new THREE.Mesh(new THREE.TorusGeometry(55.2,.22,5,128),white);inner.rotation.x=Math.PI/2;inner.position.y=.12;inner.scale.z=.72;g.add(inner);
+        for(let i=0;i<12;i++){const a=i/12*Math.PI*2,x=Math.cos(a)*83,z=Math.sin(a)*70;between(g,[x,7,z],[x,25,z],.42,steel);}
+        ring(g,83,70,24,.62,white,128);text("STADIO",0,11,-70,22,4);break;
+      }
+      case "compactStand":{
+        for(const side of [-1,1])for(let x=-66;x<=66;x+=11){between(g,[x,6,side*65],[x,23,side*67],.4,steel);}
+        ring(g,81,67,22,.55,clubMat,120);text(p.venue,0,11,-69,34,4);break;
+      }
+      case "marathonTower":{
+        box(g,4,39,5,-76,19,59,concrete);box(g,5,2,6,-76,39,59,steel);const clock=new THREE.Mesh(new THREE.CircleGeometry(1.45,32),white);clock.position.set(-73.8,31.5,59);clock.rotation.y=Math.PI/2;g.add(clock);between(g,[-76,7,59],[-76,36,59],.65,steel);text("ARTEMIO FRANCHI",0,12,-69,36,4);break;
+      }
+      case "etfeDiamond":{
+        const geo=new THREE.BoxGeometry(3.1,2.0,.32),inst=new THREE.InstancedMesh(geo,new THREE.MeshStandardMaterial({color:0xffffff,roughness:.22,metalness:.18,emissive:0x233b55,emissiveIntensity:.22}),500),dummy=new THREE.Object3D();let k=0;const tones=[0xf5fbff,0xddeeff,0x8eb3d1,0xffffff];
+        for(const side of [-1,1])for(let x=-68;x<=68;x+=4.5)for(let y=3;y<=17;y+=3.5){dummy.position.set(x,y,side*70);dummy.rotation.set(0,0,((Math.round(x/4.5)+Math.round(y))%2)*.24);dummy.updateMatrix();inst.setMatrixAt(k,dummy.matrix);inst.setColorAt(k,new THREE.Color(tones[(Math.round(x/4.5)+Math.round(y/3.5))%tones.length]));k++;}
+        for(const side of [-1,1])for(let z=-55;z<=55;z+=6)for(let y=4;y<=16;y+=4){dummy.position.set(side*80,y,z);dummy.rotation.set(0,Math.PI/2,0);dummy.updateMatrix();inst.setMatrixAt(k,dummy.matrix);inst.setColorAt(k,new THREE.Color(tones[(Math.round(z/6)+Math.round(y/4))%tones.length]));k++;}
+        inst.count=k;inst.instanceMatrix.needsUpdate=true;g.add(inst);ring(g,86,74,23,.7,white,144);text("ALLIANZ ARENA",0,12,-72,32,4);break;
+      }
+      case "yellowWall":{
+        box(g,13,31,108,82,16,0,yellow);box(g,14,1.8,112,82,32,0,steel);
+        for(let z=-50;z<=50;z+=5){box(g,.7,28,1.0,75,15,z,black);}
+        for(let x=-60;x<=60;x+=20)between(g,[x,8,66],[x,30,70],.58,yellow);
+        text("THE YELLOW WALL",82,20,0,42,6,Math.PI/2);break;
+      }
+      case "roundArena":{
+        ring(g,82,68,25,.9,white,128);for(let i=0;i<8;i++){const a=i/8*Math.PI*2,x=Math.cos(a)*82,z=Math.sin(a)*68;cylinder(g,2.2,2.2,26,x,13,z,glass,18);}text("BAYARENA",0,11,-70,25,4);break;
+      }
+      case "innerBowl":{
+        ring(g,82,69,23,.7,blue,120);for(const [x,z] of [[-78,-66],[78,-66],[-78,66],[78,66]]){box(g,7,25,7,x,12,z,steel);box(g,10,1,10,x,25,z,clubMat);}text("RED BULL ARENA",0,12,-69,32,4);break;
+      }
+      case "retractableCanopy":{
+        addRadialCables(32,84,70,50,35,30,steel);ring(g,84,70,28,.9,white,128);
+        for(const side of [-1,1]){box(g,132,.65,17,0,29,side*54,white);for(let x=-58;x<=58;x+=18)between(g,[x,25,side*66],[x,29,side*48],.3,steel);}
+        box(g,52,.8,34,0,30,0,glass);text("DEUTSCHE BANK PARK",0,11,-70,42,4);break;
+      }
+      case "tensionCanopy":{
+        addArches(13,"x",72,30,white);ring(g,82,69,25,.5,steel,128);for(let x=-60;x<=60;x+=12){between(g,[x,13,0],[x,29,65],.22,steel);}text("MHPArena",0,11,-69,23,4);break;
+      }
+      case "vArena":{
+        for(const z of [-1,1])for(const x of [-1,1]){tube(g,[[x*84,2,z*66],[x*87,14,z*66],[x*65,28,z*56]],1.05,white,32);tube(g,[[x*84,2,z*66],[x*76,15,z*66],[x*65,28,z*56]],.75,steel,32);}
+        ring(g,80,67,25,.5,steel,120);text("VOLKSWAGEN ARENA",0,11,-69,40,4);break;
+      }
+      case "cornerMasts":{
