@@ -1,0 +1,391 @@
+  V27_normalize=function(){
+    const result=V40_oldNormalize.apply(this,arguments);
+    if(S&&S.stock){["fb","fs"].forEach(mode=>{
+      S.stock[mode]=S.stock[mode]||{};
+      (POOL[mode]||[]).forEach(player=>{if(!V40_isOrdinaryPlayer(player))S.stock[mode][player.id]=0;});
+    });}
+    return result;
+  };
+
+  // Keep goal restarts deliberate. The existing kickoff(1-t) gives the restart to the non-scoring side.
+  // Increase the presentation pause without changing the score or possession rules.
+  const V40_oldGoal=goal;
+  goal=function(team){const result=V40_oldGoal.apply(this,arguments);if(M&&!M.over)M.pause=Math.max(Number(M.pause)||0,6.2);return result;};
+
+  // Fullscreen must use the visible viewport, not a stale 100vh value or padded container.
+  function V40_updateViewport(){
+    const vv=window.visualViewport,w=Math.max(1,Math.round(vv?vv.width:window.innerWidth)),h=Math.max(1,Math.round(vv?vv.height:window.innerHeight));
+    document.documentElement.style.setProperty("--ks-v40-vw",w+"px");
+    document.documentElement.style.setProperty("--ks-v40-vh",h+"px");
+    if(typeof v39Resize==="function")v39Resize();
+  }
+  const V40_fsStyle=document.createElement("style");V40_fsStyle.id="kikstart-v40-fullscreen-fix";V40_fsStyle.textContent=`
+    html.v39-lock-screen,html.v39-lock-screen body{position:relative!important;width:100%!important;height:var(--ks-v40-vh,100dvh)!important;min-height:var(--ks-v40-vh,100dvh)!important;margin:0!important;padding:0!important;overflow:hidden!important;overscroll-behavior:none!important;}
+    #matchView.v39-fullscreen{position:fixed!important;top:0!important;right:0!important;bottom:0!important;left:0!important;inset:0!important;width:var(--ks-v40-vw,100vw)!important;height:var(--ks-v40-vh,100dvh)!important;min-width:100%!important;min-height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;gap:0!important;border:0!important;border-radius:0!important;box-sizing:border-box!important;overflow:hidden!important;}
+    #matchView.v39-fullscreen #ksMatchTopbar,#matchView.v39-fullscreen .ks-match-topbar{flex:0 0 auto!important;margin:0!important;border-radius:0!important;}
+    #matchView.v39-fullscreen #stage{position:relative!important;flex:1 1 0!important;width:100%!important;height:0!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;margin:0!important;border-radius:0!important;overflow:hidden!important;}
+    #matchView.v39-fullscreen #stage>canvas:not(#v5mini){position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;display:block!important;}
+    #matchView.v39-fullscreen #stage>canvas#v5mini{position:absolute!important;top:10px!important;right:10px!important;left:auto!important;bottom:auto!important;width:clamp(88px,12vw,148px)!important;height:auto!important;aspect-ratio:168/104!important;max-width:26%!important;max-height:20%!important;z-index:40!important;}
+    #matchView.v39-fullscreen #ksControlDeck,#matchView.v39-fullscreen #endBox{flex:0 0 auto!important;width:100%!important;max-width:none!important;margin:0!important;}
+    @media(max-width:700px){#matchView.v39-fullscreen #stage{flex:1 1 0!important;}#matchView.v39-fullscreen #stage>canvas#v5mini{width:94px!important;max-width:25%!important;top:6px!important;right:6px!important;}}
+  `;document.head.appendChild(V40_fsStyle);
+  V40_updateViewport();window.addEventListener("resize",V40_updateViewport);window.addEventListener("orientationchange",()=>setTimeout(V40_updateViewport,160));
+  if(window.visualViewport){window.visualViewport.addEventListener("resize",V40_updateViewport);window.visualViewport.addEventListener("scroll",()=>{if(window.__kikstartNativeFullscreen||document.getElementById("matchView")?.classList.contains("v39-fullscreen"))window.scrollTo(0,0);});}
+
+  // Better connection diagnostics: distinguish signalling, room-code and WebRTC failures.
+  const net=window.KIKSTART_NET;if(net){
+    const oldStatus=net.status;
+    const onlineRoot=document.getElementById("online");
+    if(onlineRoot){const note=onlineRoot.querySelector(".net-notes");if(note)note.insertAdjacentHTML("beforeend","<p class=\"net-help\">Connection troubleshooting: both players must use the same game mode and a current game version. If a room does not connect after 20 seconds, ask the host to create a fresh room code. Some school, work or public networks block WebRTC; PeerJS uses encrypted direct connections with TURN relays where available.</p>");}
+  }
+
+  document.title="KIKSTART v40.1 — Pack Safety, Friend Matches & Matchday Fixes";
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content="40.1";
+  window.KIKSTART_GAME_VERSION="40.1";
+  document.querySelectorAll("#top .ks-build-version").forEach(el=>el.textContent="KIKSTART v40.1");
+  const footer=document.querySelector(".ks-boot-footer");if(footer)footer.textContent="KIKSTART · FOOTBALL EXPERIENCE · v40.1";
+  try{
+    const oldShowV40=showTab;
+    showTab=window.showTab=function(name){
+      const result=oldShowV40.apply(this,arguments);
+      if(name==="updates"){
+        const root=document.getElementById("updates"),timeline=root&&root.querySelector(".v35-timeline");
+        if(timeline&&!timeline.querySelector(".v401-release")){
+          const item=document.createElement("article");item.className="v35-release current v401-release";
+          item.innerHTML='<div class="v35-release-dot"></div><div class="v35-release-top"><b>v40.1</b><span>LATEST RELEASE</span></div><h3>Pack integrity, online rooms and matchday logic</h3><p>Restricted starter and normal player packs to eligible cards, repaired PeerJS loader retries and connection handshakes, corrected second-half AI direction and extended goal celebrations.</p>';
+          timeline.prepend(item);
+        }
+        const pill=root&&root.querySelector(".v35-version-pill");if(pill)pill.textContent="CURRENT · v40.1";
+      }
+      return result;
+    };
+  }catch(e){console.warn("KIKSTART v40.1 release note:",e);}
+  try{if(S){V27_normalize();save();}}catch(e){console.warn("KIKSTART v40.1 save normalisation:",e);}
+  console.info("KIKSTART v40.1 ready: protected pack pools, retryable PeerJS loader, halftime rotation, match pace and fullscreen viewport.");
+})();
+</script>
+
+<script>
+/* KIKSTART v40.2 — second-half pitch-end switch. The v40.1 halftime callback
+   awarded the restart to team 1, but the shared home() helper still placed both
+   teams at their first-half ends. This overrides only the halftime kickoff. */
+(function KIKSTART_V402_SECOND_HALF_SWITCH(){
+  'use strict';
+  if(window.__KIKSTART_V402__)return;
+  window.__KIKSTART_V402__=true;
+  const V402_previousKickoff=kickoff;
+  kickoff=function(team){
+    const m=M;
+    if(!m||!m.half)return V402_previousKickoff.apply(this,arguments);
+    const b=m.ball;
+    m.celeb=0;
+    m.pl.forEach(p=>{
+      const homePos=home(p);
+      p.x=-homePos[0];
+      p.z=homePos[1];
+      p.vx=0;p.vz=0;
+      p.dx=p.t===0?-1:1;
+      p.dz=0;
+    });
+    b.x=0;b.z=0;b.vx=0;b.vz=0;b.y=.5*m.F.ps;b.vy=0;b.lock=0;
+    m.owner=null;m.lastP=null;m.lastT=team;
+    m.ctrl=null;m.remoteCtrl=null;
+    let taker=null,bestDistance=Infinity;
+    m.pl.forEach(p=>{
+      if(p.t===team&&!p.gk){const d=hyp(p.x,p.z);if(d<bestDistance){bestDistance=d;taker=p;}}
+    });
+    if(taker){
+      taker.x=(team?1:-1)*.8;
+      taker.z=0;
+      taker.hold=0;
+      m.owner=taker;
+      m.lastT=team;
+    }
+  };
+  document.title='KIKSTART v40.3 — Private Party Codes';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content='40.3';
+  window.KIKSTART_GAME_VERSION='40.3';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v40.3');
+  console.info('KIKSTART v40.3 ready: second-half pitch ends mirrored and team 1 receives the kickoff.');
+})();
+</script>
+
+
+
+<script>
+/* KIKSTART v40.5 — real viewport fullscreen, Mac clipboard support, hardened special-card codes. */
+(function KIKSTART_V404_FINAL(){
+  'use strict';
+  if(window.__KIKSTART_V404_FINAL__) return;
+  window.__KIKSTART_V404_FINAL__ = true;
+
+  // ---------- Fullscreen ----------
+  let fullscreenNativeRequested = false;
+  let fullscreenActive = false;
+  const match = () => document.getElementById('matchView');
+  function updateViewportVars(){
+    const vv = window.visualViewport;
+    const w = Math.max(1, Math.round(vv && vv.width ? vv.width : window.innerWidth || document.documentElement.clientWidth || 1));
+    const h = Math.max(1, Math.round(vv && vv.height ? vv.height : window.innerHeight || document.documentElement.clientHeight || 1));
+    document.documentElement.style.setProperty('--ks-v404-vw', w + 'px');
+    document.documentElement.style.setProperty('--ks-v404-vh', h + 'px');
+  }
+  function resizeRenderer(){
+    const stage = document.getElementById('stage');
+    if(!stage) return;
+    const rect = stage.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width || stage.clientWidth || window.innerWidth || 1));
+    const h = Math.max(1, Math.round(rect.height || stage.clientHeight || window.innerHeight || 1));
+    try{
+      if(typeof renderer !== 'undefined' && renderer && typeof renderer.setSize === 'function'){
+        if(typeof renderer.setPixelRatio === 'function') renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1.5));
+        renderer.setSize(w, h, false);
+      }
+      if(typeof camera !== 'undefined' && camera){ camera.aspect = w / h; camera.updateProjectionMatrix(); }
+    }catch(err){ console.warn('[KIKSTART v40.5] renderer resize failed', err); }
+  }
+  function setFullscreen(active){
+    const el = match();
+    if(!el) return false;
+    fullscreenActive = !!active;
+    el.classList.toggle('ks-v404-fullscreen', fullscreenActive);
+    el.classList.toggle('v39-fullscreen', fullscreenActive);
+    el.classList.toggle('v38-fullscreen', fullscreenActive);
+    el.classList.toggle('v33-game-fullscreen', fullscreenActive);
+    document.documentElement.classList.toggle('ks-v404-fullscreen-active', fullscreenActive);
+    document.body.classList.toggle('ks-v404-fullscreen-active', fullscreenActive);
+    document.documentElement.classList.toggle('v38-fullscreen-active', fullscreenActive);
+    document.body.classList.toggle('v38-body-fullscreen', fullscreenActive);
+    const btn = document.getElementById('ksFullscreenButton');
+    if(btn){
+      btn.textContent = fullscreenActive ? '⛶ EXIT FULL SCREEN' : '⛶ FULL SCREEN';
+      btn.setAttribute('aria-pressed', fullscreenActive ? 'true' : 'false');
+      btn.setAttribute('aria-label', fullscreenActive ? 'Exit full screen' : 'Enter full screen');
+    }
+    updateViewportVars();
+    if(fullscreenActive) window.scrollTo(0,0);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ resizeRenderer(); }));
+    return true;
+  }
+  window.KS_toggleFullscreen = async function(force){
+    const el = match();
+    if(!el) return false;
+    const actual = document.fullscreenElement === el || document.webkitFullscreenElement === el;
+    const currently = actual || fullscreenActive || el.classList.contains('ks-v404-fullscreen');
+    const next = typeof force === 'boolean' ? force : !currently;
+    if(next){
+      // Apply the full-viewport layout immediately; requestFullscreen must be invoked
+      // in this same click gesture so WKWebView can enter native macOS fullscreen.
+      setFullscreen(true);
+      const request = el.requestFullscreen || el.webkitRequestFullscreen;
+      if(request){
+        fullscreenNativeRequested = true;
+        try{
+          let result;
+          try{ result = request.call(el, {navigationUI:'hide'}); }
+          catch(_){ result = request.call(el); }
+          if(result && typeof result.then === 'function') await result;
+        }catch(err){
+          fullscreenNativeRequested = false;
+          // Keep the CSS fallback: it still fills the entire WKWebView viewport.
+          console.warn('[KIKSTART v40.5] native fullscreen unavailable; using viewport fullscreen', err);
+          setFullscreen(true);
+        }
+      }
+      return true;
+    }
+    setFullscreen(false);
+    fullscreenNativeRequested = false;
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if((document.fullscreenElement || document.webkitFullscreenElement) && exit){
+      try{ const result = exit.call(document); if(result && typeof result.then === 'function') await result; }catch(err){ console.warn('[KIKSTART v40.5] fullscreen exit failed', err); }
+    }
+    return true;
+  };
+  document.addEventListener('fullscreenchange',()=>{
+    const el = match();
+    const actual = !!(el && (document.fullscreenElement === el || document.webkitFullscreenElement === el));
+    if(actual) setFullscreen(true);
+    else if(fullscreenNativeRequested){ fullscreenNativeRequested = false; setFullscreen(false); }
+  });
+  document.addEventListener('webkitfullscreenchange',()=>{
+    const el = match();
+    const actual = !!(el && (document.fullscreenElement === el || document.webkitFullscreenElement === el));
+    if(actual) setFullscreen(true);
+    else if(fullscreenNativeRequested){ fullscreenNativeRequested = false; setFullscreen(false); }
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key === 'Escape' && fullscreenActive){ e.preventDefault(); window.KS_toggleFullscreen(false); }
+  }, true);
+  // Capture the existing button before older fullscreen listeners can also toggle it.
+  document.addEventListener('click',e=>{
+    const btn = e.target && e.target.closest && e.target.closest('#ksFullscreenButton');
+    if(!btn) return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    window.KS_toggleFullscreen();
+  }, true);
+  window.addEventListener('resize',()=>{ updateViewportVars(); if(fullscreenActive) resizeRenderer(); });
+  window.addEventListener('orientationchange',()=>setTimeout(()=>{ updateViewportVars(); if(fullscreenActive) resizeRenderer(); },140));
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',()=>{ updateViewportVars(); if(fullscreenActive) resizeRenderer(); });
+    window.visualViewport.addEventListener('scroll',()=>{ if(fullscreenActive) window.scrollTo(0,0); });
+  }
+  if(window.ResizeObserver){
+    const stage = document.getElementById('stage');
+    if(stage) new ResizeObserver(()=>{ if(fullscreenActive) resizeRenderer(); }).observe(stage);
+  }
+  const fullscreenStyle = document.createElement('style');
+  fullscreenStyle.id = 'kikstart-v404-fullscreen-clipboard-style';
+  fullscreenStyle.textContent = `
+    html.ks-v404-fullscreen-active,body.ks-v404-fullscreen-active{width:100%!important;height:100%!important;min-height:100%!important;margin:0!important;padding:0!important;overflow:hidden!important;overscroll-behavior:none!important;}
+    #matchView.ks-v404-fullscreen{position:fixed!important;top:0!important;right:0!important;bottom:0!important;left:0!important;inset:0!important;width:var(--ks-v404-vw,100vw)!important;height:var(--ks-v404-vh,100dvh)!important;min-width:100%!important;min-height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;gap:0!important;border:0!important;border-radius:0!important;box-sizing:border-box!important;overflow:hidden!important;overscroll-behavior:none!important;z-index:2147483647!important;display:flex!important;flex-direction:column!important;background:#030812!important;}
+    #matchView.ks-v404-fullscreen #ksMatchTopbar,#matchView.ks-v404-fullscreen .ks-match-topbar{position:relative!important;top:auto!important;left:auto!important;right:auto!important;flex:0 0 auto!important;width:100%!important;max-width:none!important;margin:0!important;border-radius:0!important;}
+    #matchView.ks-v404-fullscreen #stage{position:relative!important;flex:1 1 0!important;width:100%!important;height:0!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;overflow:hidden!important;border-radius:0!important;}
+    #matchView.ks-v404-fullscreen #stage>canvas:not(#v5mini){position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;}
+    #matchView.ks-v404-fullscreen #stage>canvas#v5mini{position:absolute!important;top:10px!important;right:10px!important;left:auto!important;bottom:auto!important;width:clamp(88px,12vw,148px)!important;height:auto!important;aspect-ratio:168/104!important;max-width:26%!important;max-height:20%!important;z-index:40!important;}
+    #matchView.ks-v404-fullscreen #ksControlDeck,#matchView.ks-v404-fullscreen #endBox{position:relative!important;flex:0 0 auto!important;width:100%!important;max-width:none!important;margin:0!important;}
+    #matchView.ks-v404-fullscreen #mobileControls.v38-mobile-live{z-index:60!important;}
+    input,textarea,select,[contenteditable="true"],[role="textbox"]{-webkit-user-select:text!important;user-select:text!important;-webkit-touch-callout:default!important;}
+    @media(max-width:700px){#matchView.ks-v404-fullscreen #stage{flex:1 1 0!important;}#matchView.ks-v404-fullscreen #stage>canvas#v5mini{width:94px!important;max-width:25%!important;top:6px!important;right:6px!important;}}
+  `;
+  document.head.appendChild(fullscreenStyle);
+  updateViewportVars();
+
+  // ---------- macOS copy / cut / paste ----------
+  const isEditable = el => !!(el && el.closest && el.closest('input:not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]),textarea,select,[contenteditable="true"],[role="textbox"]'));
+  function insertClipboardText(target,text){
+    if(!target || text == null) return false;
+    if(target.matches && target.matches('input,textarea')){
+      const start = Number.isInteger(target.selectionStart) ? target.selectionStart : target.value.length;
+      const end = Number.isInteger(target.selectionEnd) ? target.selectionEnd : start;
+      if(typeof target.setRangeText === 'function') target.setRangeText(text,start,end,'end');
+      else target.value = target.value.slice(0,start) + text + target.value.slice(end);
+      target.dispatchEvent(new Event('input',{bubbles:true}));
+      target.dispatchEvent(new Event('change',{bubbles:true}));
+      return true;
+    }
+    if(target.isContentEditable || target.closest('[contenteditable="true"],[role="textbox"]')){
+      try{ if(document.execCommand('insertText',false,text)) return true; }catch(_){}
+      const sel = window.getSelection();
+      if(sel && sel.rangeCount){
+        const range=sel.getRangeAt(0); range.deleteContents();
+        const node=document.createTextNode(text); range.insertNode(node); range.setStartAfter(node); range.collapse(true);
+        sel.removeAllRanges(); sel.addRange(range);
+        target.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));
+        return true;
+      }
+    }
+    return false;
+  }
+  function clipboardPromptFallback(target){
+    const value = window.prompt('Paste your text into this box, then press OK:','');
+    if(value !== null) insertClipboardText(target,value);
+  }
+  document.addEventListener('keydown',e=>{
+    const mac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '');
+    const modifier = mac ? e.metaKey : e.ctrlKey;
+    if(!modifier || e.altKey) return;
+    const key = String(e.key || '').toLowerCase();
+    const target = e.target;
+    if(key === 'a' && isEditable(target)){
+      if(target.matches && target.matches('input,textarea')){ e.preventDefault(); target.select(); }
+      else if(document.execCommand){ e.preventDefault(); document.execCommand('selectAll',false,null); }
+      return;
+    }
+    if((key === 'c' || key === 'x') && (isEditable(target) || String(window.getSelection() || '').length)){
+      try{ if(document.execCommand(key === 'c' ? 'copy' : 'cut')) e.preventDefault(); }catch(_){}
+      return;
+    }
+    if(key === 'v' && isEditable(target)){
+      // Do not block the native WKWebView paste command. The rebuilt Mac wrapper
+      // includes standard Edit > Paste and Cmd+V menu routing for every text field.
+      return;
+    }
+  },true);
+  window.KS_clipboardPaste = async function(target){
+    target = target || document.activeElement;
+    if(!isEditable(target)) return false;
+    if(navigator.clipboard && typeof navigator.clipboard.readText === 'function'){
+      try{ return insertClipboardText(target,await navigator.clipboard.readText()); }
+      catch(_){ clipboardPromptFallback(target); return true; }
+    }
+    clipboardPromptFallback(target); return true;
+  };
+
+  // ---------- High-entropy secret reward codes ----------
+  // Only one-way SHA-256 digests are stored in the shipped app/web source.
+  const rewardDigests = {"be3c0445f116a23dc12268539f6bac3f7ee0b4012180648a712a98b32795e2e8":"__ks404_daniyal__","82d519ec30a9ccba11503d33699fc739edbc0f4c939cc8afdb1d3892d4554a51":"__ks404_khizar__","e7293c93942353cf08040825a4ebbd794f892636f9cdb8238929f29f472b65c8":"__ks404_messi__","9e70c6effdeededa3e0be4ef65a45d9ee50c241bad95f5d188194ea1c107f91d":"__ks404_alltime__","d288a3b00843f79afda323ae039b526ff84e60003a8dfafadcbef72f58ced7d4":"__KS404_SHREK__","9121c2e897c69ea70361aa7076214aec73797ddec29f4b6e893fef1a72d03947":"__KS404_FULL_COLLECTION__","48ca1e1031e5ed6be525d8c345cb10f540fec532cef45def014efe9bc6d36ebd":"__ks404_alamanda__","7ead43aed3abdebcf757887cd0f87fb6aaa8b4f1233f6071151de02a21fb9f9f":"__ks404_johndork__","347d6a099f502e40fc3eb42d41f90c5676ada744c98c1f8ceb07d11a14340489":"__ks404_alamanda_admin__"};
+  function sha256Hex(ascii){
+    const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    const H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    const bytes=[]; for(let i=0;i<ascii.length;i++) bytes.push(ascii.charCodeAt(i)&255);
+    const bitLen=bytes.length*8; bytes.push(0x80); while(bytes.length%64!==56) bytes.push(0);
+    const high=Math.floor(bitLen/0x100000000),low=bitLen>>>0;
+    bytes.push((high>>>24)&255,(high>>>16)&255,(high>>>8)&255,high&255,(low>>>24)&255,(low>>>16)&255,(low>>>8)&255,low&255);
+    const rotr=(x,n)=>(x>>>n)|(x<<(32-n));
+    for(let offset=0;offset<bytes.length;offset+=64){
+      const w=new Array(64);
+      for(let i=0;i<16;i++){const j=offset+i*4;w[i]=((bytes[j]<<24)|(bytes[j+1]<<16)|(bytes[j+2]<<8)|bytes[j+3])>>>0;}
+      for(let i=16;i<64;i++){const x=w[i-15],y=w[i-2],s0=rotr(x,7)^rotr(x,18)^(x>>>3),s1=rotr(y,17)^rotr(y,19)^(y>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;}
+      let [a,b,c,d,e,f,g,h]=H;
+      for(let i=0;i<64;i++){const S1=rotr(e,6)^rotr(e,11)^rotr(e,25),ch=(e&f)^(~e&g),t1=(h+S1+ch+K[i]+w[i])>>>0,S0=rotr(a,2)^rotr(a,13)^rotr(a,22),maj=(a&b)^(a&c)^(b&c),t2=(S0+maj)>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;}
+      H[0]=(H[0]+a)>>>0;H[1]=(H[1]+b)>>>0;H[2]=(H[2]+c)>>>0;H[3]=(H[3]+d)>>>0;H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;
+    }
+    return H.map(x=>x.toString(16).padStart(8,'0')).join('');
+  }
+  const previousRedeem = window.redeemCode || (typeof redeemCode === 'function' ? redeemCode : null);
+  const legacyKeys = {
+    '__ks404_daniyal__':'daniyal','__ks404_khizar__':'khizar','__ks404_messi__':'messi',
+    '__ks404_alltime__':'alltime','__KS404_SHREK__':'shrek',
+    '__KS404_FULL_COLLECTION__':'fullcollection','__ks404_alamanda__':'alamanda',
+    '__ks404_johndork__':'johndork','__ks404_alamanda_admin__':'alamanda_admin'
+  };
+  const alreadyClaimed = type => {
+    if(!S) return false;
+    if(type==='daniyal') return !!(S.daniyalSecretClaimed || S.redeemed?.daniyalsveryown);
+    if(type==='khizar') return !!(S.khizargiveClaimed || S.redeemed?.khizarspecialcardonly);
+    if(type==='messi') return !!(S.messi100Claimed || S.redeemed?.messi100legend);
+    if(type==='alltime') return !!(S.allTimeXIClaimed || (Array.isArray(S.allTimeXIPlayerKeys)&&S.allTimeXIPlayerKeys.length));
+    if(type==='shrek') return !!(S.shrekClaimed || S.redeemed?.ksShrekSecret339);
+    if(type==='fullcollection') return !!(S.allCardsUnlocked || S.redeemed?.ksFullCollection339);
+    if(type==='alamanda') return !!S.akFullCollectionUnlockedV10;
+    if(type==='johndork') return !!S.unlockedSecret;
+    if(type==='alamanda_admin') return !!(S.alamandaAdminAccess || S.redeemed?.__ks404_alamanda_admin__);
+    return false;
+  };
+  function codeMessage(kind,text){const el=document.getElementById('v27CodeMsg');if(el){el.className=kind==='success'?'v27-code-success':'v27-code-error';el.textContent=text;}}
+  window.redeemCode = redeemCode = function(){
+    const input=document.getElementById('v27CodeInput');
+    if(!input || !S){ codeMessage('error','Choose your club first, then enter your reward code.'); return false; }
+    const raw=String(input.value||'').trim().toUpperCase().replace(/[\s-]+/g,'');
+    if(!raw){codeMessage('error','Enter a reward code first.');return false;}
+    if(!/^[A-Z2-9]{32}$/.test(raw)){
+      // Keep ordinary non-card reward codes supported by the existing game.
+      return previousRedeem ? previousRedeem.apply(this,arguments) : false;
+    }
+    const digest=sha256Hex(raw);
+    const sentinel=rewardDigests[digest];
+    if(!sentinel){codeMessage('error','That reward code is not valid.');if(window.sfx&&sfx.err)sfx.err();return false;}
+    const type=legacyKeys[sentinel];
+    if(!type){codeMessage('error','That reward code is not valid.');return false;}
+    if(alreadyClaimed(type)){input.value='';codeMessage('error','This special reward has already been claimed on this save.');if(window.sfx&&sfx.err)sfx.err();return false;}
+    if(!previousRedeem){codeMessage('error','The reward system is unavailable in this build.');return false;}
+    input.value=sentinel;
+    let result=false;
+    try{ result=previousRedeem.apply(this,arguments); }catch(err){ console.error('[KIKSTART v40.5] reward claim failed',err); }
+    input.value='';
+    return result===undefined?true:result;
+  };
+
+  // Final version markers override all historical appended version labels.
+  document.title='KIKSTART v40.5 — Mac Gameplay';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content='40.5';
+  window.KIKSTART_GAME_VERSION='40.5';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v40.5');
+  const footer=document.querySelector('.ks-boot-footer');if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v40.4';
+  console.info('KIKSTART v40.5 ready: fullscreen, clipboard shortcuts and hashed special reward codes.');
+})();
+</script>
+
+</body>
+</html>
