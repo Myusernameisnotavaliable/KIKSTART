@@ -621,7 +621,7 @@
     if(m&&M===m&&!m.over&&!m.wait&&m.onlineRole!=="guest"){
       m.pl.forEach(p=>{
         const speed=Math.hypot(p.vx||0,p.vz||0),sprinting=p===m.ctrl&&!!(K.ShiftLeft||K.ShiftRight),moving=speed>1.5;
-        const drain=sprinting?4.1:moving?1.15:-.8;p.v25Energy=cl((p.v25Energy??100)-drain*Math.max(0,dt),0,100);
+        const drain=sprinting?4.1:moving?-0.18:-1.35;p.v25Energy=cl((p.v25Energy??100)-drain*Math.max(0,dt),0,100);
         if(p.lunge>0&&p.v25Energy<32&&!p.v25Injured&&nearOpp(p)<1.25*m.F.sc&&rnd()<Math.max(0,dt)*.012){
           p.v25Injured=true;m.v25InjuryEvents=m.v25InjuryEvents||[];m.v25InjuryEvents.push({id:p.playerId??p.id,name:p.playerName||p.n||"Player",team:p.t});
           if(p.t===0){banner("PLAYER INJURY · CHECK YOUR BENCH");if(window.V22_hubToast)V22_hubToast("🩹","PLAYER INJURY","A player is carrying a knock. Consider a substitution.");}
