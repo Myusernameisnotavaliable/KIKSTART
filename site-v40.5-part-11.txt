@@ -1,0 +1,1000 @@
+    let basic={};
+    try{basic=JSON.parse(localStorage.getItem('kikstartV22_settings')||'{}').bindings||{};}catch(_){}
+    if(forbidden.has(code)||defaultReserved.has(code)||Object.values(basic).includes(code)){
+      window.__v32CaptureSkill=null;
+      if(window.V22_hubToast)window.V22_hubToast('⌨','KEY UNAVAILABLE','That key is reserved by a main game control or the system. Choose another key.');
+      if(window.V22_renderHub)window.V22_renderHub();
+      return;
+    }
+    return oldCaptureResult&&oldCaptureResult.apply(this,arguments);
+  };
+
+  // Improve the procedural audio palette while retaining the master-volume
+  // scaling already applied to tone(), cheer() and boom().
+  try{
+    sfx.kick=()=>{const pitch=145+(Math.random()-.5)*26;tone(pitch,48,.12,'sine',.17);tone(720,190,.025,'triangle',.026,.006);};
+    sfx.pop=()=>{const pitch=330+(Math.random()-.5)*70;tone(pitch,720,.10,'sine',.085);tone(980,610,.07,'triangle',.035,.035);};
+    sfx.whistle=()=>{const pitch=2380+(Math.random()-.5)*120;tone(pitch,pitch+180,.16,'sine',.07);tone(pitch+220,pitch-60,.19,'sine',.06,.17);tone(pitch,pitch,.06,'triangle',.022,.38);};
+    sfx.horn=()=>{tone(190,190,.46,'sawtooth',.045);tone(285,285,.48,'sawtooth',.035,.04);tone(380,340,.30,'triangle',.025,.12);};
+  }catch(e){console.warn('KIKSTART audio polish fallback',e);}
+
+  // Stronger matchday setup presentation, including the new weather and crowd controls.
+  const style=document.createElement('style');style.id='kikstartV33Styles';style.textContent=`
+    #matchView.v33-game-fullscreen{position:fixed!important;inset:0!important;z-index:2147483000!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:10px max(12px,env(safe-area-inset-right)) 16px max(12px,env(safe-area-inset-left))!important;overflow:auto!important;box-sizing:border-box!important;border-radius:0!important;background:#050b16!important;}
+    #matchView.v33-game-fullscreen #stage{width:100%!important;height:calc(100dvh - 205px)!important;min-height:300px!important;max-height:none!important;}
+    #matchView.v33-game-fullscreen .ks-match-topbar{position:sticky;top:0;z-index:25;background:#071323f5;}
+    #matchView.v33-game-fullscreen .ks-pause-overlay{position:fixed!important;inset:0!important;z-index:2147483001!important;border-radius:0!important;}
+    html.v33-fullscreen-active,body.v33-lock-scroll{height:100%!important;overflow:hidden!important;}
+    #matchView.v33-game-fullscreen #v22LiveMatchTools{max-width:none!important;}
+    #matchView.v33-game-fullscreen #ksControlDeck{max-width:none!important;}
+    .v32-match-options .v32-option-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+    .v32-match-options .v32-option-grid select{min-height:42px;}
+    .v32-settings-card .v32-key-row button{min-width:128px;}
+    .card.v33-ayden-card{filter:none!important;opacity:1!important;border:3px solid #8b5a2b!important;box-shadow:0 0 0 3px #4b2b16,0 0 22px #a56a2b!important;background:#65401f!important;color:#fff0c9!important;}
+    @media(max-width:720px){#matchView.v33-game-fullscreen #stage{height:calc(100dvh - 250px)!important;min-height:260px!important}.v32-match-options .v32-option-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media(max-width:480px){.v32-match-options .v32-option-grid{grid-template-columns:1fr;}}
+
+    /* v33.3 Mac/WebKit scroll fixes: keep the document scrollable and avoid wheel capture by the pitch. */
+    html,body{min-height:100%!important;height:auto!important;overflow-y:auto!important;overscroll-behavior-y:auto!important;-webkit-overflow-scrolling:touch!important;scrollbar-gutter:stable;}
+    #app{min-height:100vh!important;height:auto!important;overflow:visible!important;align-items:stretch!important}
+    #main{min-height:100vh!important;height:auto!important;overflow:visible!important;overscroll-behavior:contain;}
+    #side{position:sticky!important;top:0!important;max-height:100vh!important;}
+    #main>.tab{overflow:visible!important;min-height:calc(100vh - 70px);}
+    #index{padding-bottom:70px!important;}
+    #v32AydenPanel{order:9999;margin-top:34px!important;clear:both;}
+    .v32-special-panel .card.v33-ayden-card::after{opacity:.8;mix-blend-mode:screen;}
+    @media(pointer:fine){body{scroll-behavior:auto!important}#stage canvas{touch-action:pan-y;}}
+  `;document.head.appendChild(style);
+
+  // Repair the Play menu after a tab refresh and reflect this edition's platform.
+  window.addEventListener('resize',applyDeviceControls);
+  window.KIKSTART_V33_READY=true;
+  window.KIKSTART_GAME_VERSION='33.0';
+  document.title='KIKSTART v33.0 — Matchday Evolution';
+  const badge=document.querySelector('#top .ks-build-version');if(badge)badge.textContent='KIKSTART v33';
+  syncFullscreen();applyDeviceControls();
+})();
+</script>
+
+
+
+<script>
+/* KIKSTART v33.6 — manual squad swaps, auto-build and actual pixel-poop Ayden card */
+(function KIKSTART_V334(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const baseLineup = lineup;
+  function ownedPlayers(mode){return (POOL[mode]||[]).filter(p=>p&&S&&S.owned&&S.owned[mode]&&S.owned[mode][p.id]);}
+  function validXI(mode, ids){
+    const F=FORM[mode]; if(!F||!Array.isArray(ids)||ids.length!==F.n)return null;
+    const own=new Set(ownedPlayers(mode).map(p=>p.id));
+    if(ids.some(id=>id!==null&&id!==undefined&&!own.has(Number(id))))return null;
+    const chosen=ids.filter(id=>id!==null&&id!==undefined).map(Number);
+    if(new Set(chosen).size!==chosen.length)return null;
+    return ids.map(id=>id===null||id===undefined?null:POOL[mode][Number(id)]||null);
+  }
+  lineup=function(mode){
+    if(!S||!S.ksXI)return baseLineup(mode);
+    const saved=validXI(mode,S.ksXI[mode]);
+    return saved||baseLineup(mode);
+  };
+  function buildBest(mode){
+    const F=FORM[mode],pool=ownedPlayers(mode).slice().sort((a,b)=>(Number(b.o)||0)-(Number(a.o)||0));
+    if(pool.length<F.n){ask('You need at least '+F.n+' owned players to build this lineup.');return;}
+    const used=new Set(),xi=new Array(F.n).fill(null);
+    const take=pos=>{let p=pool.find(x=>!used.has(x.id)&&x.pos===pos);if(!p)p=pool.find(x=>!used.has(x.id));if(p){used.add(p.id);return p.id;}return null;};
+    xi[0]=take('GK');
+    (F.def||[]).forEach(i=>xi[i]=take('DEF'));
+    (F.mid||[]).forEach(i=>xi[i]=take('MID'));
+    (F.fwd||[]).forEach(i=>xi[i]=take('FWD'));
+    for(let i=0;i<xi.length;i++)if(xi[i]===null)xi[i]=take('MID');
+    S.ksXI=S.ksXI||{};S.ksXI[mode]=xi;save();refresh();showTab('squad');
+  }
+  window.KS_autoBuild=function(){if(!S)return;buildBest(S.mode);};
+  window.KS_swapXI=function(slot,id){
+    if(!S)return;const mode=S.mode,F=FORM[mode],current=lineup(mode).map(p=>p?p.id:null);
+    const next=(id===''||id==='none')?null:Number(id);
+    if(next!==null){if(!POOL[mode][next]||!S.owned[mode][next])return ask('You can only select a player you own.');if(current.some((v,i)=>i!==slot&&Number(v)===next))return ask('That player is already in another starting position.');}
+    current[slot]=next;S.ksXI=S.ksXI||{};S.ksXI[mode]=current;save();refresh();showTab('squad');
+  };
+  const baseRenderSquad=renderSquad;
+  renderSquad=function(){
+    baseRenderSquad.apply(this,arguments);
+    const root=$('squad');if(!root||!S)return;
+    const mode=S.mode,F=FORM[mode],xi=lineup(mode),pool=ownedPlayers(mode).slice().sort((a,b)=>(b.o||0)-(a.o||0));
+    const labels=Array.from({length:F.n},(_,i)=>i===0?'Goalkeeper':(F.def||[]).includes(i)?'Defender':(F.mid||[]).includes(i)?'Midfielder':(F.fwd||[]).includes(i)?'Forward':'Player '+(i+1));
+    const panel=document.createElement('section');panel.className='ks-v334-squad-tools';
+    panel.innerHTML='<div class="ks-v334-head"><div><small>SQUAD MANAGEMENT</small><h2>Build your starting team</h2><p>Choose exactly who starts, or let Auto-build pick your strongest balanced lineup.</p></div><button type="button" onclick="KS_autoBuild()">⚡ Auto-build</button></div><div class="ks-v334-slots">'+xi.map((p,i)=>'<label><span>'+labels[i]+' · Slot '+(i+1)+'</span><select aria-label="'+labels[i]+' slot '+(i+1)+'" onchange="KS_swapXI('+i+',this.value)"><option value="none" '+(!p?'selected':'')+'>Empty slot</option>'+pool.map(q=>'<option value="'+q.id+'" '+(p&&p.id===q.id?'selected':'')+'>'+String(q.n).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))+' · '+q.pos+' · '+q.o+'</option>').join('')+'</select></label>').join('')+'</div><p class="ks-v334-foot">Changes save automatically. Auto-build uses your owned players and the selected formation.</p>';
+    const toolbar=root.querySelector('.v27-toolbar');if(toolbar)toolbar.insertAdjacentElement('afterend',panel);else root.prepend(panel);
+  };
+  const style=document.createElement('style');style.textContent=`
+    .ks-v334-squad-tools{margin:16px 0 22px;padding:16px;border:1px solid #35516b;border-radius:16px;background:linear-gradient(145deg,#102338,#0a1524);box-shadow:0 12px 30px #0003}
+    .ks-v334-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.ks-v334-head small{font-size:10px;letter-spacing:.16em;color:#82d8cf;font-weight:900}.ks-v334-head h2{margin:5px 0}.ks-v334-head p,.ks-v334-foot{margin:4px 0;color:#9fb3c8;font-size:12px}.ks-v334-slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:14px}.ks-v334-slots label{display:grid;gap:6px;padding:10px;border:1px solid #2b4259;border-radius:10px;background:#0b1929}.ks-v334-slots label span{font-size:11px;color:#a9bfd4;font-weight:800}.ks-v334-slots select{width:100%;min-width:0;min-height:40px;padding:8px;border-radius:8px;background:#142b40;color:#fff;border:1px solid #3c607e}
+    /* Deliberately terrible 8-bit brown pixel-art collector card */
+    #v32AydenPanel{border:5px ridge #a76a2d!important;background:repeating-conic-gradient(#4a2b16 0 25%,#70421f 0 50%) 0/18px 18px!important;box-shadow:0 0 0 4px #28170e,0 0 24px #a56a2b,0 0 42px #5c351b!important;padding:18px!important;image-rendering:pixelated}
+    #v32AydenPanel .v32-special-heading h2{color:#ffcf82!important;text-shadow:3px 3px #291307,-2px -2px #9a6129!important;letter-spacing:.08em}
+    #v32AydenPanel .v32-special-heading p,#v32AydenPanel .v32-ayden-note{color:#ffe0ad!important;text-shadow:2px 2px #281407!important}
+    #v32AydenPanel .v32-ayden-wrap{align-items:center!important;gap:18px!important}
+    #v32AydenPanel .card.v33-ayden-card,#v32AydenPanel #v32-ayden-card{position:relative!important;overflow:hidden!important;filter:none!important;opacity:1!important;color:#fff0c9!important;background-color:#6b4322!important;background-image:linear-gradient(90deg,transparent 48%,#0002 49% 51%,transparent 52%),linear-gradient(0deg,transparent 48%,#0002 49% 51%,transparent 52%),repeating-conic-gradient(#81552c 0 25%,#563318 0 50%) 0/12px 12px!important;border:5px ridge #c18a4d!important;outline:4px dashed #2c180d!important;box-shadow:0 0 0 4px #d49a53,0 0 20px #c17b37,inset 0 0 0 5px #3b2110!important;text-shadow:2px 2px #281306!important;image-rendering:pixelated}
+    #v32AydenPanel .card.v33-ayden-card::before,#v32AydenPanel #v32-ayden-card::before{content:'💩';display:block;position:absolute;z-index:3;right:5px;top:26px;font-size:42px;line-height:1;filter:drop-shadow(3px 3px 0 #281306);image-rendering:pixelated;transform:rotate(-9deg)}
+    #v32AydenPanel .card.v33-ayden-card .nm,#v32AydenPanel #v32-ayden-card .nm{color:#fff0c9!important;font-weight:1000!important;text-shadow:2px 2px #291507!important}
+    #v32AydenPanel .v32-ayden-description{color:#ffe0ad!important}
+    @media(max-width:620px){.ks-v334-head{align-items:stretch}.ks-v334-head button{width:100%}.ks-v334-slots{grid-template-columns:1fr}}
+  `;document.head.appendChild(style);
+  // The v33.3 wheel handler was accidentally outside a script element; install it properly.
+  const ua=navigator.userAgent||'',mac=/Macintosh|Mac OS X/.test(ua)||/Mac/.test(navigator.platform||'');
+  if(mac)document.addEventListener('wheel',function(e){
+    if(e.ctrlKey)return;const t=e.target;
+    if(t&&t.closest&&t.closest('input,textarea,select,[contenteditable="true"]'))return;
+    const sc=t&&t.closest&&t.closest('.ov.on,#pick,#main,.tab');
+    if(sc&&sc.scrollHeight>sc.clientHeight+2){const top=sc.scrollTop<=0&&e.deltaY<0,bottom=sc.scrollTop+sc.clientHeight>=sc.scrollHeight-2&&e.deltaY>0;if(!top&&!bottom){sc.scrollTop+=e.deltaY;e.preventDefault();}}
+  },{passive:false});
+  window.KIKSTART_GAME_VERSION='33.5';document.title='KIKSTART v33.6 — Launch Event';
+  const badge=document.querySelector('#top .ks-build-version');if(badge)badge.textContent='KIKSTART v33.6';
+})();
+</script>
+
+<script>
+/* KIKSTART v33.6 — player database, all-cards code, Launch Event, profiles,
+   bench management, stadium atmosphere, kit detail and player animations. */
+(function KIKSTART_V336(){
+  'use strict';
+  if (window.__KIKSTART_V336__) return;
+  window.__KIKSTART_V336__ = true;
+  const $ = id => document.getElementById(id);
+  const clean = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const modes = ['fb','fs'];
+
+  // These are game ratings, not official football ratings. New records are appended
+  // so every existing save keeps its original player IDs.
+  const realPlayers = [
+    ['Gianluigi Donnarumma','GK',89,'🇮🇹','1201'],['Jan Oblak','GK',88,'🇸🇮','0111'],
+    ['Ederson','GK',88,'🇧🇷','1110'],['Emiliano Martínez','GK',87,'🇦🇷','2101'],
+    ['Manuel Neuer','GK',86,'🇩🇪','0101'],['Mike Maignan','GK',87,'🇫🇷','1210'],
+    ['David Raya','GK',84,'🇪🇸','0100'],['Gregor Kobel','GK',85,'🇨🇭','0101'],
+    ['Trent Alexander-Arnold','DEF',87,'🏴','0120'],['Rúben Dias','DEF',88,'🇵🇹','1401'],
+    ['William Saliba','DEF',87,'🇫🇷','2200'],['Gabriel Magalhães','DEF',86,'🇧🇷','3101'],
+    ['Alessandro Bastoni','DEF',87,'🇮🇹','1101'],['Theo Hernández','DEF',87,'🇫🇷','3100'],
+    ['Jules Koundé','DEF',86,'🇫🇷','1200'],['Ronald Araújo','DEF',86,'🇺🇾','2301'],
+    ['John Stones','DEF',85,'🏴','0100'],['Éder Militão','DEF',85,'🇧🇷','3100'],
+    ['Alphonso Davies','DEF',86,'🇨🇦','3200'],['Joško Gvardiol','DEF',86,'🇭🇷','0100'],
+    ['Reece James','DEF',84,'🏴','0101'],['Marquinhos','DEF',86,'🇧🇷','1101'],
+    ['Bernardo Silva','MID',88,'🇵🇹','0100'],['Martin Ødegaard','MID',88,'🇳🇴','0100'],
+    ['Bruno Fernandes','MID',88,'🇵🇹','0101'],['Federico Valverde','MID',88,'🇺🇾','0100'],
+    ['Jamal Musiala','MID',88,'🇩🇪','3200'],['Florian Wirtz','MID',87,'🇩🇪','0100'],
+    ['Enzo Fernández','MID',85,'🇦🇷','0100'],['Alexis Mac Allister','MID',85,'🇦🇷','1100'],
+    ['Gavi','MID',84,'🇪🇸','0100'],['Vitinha','MID',85,'🇵🇹','0100'],
+    ['Cole Palmer','MID',88,'🏴','0100'],['Bruno Guimarães','MID',85,'🇧🇷','2101'],
+    ['İlkay Gündoğan','MID',84,'🇩🇪','0101'],['Harry Kane','FWD',91,'🏴','0101'],
+    ['Robert Lewandowski','FWD',89,'🇵🇱','0101'],['Lautaro Martínez','FWD',89,'🇦🇷','1101'],
+    ['Julián Álvarez','FWD',87,'🇦🇷','0100'],['Victor Osimhen','FWD',87,'🇳🇬','3100'],
+    ['Khvicha Kvaratskhelia','FWD',86,'🇬🇪','0100'],['Rafael Leão','FWD',87,'🇵🇹','3100'],
+    ['Ousmane Dembélé','FWD',86,'🇫🇷','2200'],['Raphinha','FWD',86,'🇧🇷','2100'],
+    ['Rodrygo','FWD',87,'🇧🇷','0100'],['Luis Díaz','FWD',86,'🇨🇴','3100'],
+    ['Alexander Isak','FWD',87,'🇸🇪','0100'],['Darwin Núñez','FWD',84,'🇺🇾','2100'],
+    ['Marcus Thuram','FWD',85,'🇫🇷','3100'],['Viktor Gyökeres','FWD',86,'🇸🇪','0100']
+  ];
+  const rarityFor = overall => overall >= 88 ? 'ruby' : overall >= 80 ? 'gold' : 'silver';
+  const addedNames = new Set();
+  modes.forEach(mode => {
+    const pool = POOL[mode];
+    if (!Array.isArray(pool)) return;
+    if (mode === 'fb') {
+      realPlayers.forEach(([n,pos,o,f,look]) => {
+        const key = n.toLocaleLowerCase();
+        if (pool.some(p => p && p.n.toLocaleLowerCase() === key)) return;
+        const p = {id:pool.length,n,pos,o,f,look,r:rarityFor(o),kind:'player',country:f,addedIn336:true};
+        pool.push(p); addedNames.add(n);
+      });
+    }
+  });
+
+  // Original swamp-ogre fan card: a generic fantasy ogre illustration, not a copy
+  // of the movie character's protected visual design.
+  function addSpecial(mode, spec){
+    const pool=POOL[mode]; if(!pool)return null;
+    let p=pool.find(x=>x&&x.launchEventKey===spec.key);
+    if(!p){p=Object.assign({id:pool.length,secret:true,kind:'hero',launchEvent:true},spec);pool.push(p);}
+    if(S&&S.stock&&S.stock[mode])S.stock[mode][p.id]=0;
+    return p;
+  }
+  const ogreByMode={};
+  modes.forEach(mode=>{
+    ogreByMode[mode]=addSpecial(mode,{n:'Shrek',pos:mode==='fb'?'FWD':'FWD',o:100,f:'🧌',look:'3330',r:'diamond',country:'Fantasy',secret:true,shrekCard:true,launchEventKey:'swamp_ogre_'+mode,traits:['Swamp Strength','Bog Sprint','Muddy Footwork']});
+  });
+
+  // Five limited Launch Event player editions per mode. They stay out of ordinary
+  // packs and are awarded only by event quests or the all-cards code.
+  const launchSpecs={
+    fb:[
+      {key:'launch_mid_1',n:'Phil Foden',pos:'MID',o:86,f:'🏴',look:'0120',r:'gold'},
+      {key:'launch_mid_2',n:'Bukayo Saka',pos:'FWD',o:88,f:'🏴',look:'3100',r:'ruby'},
+      {key:'launch_high_1',n:'Erling Haaland',pos:'FWD',o:91,f:'🇳🇴',look:'0320',r:'ruby'},
+      {key:'launch_high_2',n:'Jude Bellingham',pos:'MID',o:90,f:'🏴',look:'2100',r:'ruby'},
+      {key:'launch_high_3',n:'Lamine Yamal',pos:'FWD',o:89,f:'🇪🇸',look:'3200',r:'ruby'}
+    ],
+    fs:[
+      {key:'launch_mid_1',n:'Pito',pos:'MID',o:85,f:'🇪🇸',look:'1101',r:'gold'},
+      {key:'launch_mid_2',n:'Ferrão',pos:'FWD',o:86,f:'🇧🇷',look:'3100',r:'gold'},
+      {key:'launch_high_1',n:'Ricardinho',pos:'FWD',o:91,f:'🇵🇹',look:'1101',r:'ruby'},
+      {key:'launch_high_2',n:'Falcão',pos:'FWD',o:92,f:'🇧🇷',look:'1001',r:'ruby'},
+      {key:'launch_high_3',n:'Guitta',pos:'GK',o:88,f:'🇧🇷',look:'2100',r:'ruby'}
+    ]
+  };
+  modes.forEach(mode=>launchSpecs[mode].forEach(spec=>addSpecial(mode,Object.assign({},spec,{secret:true,launchEvent:true,kind:'hero',country:spec.f,launchEventKey:spec.key}))));
+  if(S){
+    S.stock=S.stock||{fb:{},fs:{}};modes.forEach(mode=>{S.stock[mode]=S.stock[mode]||{};POOL[mode].forEach(p=>{if(p.launchEvent||p.shrekCard)S.stock[mode][p.id]=0;});});
+  }
+
+  // Redemption code: KIKSTARTALL grants every player, secret/code card and manager.
+  const previousRedeem=window.redeemCode||redeemCode;
+  window.redeemCode=redeemCode=function(){
+    const input=$('v27CodeInput'),msg=$('v27CodeMsg'),typed=input&&input.value?input.value.trim().toLowerCase():'';
+    if(typed!=='kikstartall'&&typed!=='everycard')return previousRedeem.apply(this,arguments);
+    if(!S||!input||!msg)return;
+    S.owned=S.owned||{fb:{},fs:{}};S.owm=S.owm||{};S.stock=S.stock||{fb:{},fs:{}};S.got=S.got||{fb:0,fs:0};S.redeemed=S.redeemed||{};
+    modes.forEach(mode=>{
+      S.owned[mode]=S.owned[mode]||{};S.stock[mode]=S.stock[mode]||{};
+      POOL[mode].forEach(p=>{S.owned[mode][p.id]=Math.max(1,Number(S.owned[mode][p.id])||0);S.stock[mode][p.id]=0;});
+      S.got[mode]=1;
+    });
+    MGRS.forEach(m=>{S.owm[m.id]=Math.max(1,Number(S.owm[m.id])||0);});
+    S.unlockedSecret=true;S.allCardsUnlocked=true;S.redeemed.kikstartall=true;S.redeemed.everycard=true;
+    input.value='';save();sfx.coin();refresh();
+    const fresh=$('v27CodeMsg');if(fresh){fresh.className='v27-code-success';fresh.textContent='✓ KIKSTARTALL claimed: every Football and Futsal player, secret card, code card, Launch Event card and manager is now in your collection.';}
+  };
+
+  // Add profile-open data to player cards without changing their existing action buttons.
+  const cardBase=cardHTML;
+  cardHTML=function(p,extra,id,pop){
+    let out=cardBase.apply(this,arguments);
+    if(!p||pop||String(id||'').charAt(0)==='s')return out;
+    const mode=S&&S.mode;
+    if(!POOL[mode]||POOL[mode][Number(p.id)]!==p)return out;
+    const attrs=' data-ks-player-id="'+p.id+'" data-ks-player-mode="'+mode+'" tabindex="0" role="button" aria-label="View '+clean(p.n)+' player profile"';
+    out=out.replace('<div', '<div'+attrs);
+    if(p.shrekCard){
+      out=out.replace(/class="card ([^"]*)"/, 'class="card $1 ks-shrek-card"');
+      out=out.replace(/(<div class="top">[\s\S]*?<\/div>)/, '$1<div class="ks-ogre-art" aria-label="Original swamp ogre artwork"><span>🧌</span><i>✦</i><b>SWAMP LEGEND</b></div>');
+    } else if(p.launchEvent){
+      out=out.replace(/class="card ([^"]*)"/, 'class="card $1 ks-launch-card"');
+      out=out.replace(/(<div class="rar">[\s\S]*?<\/div>)/, '$1<div class="ks-event-ribbon">LAUNCH EVENT EDITION</div>');
+    }
+    return out;
+  };
+
+  // Full-screen player profile with all stored game attributes and play-style traits.
+  function closeProfile(){const old=$('ksPlayerProfile');if(old)old.remove();}
+  window.KS_closePlayerProfile=closeProfile;
+  function openProfile(mode,id){
+    const p=POOL[mode]&&POOL[mode][Number(id)];if(!p)return;
+    closeProfile();
+    const stats=V27_stats(p),keeper=p.pos==='GK';
+    const rows=keeper?[['Positioning',stats.positioning],['Ball control',stats.control],['Throwing',stats.throwing],['Pace',stats.pace],['Passing',stats.passing],['Physical',stats.physical]]:[['Pace',stats.pace],['Shooting',stats.shooting],['Passing',stats.passing],['Dribbling',stats.dribbling],['Defending',stats.defending],['Physical',stats.physical]];
+    const traits=V27_traits(p)||[];
+    const wrap=document.createElement('div');wrap.id='ksPlayerProfile';wrap.className='ks-player-profile';wrap.setAttribute('role','dialog');wrap.setAttribute('aria-modal','true');wrap.setAttribute('aria-label',p.n+' profile');
+    wrap.innerHTML='<div class="ks-profile-shell"><button class="ks-profile-close" type="button" aria-label="Close player profile" onclick="KS_closePlayerProfile()">×</button><div class="ks-profile-top"><div class="ks-profile-card">'+cardHTML(p,'',null,false)+'</div><div class="ks-profile-summary"><div class="ks-profile-kicker">KIKSTART PLAYER PROFILE</div><h1>'+clean(p.n)+'</h1><div class="ks-profile-meta"><span>'+clean(p.f||'⚽')+' '+clean(p.country||'')+'</span><span>'+clean(p.pos)+'</span><span>'+clean(RAR[p.r]?.n||p.r)+'</span><span>'+clean(mode==='fb'?'Football':'Futsal')+'</span></div><div class="ks-profile-rating">'+clean(p.o)+' <small>OVERALL</small></div><p>These are KIKSTART gameplay attributes and generated play-style traits, not official real-world match statistics.</p><div class="ks-profile-traits">'+traits.map(t=>'<span>'+clean(t)+'</span>').join('')+'</div></div></div><h2>Player attributes</h2><div class="ks-profile-stats">'+rows.map(([name,value])=>'<div class="ks-stat"><div><b>'+clean(name)+'</b><strong>'+clean(value)+'</strong></div><span><i style="width:'+Math.max(0,Math.min(100,Number(value)||0))+'%"></i></span></div>').join('')+'</div><div class="ks-profile-footer"><span>Player ID · '+p.id+'</span><span>'+(S.owned&&S.owned[mode]&&S.owned[mode][p.id]?'Owned ×'+S.owned[mode][p.id]:'Not in collection')+'</span></div></div>';
+    wrap.addEventListener('click',e=>{if(e.target===wrap)closeProfile();});
+    document.body.appendChild(wrap);
+    const close=wrap.querySelector('.ks-profile-close');if(close)close.focus();
+  }
+  window.KS_openPlayerProfile=openProfile;
+  document.addEventListener('click',event=>{
+    const card=event.target&&event.target.closest&&event.target.closest('.card[data-ks-player-id]');
+    if(!card||card.closest('#modal')||card.closest('#ksPlayerProfile'))return;
+    if(event.target.closest('button,a,input,select,textarea'))return;
+    openProfile(card.dataset.ksPlayerMode,card.dataset.ksPlayerId);
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&$('ksPlayerProfile')){closeProfile();return;}
+    const card=event.target&&event.target.closest&&event.target.closest('.card[data-ks-player-id]');
+    if(card&&(event.key==='Enter'||event.key===' ')){event.preventDefault();openProfile(card.dataset.ksPlayerMode,card.dataset.ksPlayerId);}
+  });
+
+  // Launch Event objectives and reward cards.
+  const launchQuests=[
+    {id:'matches',title:'Opening Day',desc:'Complete 2 matches',goal:2,card:'launch_mid_1',tier:'MID',reward:'Mid-quality event card'},
+    {id:'goals',title:'Goal Rush',desc:'Score 5 goals',goal:5,card:'launch_mid_2',tier:'MID',reward:'Mid-quality event card'},
+    {id:'wins',title:'Make Your Mark',desc:'Win 2 matches',goal:2,card:'launch_high_1',tier:'HIGH',reward:'High-quality event card'},
+    {id:'subs',title:'Touchline Tactician',desc:'Make 2 substitutions',goal:2,card:'launch_high_2',tier:'HIGH',reward:'High-quality event card'},
+    {id:'clean',title:'Shutout',desc:'Keep 1 clean sheet',goal:1,card:'launch_high_3',tier:'HIGH',reward:'High-quality event card'}
+  ];
+  function eventState(){
+    if(!S)return null;
+    S.launchEvent=S.launchEvent||{version:1,progress:{matches:0,goals:0,wins:0,subs:0,clean:0},claimed:{}};
+    S.launchEvent.progress=S.launchEvent.progress||{matches:0,goals:0,wins:0,subs:0,clean:0};
+    S.launchEvent.claimed=S.launchEvent.claimed||{};
+    launchQuests.forEach(q=>S.launchEvent.progress[q.id]=Math.max(0,Number(S.launchEvent.progress[q.id])||0));
+    return S.launchEvent;
+  }
+  function launchCard(mode,key){return POOL[mode].find(p=>p&&p.launchEventKey===key)||null;}
+  function renderLaunchEvent(){
+    const ev=eventState();if(!ev)return '';
+    const mode=S.mode;
+    return '<section class="ks-launch-event"><div class="ks-launch-hero"><div class="ks-launch-eyebrow">KIKSTART SEASON DROP</div><h2>🚀 LAUNCH EVENT</h2><p>Complete matchday quests to unlock exclusive mid-tier and high-tier player editions. Progress saves with your club.</p><div class="ks-launch-tag">'+(Object.keys(ev.claimed).length)+' / '+launchQuests.length+' REWARDS CLAIMED</div></div><div class="ks-launch-quests">'+launchQuests.map(q=>{const count=ev.progress[q.id]||0,done=count>=q.goal,claimed=!!ev.claimed[q.id],reward=launchCard(mode,q.card);return '<article class="ks-launch-quest '+(claimed?'claimed':'')+'"><div class="ks-launch-quest-top"><span>'+q.tier+'</span><b>'+clean(q.title)+'</b></div><p>'+clean(q.desc)+'</p><div class="ks-launch-progress"><i style="width:'+Math.min(100,count/q.goal*100)+'%"></i></div><small>'+Math.min(count,q.goal)+' / '+q.goal+' · '+clean(q.reward)+'</small><button '+(!done||claimed?'disabled':'')+' onclick="KS_claimLaunchQuest(\''+q.id+'\')">'+(claimed?'REWARD CLAIMED':done?'CLAIM EVENT CARD':'IN PROGRESS')+'</button>'+(reward?'<small class="ks-launch-card-name">Reward: '+clean(reward.n)+' · '+reward.o+' OVR</small>':'')+'</article>';}).join('')+'</div><p class="ks-launch-note">Event rewards are exclusive card editions. Match counts, goals, wins, substitutions and clean sheets only count after a match is completed.</p></section>';
+  }
+  window.KS_claimLaunchQuest=function(id){
+    const ev=eventState(),q=launchQuests.find(x=>x.id===id);if(!ev||!q||ev.claimed[id]||(ev.progress[id]||0)<q.goal)return;
+    const p=launchCard(S.mode,q.card);if(!p)return ask('That event reward is not available in this mode.');
+    ev.claimed[id]=true;save();grant([p],'LAUNCH EVENT REWARD');
+    const root=$('home');if(root){const old=root.querySelector('.ks-launch-event');if(old)old.remove();root.insertAdjacentHTML('beforeend',renderLaunchEvent());}
+  };
+  const baseRenderHome=renderHome;
+  renderHome=function(){baseRenderHome.apply(this,arguments);const root=$('home');if(root&&!root.querySelector('.ks-launch-event'))root.insertAdjacentHTML('beforeend',renderLaunchEvent());};
+
+  // Record completed match results into Launch Event progress.
+  const baseFinish=finishMatch;
+  finishMatch=function(forfeit){
+    const old=M,wasLive=!!(old&&!old.over),goals=old?Number(old.score&&old.score[0])||0:0,conceded=old?Number(old.score&&old.score[1])||0:0,won=!!(wasLive&&!forfeit&&goals>conceded),cleanSheet=!!(wasLive&&!forfeit&&goals>=0&&conceded===0);
+    const result=baseFinish.apply(this,arguments);
+    if(wasLive&&S){const ev=eventState();ev.progress.matches++;ev.progress.goals+=goals;if(won)ev.progress.wins++;if(cleanSheet)ev.progress.clean++;save();try{refresh();}catch(e){console.warn('Launch Event refresh:',e);}}
+    return result;
+  };
+
+  // Main-club bench: five named substitutes in Football, three in Futsal.
+  function owned(mode){return POOL[mode].filter(p=>p&&S.owned&&S.owned[mode]&&S.owned[mode][p.id]);}
+  function ensureBench(mode){
+    if(!S)return [];
+    S.ksBench=S.ksBench||{};const count=mode==='fs'?3:5,xi=lineup(mode).filter(Boolean).map(p=>p.id),xiSet=new Set(xi);
+    let ids=Array.isArray(S.ksBench[mode])?S.ksBench[mode].map(Number):[];
+    ids=ids.filter((id,i)=>POOL[mode][id]&&S.owned[mode][id]&&!xiSet.has(id)&&ids.indexOf(id)===i);
+    const candidates=owned(mode).filter(p=>!xiSet.has(p.id)&&!ids.includes(p.id)).sort((a,b)=>b.o-a.o);
+    while(ids.length<count&&candidates.length)ids.push(candidates.shift().id);
+    S.ksBench[mode]=ids.slice(0,count);return S.ksBench[mode];
+  }
+  window.KS_setBench=function(slot,value){
+    if(!S)return;const mode=S.mode,ids=ensureBench(mode),xi=new Set(lineup(mode).filter(Boolean).map(p=>p.id)),id=value===''||value==='none'?null:Number(value);
+    if(id!==null&&(!POOL[mode][id]||!S.owned[mode][id]||xi.has(id)||ids.some((n,i)=>i!==slot&&n===id)))return ask('Choose a player you own who is not already in your starting team or another bench slot.');
+    ids[slot]=id;S.ksBench[mode]=ids.filter(x=>x!==null);ensureBench(mode);save();refresh();showTab('squad');
+  };
+  window.KS_autoBench=function(){
+    if(!S)return;const mode=S.mode,xi=new Set(lineup(mode).filter(Boolean).map(p=>p.id)),count=mode==='fs'?3:5;
+    S.ksBench=S.ksBench||{};S.ksBench[mode]=owned(mode).filter(p=>!xi.has(p.id)).sort((a,b)=>b.o-a.o).slice(0,count).map(p=>p.id);
+    save();refresh();showTab('squad');
+  };
+  const oldRenderSquad=renderSquad;
+  renderSquad=function(){
+    oldRenderSquad.apply(this,arguments);const root=$('squad');if(!root||!S)return;
+    const mode=S.mode,ids=ensureBench(mode),count=mode==='fs'?3:5,xi=new Set(lineup(mode).filter(Boolean).map(p=>p.id));
+    const candidates=owned(mode).filter(p=>!xi.has(p.id)).sort((a,b)=>b.o-a.o);
+    const panel=document.createElement('section');panel.className='ks-bench-manager';
+    panel.innerHTML='<div class="ks-bench-head"><div><small>TOUCHLINE MANAGEMENT</small><h2>Substitutes bench</h2><p>Choose the players ready to come on during a match. This is the same bench used by the live match substitution controls.</p></div><button type="button" onclick="KS_autoBench()">⚡ Auto-pick bench</button></div><div class="ks-bench-slots">'+Array.from({length:count},(_,i)=>{const p=POOL[mode][ids[i]],opts=candidates.filter(q=>q.id===ids[i]||!ids.includes(q.id));return '<label><span>SUB '+(i+1)+'</span><select aria-label="Substitute '+(i+1)+'" onchange="KS_setBench('+i+',this.value)"><option value="none" '+(!p?'selected':'')+'>Empty slot</option>'+opts.map(q=>'<option value="'+q.id+'" '+(p&&p.id===q.id?'selected':'')+'>'+clean(q.n)+' · '+q.pos+' · '+q.o+'</option>').join('')+'</select></label>';}).join('')+'</div><p class="ks-bench-foot">'+ids.length+' / '+count+' bench places filled · changes save automatically.</p>';
+    root.appendChild(panel);
+  };
+  // Keep main-club bench and starting XI separate when a player is moved into the XI.
+  if(typeof window.KS_swapXI==='function'){
+    const oldSwap=window.KS_swapXI;
+    window.KS_swapXI=function(slot,id){const mode=S.mode,previous=lineup(mode)[slot];const result=oldSwap.apply(this,arguments);if(previous&&previous.id!==Number(id)){S.ksBench=S.ksBench||{};const b=ensureBench(mode);if(!b.includes(previous.id)){b.pop();b.unshift(previous.id);S.ksBench[mode]=b;}}if(id!=='none'){S.ksBench=S.ksBench||{};S.ksBench[mode]=(S.ksBench[mode]||[]).filter(x=>Number(x)!==Number(id));}ensureBench(mode);save();return result;};
+  }
+  // Restrict live substitution choices to the chosen main-club bench, not the entire collection.
+  function filterLiveBench(){
+    if(!M||M.over||!S||!$('v22SubIn'))return;
+    if(M.pl&&M.pl.some(p=>p&&p.isCareerAvatar))return;
+    const mode=M.mo||S.mode,select=$('v22SubIn'),ids=ensureBench(mode),active=new Set(M.pl.filter(p=>p&&p.t===0).map(p=>Number(p.playerId)).filter(Number.isFinite));
+    const list=ids.map(id=>POOL[mode][id]).filter(p=>p&&!active.has(p.id));
+    select.innerHTML='<option value="">Player on…</option>'+list.map(p=>'<option value="'+p.id+'">'+clean(p.n)+' · '+p.pos+' · '+p.o+' OVR</option>').join('');
+    let strip=$('ksSidelineBench');if(!strip){strip=document.createElement('div');strip.id='ksSidelineBench';const tools=$('v22LiveMatchTools');if(tools)tools.insertAdjacentElement('afterend',strip);}
+    if(strip)strip.innerHTML='<b>SIDELINE · READY TO PLAY</b>'+list.map(p=>'<span>'+clean(p.n)+' <small>'+p.o+'</small></span>').join('');
+  }
+  const oldSub=window.V22_substitute;
+  if(typeof oldSub==='function')window.V22_substitute=function(){
+    const mode=M&&M.mo||S.mode,selectIn=$('v22SubIn'),raw=selectIn?selectIn.value:'',chosen=raw===''?null:Number(raw),bench=ensureBench(mode);
+    if(chosen===null||!Number.isInteger(chosen)||!bench.includes(chosen))return ask('Choose one of the players on your managed substitutes bench.');
+    const out=Number($('v22SubOut')&&$('v22SubOut').value),off=M&&M.pl&&M.pl.find(p=>p&&p.t===0&&p.i===out&&!p.gk),oldId=off?Number(off.playerId):null,before=M&&M.v22SubsUsed||0;
+    const result=oldSub.apply(this,arguments);
+    if(M&&(M.v22SubsUsed||0)>before){S.ksBench[mode]=(S.ksBench[mode]||[]).filter(id=>id!==chosen);if(Number.isInteger(oldId)&&oldId>=0)S.ksBench[mode].push(oldId);S.ksBench[mode]=S.ksBench[mode].slice(0,mode==='fs'?3:5);const ev=eventState();ev.progress.subs++;save();filterLiveBench();}
+    return result;
+  };
+  const oldStart=startMatch;
+  startMatch=function(){const result=oldStart.apply(this,arguments);if(M&&!M.over){requestAnimationFrame(()=>{filterLiveBench();requestAnimationFrame(filterLiveBench);});setTimeout(filterLiveBench,250);}return result;};
+
+  // Better kit finishing details layered onto the existing player model.
+  const oldPerson=person;
+  person=function(primary,secondary,skin,hair,hairStyle){
+    const g=oldPerson.apply(this,arguments);if(!g||typeof THREE==='undefined')return g;
+    const trim=new THREE.MeshStandardMaterial({color:secondary,roughness:.66,metalness:.04});
+    const badgeMat=new THREE.MeshStandardMaterial({color:0xf4d36d,roughness:.4,metalness:.2,emissive:0x302000});
+    [-.2,0,.2].forEach((x,i)=>{const stripe=new THREE.Mesh(new THREE.BoxGeometry(.065,.72,.024),trim);stripe.position.set(x,1.47,.425);stripe.castShadow=true;g.add(stripe);});
+    const crest=new THREE.Mesh(new THREE.CircleGeometry(.065,10),badgeMat);crest.position.set(-.23,1.72,.43);g.add(crest);
+    const sleeveMat=new THREE.MeshStandardMaterial({color:primary,roughness:.72});
+    (g.userData.a||[]).forEach(arm=>{const cuff=new THREE.Mesh(new THREE.TorusGeometry(.105,.025,5,10),trim);cuff.position.y=-.46;arm.add(cuff);});
+    g.userData.ksKitDetails=true;return g;
+  };
+
+  // Matchday player gait: coordinated leg and arm swing while moving, settling when still.
+  const oldStep=stepMatch;
+  stepMatch=function(dt){
+    const result=oldStep.apply(this,arguments);if(!M||!Array.isArray(M.pl))return result;
+    M.pl.forEach(p=>{
+      const g=p&&p.mesh;if(!g||!g.userData)return;
+      const speed=Math.max(0,Math.min(1.15,Math.hypot(Number(p.vx)||0,Number(p.vz)||0)/Math.max(1,Number(p.spd)||6)));
+      const phase=(Number(M.t)||0)*11+(Number(p.i)||0)*.9+(p.t?1.6:0),swing=Math.sin(phase)*speed*.7;
+      if(Array.isArray(g.userData.l)&&g.userData.l.length>=2){g.userData.l[0].rotation.x=swing;g.userData.l[1].rotation.x=-swing;}
+      if(Array.isArray(g.userData.a)&&g.userData.a.length>=2){g.userData.a[0].rotation.x=-swing*.72;g.userData.a[1].rotation.x=swing*.72;g.userData.a[0].rotation.z=-.08+Math.abs(swing)*.1;g.userData.a[1].rotation.z=.08-Math.abs(swing)*.1;}
+    });
+    return result;
+  };
+
+  // Add a tiered bowl, crowd, roofs and floodlight pylons around the match pitch.
+  const oldBuildWorld=buildWorld;
+  buildWorld=function(F,club){
+    const result=oldBuildWorld.apply(this,arguments);
+    try{
+      if(!world||typeof THREE==='undefined')return result;
+      const mat=(color,roughness=.8,metalness=.08)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
+      const box=(w,h,d,color,x,y,z,material)=>{const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material||mat(color));mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;world.add(mesh);return mesh;};
+      const L=F.L,W=F.W,a=club.a||'#244a76',b=club.b||'#ffffff';
+      // Concrete lower and upper tiers; each row rises and steps away from the pitch.
+      [-1,1].forEach(side=>{
+        for(let tier=0;tier<5;tier++){
+          const y=3.6+tier*2.15,z=side*(W/2+4+tier*2.25);
+          box(L+25,1.25,4,tier%2?a:b,0,y,z);
+          box(L+27,.35,4.5,0x202b3b,0,y+0.82,z);
+        }
+      });
+      [-1,1].forEach(side=>{
+        for(let tier=0;tier<4;tier++){
+          const x=side*(L/2+4+tier*2.3),y=3.5+tier*2.2;
+          box(4,1.25,W+23,tier%2?b:a,x,y,0);
+        }
+      });
+      // Crowd points use club colours and white; a single geometry keeps the M1-friendly draw count low.
+      const positions=[],colors=[],palette=[new THREE.Color(a),new THREE.Color(b),new THREE.Color('#e8edf4'),new THREE.Color('#d8a45d')];
+      const pushCrowd=(x,y,z)=>{positions.push(x,y,z);const c=palette[Math.floor(Math.random()*palette.length)];colors.push(c.r,c.g,c.b);};
+      [-1,1].forEach(side=>{
+        for(let tier=0;tier<5;tier++)for(let x=-L/2-8;x<=L/2+8;x+=2.2)pushCrowd(x,4.5+tier*2.15,side*(W/2+5+tier*2.25));
+        for(let tier=0;tier<4;tier++)for(let z=-W/2-8;z<=W/2+8;z+=2.1)pushCrowd(side*(L/2+5+tier*2.3),4.4+tier*2.2,z);
+      });
+      const crowdGeo=new THREE.BufferGeometry();crowdGeo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));crowdGeo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+      world.add(new THREE.Points(crowdGeo,new THREE.PointsMaterial({size:1.05,vertexColors:true,sizeAttenuation:true})));
+      // Roof canopies stay outside the pitch sightline; open centre preserves the overhead camera.
+      const roof= new THREE.MeshStandardMaterial({color:0x15263c,roughness:.38,metalness:.35,transparent:true,opacity:.92,side:THREE.DoubleSide});
+      [-1,1].forEach(side=>{
+        box(L+32,.7,10,0x15263c,0,18.4,side*(W/2+14),roof);
+        box(10,.7,W+28,0x15263c,side*(L/2+14),17.4,0,roof);
+      });
+      const steel=mat(0x39485b,.55,.55),lamp= new THREE.MeshStandardMaterial({color:0xfff6cf,emissive:0xffe7a1,emissiveIntensity:1.2});
+      [-1,1].forEach(xside=>[-1,1].forEach(zside=>{
+        const x=xside*(L/2+19),z=zside*(W/2+16);
+        const pole=new THREE.Mesh(new THREE.CylinderGeometry(.22,.34,21,8),steel);pole.position.set(x,10.5,z);world.add(pole);
+        box(5,.45,1.3,0xfff3c4,x,21.2,z,lamp);
+      }));
+      // Main stand scoreboard.
+      box(18,5,.8,0x050c18,0,14,-(W/2+19));
+      box(16.5,3.6,.16,0x153b56,0,14,-(W/2+19.48));
+    }catch(error){console.warn('KIKSTART stadium atmosphere fallback:',error);}
+    return result;
+  };
+
+  // Keep the match renderer correctly sized after fullscreen, orientation and window changes.
+  function resizeMatchRenderer(){
+    const stage=$('stage');if(!stage||!renderer||!camera)return;
+    const width=Math.max(1,Math.round(stage.clientWidth||stage.getBoundingClientRect().width));
+    const height=Math.max(1,Math.round(stage.clientHeight||stage.getBoundingClientRect().height));
+    if(!width||!height)return;
+    try{renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix();}catch(error){console.warn('KIKSTART match resize:',error);}
+  }
+  if(window.ResizeObserver&&!window.__ks336ResizeObserver){
+    window.__ks336ResizeObserver=new ResizeObserver(()=>resizeMatchRenderer());
+    const stage=$('stage');if(stage)window.__ks336ResizeObserver.observe(stage);
+  }
+  window.addEventListener('resize',resizeMatchRenderer);
+  document.addEventListener('fullscreenchange',resizeMatchRenderer);
+  document.addEventListener('webkitfullscreenchange',resizeMatchRenderer);
+
+  // FC-style presentation polish: dramatic pack backs, light sweeps and full-bleed walkouts.
+  const style=document.createElement('style');style.id='kikstartV336Styles';style.textContent=`
+    .ks-shrek-card{position:relative!important;overflow:hidden!important;color:#f4ffe7!important;background:radial-gradient(circle at 50% 26%,#c8ff63 0,#5bbd2f 18%,#174b35 50%,#081c25 100%)!important;border:2px solid #caff77!important;box-shadow:0 0 0 2px #3d8f37,0 0 18px #8bff4c,0 0 36px #31e7bb,inset 0 0 24px #dbff7155!important;animation:ksShrekGlow 2.6s ease-in-out infinite alternate}
+    .ks-ogre-art{height:72px;margin:0 -3px 4px;display:flex;align-items:center;justify-content:center;gap:6px;position:relative;border-radius:12px;background:radial-gradient(circle,#e1ff9c55,transparent 58%),linear-gradient(120deg,#184d32,#246c3e,#122e29);overflow:hidden}.ks-ogre-art span{font-size:55px;filter:drop-shadow(0 0 12px #c7ff66)}.ks-ogre-art i{position:absolute;right:15px;top:5px;color:#efff8c;font-size:19px;font-style:normal;animation:ksShrekSpark 1.4s ease-in-out infinite alternate}.ks-ogre-art b{position:absolute;bottom:4px;font-size:8px;letter-spacing:.18em;color:#e5ffbd;text-shadow:0 2px 5px #000;font-weight:1000}
+    .ks-shrek-card .nm{color:#ecffd2!important;text-shadow:0 0 12px #c4ff70!important;font-size:17px!important;font-weight:1000!important}.ks-shrek-card .ovr{color:#f3ffbe!important;text-shadow:0 0 14px #d5ff70!important}
+    .ks-launch-card{border:2px solid #f2ce72!important;box-shadow:0 0 0 1px #8a6729,0 0 20px #f5d77d55,inset 0 0 20px #edcc6a22!important;background:linear-gradient(145deg,#3c2e1a,#121c32 58%,#1e3152)!important}
+    .ks-event-ribbon{font-size:8px;font-weight:1000;letter-spacing:.12em;color:#fff0b9;background:linear-gradient(90deg,#80551c,#d3a94e,#80551c);border-radius:5px;padding:4px;margin:5px 0;text-align:center}
+    .ks-launch-event{margin:22px 0;padding:18px;border-radius:20px;border:1px solid #bd9a58;background:radial-gradient(circle at 90% 0,#a77d2c44,transparent 42%),linear-gradient(135deg,#101b2d,#1e2940 55%,#17172a);box-shadow:0 18px 38px #0006,0 0 24px #dfba6733}
+    .ks-launch-hero{padding:12px 8px 17px}.ks-launch-eyebrow{font-size:10px;letter-spacing:.2em;font-weight:1000;color:#ffe09a}.ks-launch-hero h2{font-size:clamp(23px,4vw,34px);margin:6px 0;color:#fff0bb;text-shadow:0 0 18px #ffc65a55}.ks-launch-hero p{max-width:720px;color:#cfdae9;font-size:13px;line-height:1.55}.ks-launch-tag{display:inline-block;margin-top:5px;padding:6px 10px;border:1px solid #e8c77c77;border-radius:7px;color:#f8dda0;font-size:10px;font-weight:900;letter-spacing:.08em}
+    .ks-launch-quests{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.ks-launch-quest{padding:13px;border-radius:13px;border:1px solid #3d4d66;background:linear-gradient(145deg,#172942,#0d1728);min-width:0}.ks-launch-quest.claimed{border-color:#4aa27e;background:linear-gradient(145deg,#12352e,#0c1d29)}.ks-launch-quest-top{display:flex;align-items:center;gap:8px}.ks-launch-quest-top span{font-size:8px;font-weight:1000;letter-spacing:.1em;color:#061421;background:#edcb78;padding:4px 6px;border-radius:5px}.ks-launch-quest-top b{font-size:13px;color:#f5f8ff}.ks-launch-quest p{font-size:11px;color:#b6c5d8;margin:9px 0}.ks-launch-progress{height:7px;border-radius:8px;background:#050c18;overflow:hidden}.ks-launch-progress i{display:block;height:100%;background:linear-gradient(90deg,#c18e37,#ffe3a0);border-radius:8px}.ks-launch-quest>small{display:block;font-size:9px;color:#aabbd0;margin-top:6px}.ks-launch-quest button{width:100%;margin-top:10px;padding:9px 7px;border-radius:8px;background:linear-gradient(110deg,#e6bf68,#ffe8ac);color:#231b0d;font-size:10px;font-weight:1000}.ks-launch-quest button:disabled{opacity:.55;filter:grayscale(.6)}.ks-launch-card-name{color:#f2dba4!important}.ks-launch-note{margin:12px 0 0;color:#899eb6;font-size:10px;line-height:1.5}
+    .ks-player-profile{position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;padding:18px;background:#020711ed;backdrop-filter:blur(14px);overflow:auto;animation:ksProfileFade .22s ease both}.ks-profile-shell{position:relative;width:min(1040px,100%);max-height:calc(100dvh - 36px);overflow:auto;padding:24px;border-radius:22px;border:1px solid #426284;background:radial-gradient(circle at 5% 0,#3b6b8055,transparent 36%),linear-gradient(145deg,#10213a,#07111f 62%,#121d34);box-shadow:0 26px 90px #000b,0 0 35px #47c9ff22}.ks-profile-close{position:sticky;top:0;float:right;z-index:3;width:42px;height:42px;border-radius:50%;border:1px solid #8eabc8;background:#132944;color:#fff;font-size:28px;line-height:1}.ks-profile-top{display:grid;grid-template-columns:minmax(180px,270px) 1fr;gap:25px;align-items:center}.ks-profile-card{display:grid;place-items:center;min-height:250px}.ks-profile-card .card{transform:scale(1.15);transform-origin:center}.ks-profile-summary h1{font-size:clamp(28px,5vw,48px);margin:5px 0;color:#f3f7ff}.ks-profile-kicker{color:#7de4d3;font-size:10px;font-weight:1000;letter-spacing:.18em}.ks-profile-meta{display:flex;flex-wrap:wrap;gap:7px}.ks-profile-meta span{font-size:11px;padding:6px 9px;border-radius:8px;background:#19324e;color:#c6d8e9}.ks-profile-rating{font-size:52px;font-weight:1000;color:#f5d78b;margin:15px 0 2px;text-shadow:0 0 20px #f0c86c33}.ks-profile-rating small{font-size:10px;letter-spacing:.14em;color:#a9bad0}.ks-profile-summary p{font-size:11px;color:#8ea6c0;line-height:1.5;max-width:560px}.ks-profile-traits{display:flex;flex-wrap:wrap;gap:7px}.ks-profile-traits span{padding:7px 9px;border:1px solid #3d6980;border-radius:99px;color:#a5e4e1;background:#113044;font-size:10px;font-weight:800}.ks-profile-shell h2{margin:20px 0 12px;font-size:18px}.ks-profile-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.ks-stat{padding:12px;border:1px solid #263e5b;border-radius:11px;background:#0d1a2b}.ks-stat>div{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#dce8f5}.ks-stat strong{color:#f7d98d}.ks-stat>span{height:7px;display:block;margin-top:9px;border-radius:9px;background:#050c17;overflow:hidden}.ks-stat i{display:block;height:100%;background:linear-gradient(90deg,#269e8d,#9cf2da);border-radius:9px}.ks-profile-footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px;color:#8198b2;font-size:10px}
+    .ks-bench-manager{margin:20px 0;padding:16px;border:1px solid #3a5973;border-radius:16px;background:linear-gradient(145deg,#132943,#0b1726)}.ks-bench-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.ks-bench-head small{font-size:10px;letter-spacing:.15em;color:#8fe0d0;font-weight:1000}.ks-bench-head h2{margin:4px 0}.ks-bench-head p,.ks-bench-foot{font-size:11px;color:#9cb1c9;line-height:1.45}.ks-bench-slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:9px;margin-top:12px}.ks-bench-slots label{display:grid;gap:6px;padding:9px;border:1px solid #304a65;border-radius:10px;background:#0b192a}.ks-bench-slots label span{font-size:9px;color:#89cfc5;font-weight:1000;letter-spacing:.13em}.ks-bench-slots select{width:100%;min-height:39px;background:#142c43;color:#fff;border:1px solid #486783;border-radius:8px;padding:7px;font-size:11px}.ks-bench-foot{margin-bottom:0}
+    #ksSidelineBench{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 12px;padding:9px 12px;border:1px solid #3f6078;border-radius:11px;background:linear-gradient(100deg,#10283a,#0b1728);color:#d7e6f2;font-size:10px}#ksSidelineBench>b{color:#a5ecdc;letter-spacing:.12em;margin-right:4px}#ksSidelineBench span{padding:5px 7px;border-radius:6px;background:#1c3550}#ksSidelineBench small{color:#f1d58b;font-weight:900}
+    #modal .card.back{background:radial-gradient(circle at 50% 30%,#345b78,#152039 55%,#070d1b)!important;border:2px solid #b8d9ec!important;box-shadow:0 0 18px #66b8ff55,inset 0 0 24px #a6dcff22!important;animation:ksPackPulse 1.8s ease-in-out infinite alternate;transform-style:preserve-3d}
+    #modal .card.pop{animation:ksCardReveal .72s cubic-bezier(.18,.86,.24,1.2) both;box-shadow:0 0 24px #ffe3a288,0 16px 32px #0009!important}
+    #modal .card.back:after{content:'';position:absolute;inset:-40%;background:linear-gradient(110deg,transparent 35%,#ffffff44 48%,transparent 62%);transform:translateX(-80%) rotate(18deg);animation:ksPackSweep 2.3s ease-in-out infinite}
+    #walk{background:radial-gradient(ellipse at 50% 35%,#1b3155f5,#030812fc 68%)!important;backdrop-filter:blur(10px)}#walk .beams{filter:drop-shadow(0 0 20px #e6cb79)}#wface{filter:drop-shadow(0 0 24px #ffe09a);animation:ksWalkFace .8s cubic-bezier(.2,.8,.2,1) both}#wt{font-size:clamp(24px,5vw,46px);font-weight:1000;letter-spacing:.08em;text-shadow:0 0 24px #ffd978aa,0 5px 10px #000}
+    #matchView.v33-game-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;max-height:none!important;overflow:auto!important;z-index:2147483000!important;padding:8px max(10px,env(safe-area-inset-right)) 18px max(10px,env(safe-area-inset-left))!important;border-radius:0!important;box-sizing:border-box!important;background:#030812!important}
+    #matchView.v33-game-fullscreen #stage{width:100%!important;height:calc(100dvh - 190px)!important;min-height:300px!important;max-height:none!important;margin:0 auto!important}
+    #matchView.v33-game-fullscreen #stage canvas:not(#v5mini){display:block!important;width:100%!important;height:100%!important}
+    #matchView.v33-game-fullscreen #v22LiveMatchTools,#matchView.v33-game-fullscreen #ksSidelineBench{max-width:none!important;width:100%!important}
+    @keyframes ksShrekGlow{to{box-shadow:0 0 0 3px #8bff4c,0 0 35px #8bff4c,0 0 55px #31e7bb,inset 0 0 30px #e4ff7755}}
+    @keyframes ksShrekSpark{to{transform:rotate(40deg) scale(1.4);opacity:.45}}
+    @keyframes ksProfileFade{from{opacity:0}to{opacity:1}}
+    @keyframes ksPackPulse{to{box-shadow:0 0 30px #87d5ff99,inset 0 0 30px #a6dcff44}}
+    @keyframes ksPackSweep{to{transform:translateX(80%) rotate(18deg)}}
+    @keyframes ksCardReveal{from{opacity:0;transform:rotateY(88deg) scale(.65)}to{opacity:1;transform:rotateY(0) scale(1)}}
+    @keyframes ksWalkFace{from{opacity:0;transform:translateY(28px) scale(.45)}to{opacity:1;transform:translateY(0) scale(1)}}
+    @media(max-width:680px){.ks-profile-shell{padding:15px}.ks-profile-top{grid-template-columns:1fr;gap:8px}.ks-profile-card{min-height:205px}.ks-profile-card .card{transform:scale(.95)}.ks-profile-stats{grid-template-columns:1fr}.ks-profile-rating{font-size:42px}.ks-launch-event{padding:12px}.ks-bench-head button{width:100%}}
+    @media(prefers-reduced-motion:reduce){.ks-shrek-card,#modal .card.back,#modal .card.pop,#walk #wface{animation:none!important}}
+  `;
+  document.head.appendChild(style);
+
+  // Show event-exclusive cards in the index once earned; secret/code cards remain hidden until owned.
+  const oldRenderIndex=renderIndex;
+  renderIndex=function(){
+    oldRenderIndex.apply(this,arguments);
+    const root=$('index');if(!root||!S)return;
+    const mode=S.mode,exclusive=POOL[mode].filter(p=>(p.secret||p.launchEvent||p.shrekCard||p.allTimeXI||p.khizargive||p.daniyal)&&S.owned[mode]&&S.owned[mode][p.id]);
+    if(exclusive.length){const section=document.createElement('section');section.className='ks-index-exclusives';section.innerHTML='<h2>Unlocked secret & event cards</h2><div class="grid">'+exclusive.map(p=>cardHTML(p,'<div class="v27-extra">Owned ×'+S.owned[mode][p.id]+'</div>')).join('')+'</div>';root.appendChild(section);}
+  };
+
+  // Ensure the new data is reflected in the shop, index, squad and home views.
+  window.KIKSTART_GAME_VERSION='33.6';document.title='KIKSTART v33.6 — Launch Event';
+  const badge=$('#top .ks-build-version');if(badge)badge.textContent='KIKSTART v33.6';
+  if(S){modes.forEach(mode=>{S.stock[mode]=S.stock[mode]||{};POOL[mode].forEach(p=>{if(S.stock[mode][p.id]===undefined)S.stock[mode][p.id]=p.secret?0:(Math.random()<ST[p.r][0]?1+Math.floor(Math.random()*ST[p.r][1]):0);});});eventState();ensureBench(S.mode);save();try{refresh();}catch(error){console.warn('KIKSTART v33.6 initial refresh:',error);}}
+})();
+</script>
+
+<script>
+/* KIKSTART v33.7 — Shrek redemption repair, dedicated Launch Event tab,
+   tougher quest chain, blue start-screen identity and UI polish. */
+(function KIKSTART_V337(){
+  'use strict';
+  if (window.__KIKSTART_V337__) return;
+  window.__KIKSTART_V337__ = true;
+  const $ = id => document.getElementById(id);
+  const safe = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const modes = ['fb','fs'];
+
+  // Separate Shrek code. Repair older saves that already used KIKSTARTALL but
+  // did not visibly surface the Shrek card after the index refresh.
+  function findShrek(mode){ return (POOL[mode] || []).find(p => p && p.shrekCard) || null; }
+  function ownShrekEveryMode(){
+    if(!S) return false;
+    S.owned = S.owned || {fb:{},fs:{}};
+    S.stock = S.stock || {fb:{},fs:{}};
+    S.redeemed = S.redeemed || {};
+    let found = false;
+    modes.forEach(mode => {
+      S.owned[mode] = S.owned[mode] || {};
+      S.stock[mode] = S.stock[mode] || {};
+      const player = findShrek(mode);
+      if(!player) return;
+      found = true;
+      S.owned[mode][player.id] = Math.max(1, Number(S.owned[mode][player.id]) || 0);
+      S.stock[mode][player.id] = 0;
+    });
+    return found;
+  }
+  if(S && S.redeemed && S.redeemed.ksShrekSecret339){
+    ownShrekEveryMode();
+    save();
+  }
+
+  const previousRedeem = window.redeemCode || redeemCode;
+  window.redeemCode = redeemCode = function(){
+    const input = $('v27CodeInput');
+    const msg = $('v27CodeMsg');
+    const typed = input && input.value ? input.value.trim().toLowerCase() : '';
+    if(typed !== 'shrek100' && typed !== 'swamproyal') return previousRedeem.apply(this, arguments);
+    if(!S || !input || !msg) return;
+    S.redeemed = S.redeemed || {};
+    const alreadyOwned = modes.every(mode => {
+      const p = findShrek(mode);
+      return p && S.owned && S.owned[mode] && Number(S.owned[mode][p.id]) > 0;
+    });
+    if(S.redeemed.shrek100 && alreadyOwned){
+      msg.className = 'v27-code-error';
+      msg.textContent = 'Shrek has already been claimed on this save.';
+      if(window.sfx && sfx.err) sfx.err();
+      return;
+    }
+    if(!ownShrekEveryMode()){
+      msg.className = 'v27-code-error';
+      msg.textContent = 'Shrek could not be found in this game build. Refresh the game and try again.';
+      return;
+    }
+    S.redeemed.shrek100 = true;
+    input.value = '';
+    save();
+    if(typeof refresh === 'function') refresh();
+    const fresh = $('v27CodeMsg');
+    if(fresh){ fresh.className = 'v27-code-success'; fresh.textContent = '✓ SHREK UNLOCKED! The 100 OVR Swamp Legend is now in both your Football and Futsal collections. Open Squad or Player Index to find him.'; }
+    const shrek = findShrek(S.mode);
+    if(shrek && window.KS_openPlayerProfile) setTimeout(() => window.KS_openPlayerProfile(S.mode, shrek.id), 80);
+  };
+
+  // Give owned Shrek a dedicated, obvious collection section on Squad and Index.
+  function shrekSection(root, mode){
+    if(!root || !S || !S.owned || !S.owned[mode]) return;
+    const p = findShrek(mode);
+    if(!p || !S.owned[mode][p.id]) return;
+    const section = document.createElement('section');
+    section.className = 'ks337-shrek-owned';
+    section.innerHTML = '<div class="ks337-shrek-copy"><span>SECRET PLAYER · SWAMP LEGEND</span><h2>🧌 SHREK · 100 OVR</h2><p>Your exclusive Shrek code card. Tap the card to open his full player profile.</p></div><div class="grid"></div>';
+    section.querySelector('.grid').innerHTML = cardHTML(p, '<div class="ks337-owned-tag">UNLOCKED · 100 OVR</div>');
+    root.appendChild(section);
+  }
+  const oldSquadRender = renderSquad;
+  renderSquad = function(){
+    oldSquadRender.apply(this, arguments);
+    const root = $('squad');
+    if(root){ root.querySelectorAll('.ks337-shrek-owned').forEach(el=>el.remove()); shrekSection(root, S.mode); }
+  };
+  const oldIndexRender = renderIndex;
+  renderIndex = function(){
+    oldIndexRender.apply(this, arguments);
+    const root = $('index');
+    if(root){ root.querySelectorAll('.ks337-shrek-owned').forEach(el=>el.remove()); shrekSection(root, S.mode); }
+  };
+
+  // Create a dedicated tab rather than placing the event below the Home dashboard.
+  const main = $('main');
+  if(main && !$('launch')){
+    const tab = document.createElement('div');
+    tab.id = 'launch';
+    tab.className = 'tab';
+    main.appendChild(tab);
+  }
+  const sideItems = document.querySelector('#side .sitems');
+  if(sideItems && !$('nav-launch')){
+    const button = document.createElement('button');
+    button.id = 'nav-launch'; button.type = 'button'; button.textContent = '🚀 Launch Event';
+    button.onclick = () => showTab('launch');
+    sideItems.appendChild(button);
+  }
+  const titleItems = document.querySelector('#start .sitems');
+  if(titleItems && !titleItems.querySelector('[data-t="launch"]')){
+    const button = document.createElement('button');
+    button.dataset.t = 'launch'; button.type = 'button'; button.textContent = '🚀 Launch Event';
+    button.onclick = () => menuGo('launch');
+    titleItems.appendChild(button);
+  }
+
+  // A tougher event progression, stored separately from the earlier v33.6 event
+  // counters so old easy quest progress cannot auto-complete the new challenges.
+  const quests = [
+    {id:'hardMatches', title:'Prove Yourself', desc:'Complete 5 matches on Hard difficulty.', goal:5, key:'launch_mid_1', tier:'MID', reward:'Phil Foden · 86 OVR'},
+    {id:'goals', title:'Relentless Attack', desc:'Score 20 goals across completed matches.', goal:20, key:'launch_mid_2', tier:'MID', reward:'Bukayo Saka · 88 OVR'},
+    {id:'hardWins', title:'Elite Winner', desc:'Win 4 matches on Hard difficulty.', goal:4, key:'launch_high_1', tier:'HIGH', reward:'Erling Haaland · 91 OVR'},
+    {id:'hardClean', title:'Impenetrable', desc:'Keep 3 clean sheets on Hard difficulty.', goal:3, key:'launch_high_2', tier:'HIGH', reward:'Jude Bellingham · 90 OVR'},
+    {id:'subs', title:'Master Tactician', desc:'Make 10 successful substitutions during matches.', goal:10, key:'launch_high_3', tier:'HIGH', reward:'Lamine Yamal · 89 OVR'}
+  ];
+  function eventState(){
+    if(!S) return null;
+    if(!S.ksLaunch337 || S.ksLaunch337.version !== 337){
+      S.ksLaunch337 = {version:337, progress:{hardMatches:0,goals:0,hardWins:0,hardClean:0,subs:0}, claimed:{}, streak:0};
+    }
+    const ev = S.ksLaunch337;
+    ev.progress = ev.progress || {};
+    ev.claimed = ev.claimed || {};
+    quests.forEach(q => ev.progress[q.id] = Math.max(0, Number(ev.progress[q.id]) || 0));
+    ev.streak = Math.max(0, Number(ev.streak) || 0);
+    return ev;
+  }
+  function rewardPlayer(mode, key){ return (POOL[mode] || []).find(p => p && p.launchEventKey === key) || null; }
+  function questCard(q, ev, mode){
+    const count = Math.min(ev.progress[q.id] || 0, q.goal);
+    const claimed = !!ev.claimed[q.id];
+    const percent = Math.round(count / q.goal * 100);
+    return '<article class="ks337-quest '+(claimed?'is-claimed':'')+'"><div class="ks337-quest-head"><span>'+q.tier+'</span><b>'+safe(q.title)+'</b></div><p>'+safe(q.desc)+'</p><div class="ks337-meter"><i style="width:'+percent+'%"></i></div><div class="ks337-quest-foot"><span>'+count+' / '+q.goal+'</span><strong>'+safe(q.reward)+'</strong></div><button type="button" '+(count<q.goal||claimed?'disabled':'')+' onclick="KS337_claimQuest(\''+q.id+'\')">'+(claimed?'CLAIMED ✓':count>=q.goal?'CLAIM REWARD':'IN PROGRESS')+'</button></article>';
+  }
+  function renderEvent(){
+    const root = $('launch');
+    if(!root || !S){ if(root) root.innerHTML = '<div class="ks337-event-empty"><h1>Launch Event</h1><p>Choose your club first to enter the event.</p></div>'; return; }
+    const ev = eventState();
+    const claimed = quests.filter(q=>ev.claimed[q.id]).length;
+    const mode = S.mode;
+    root.innerHTML = '<section class="ks337-event-page"><div class="ks337-event-hero"><div class="ks337-event-orb">✦</div><div class="ks337-event-kicker">KIKSTART LIMITED-TIME CHALLENGE</div><h1>LAUNCH EVENT</h1><p>Earn the rewards. Five demanding objectives. Mid-tier and high-tier player editions. Every challenge must be completed in real matches.</p><div class="ks337-event-progress"><b>'+claimed+' / '+quests.length+'</b><span>REWARDS CLAIMED</span><i><em style="width:'+(claimed/quests.length*100)+'%"></em></i></div><div class="ks337-mode-switch"><button type="button" class="'+(mode==='fb'?'active':'')+'" onclick="KS337_changeMode(\'fb\')">⚽ FOOTBALL</button><button type="button" class="'+(mode==='fs'?'active':'')+'" onclick="KS337_changeMode(\'fs\')">🥅 FUTSAL</button></div></div><div class="ks337-event-section-head"><div><small>YOUR OBJECTIVES</small><h2>Earn every card</h2></div><span>HARD MODE REQUIRED FOR ELITE QUESTS</span></div><div class="ks337-quests">'+quests.map(q=>questCard(q,ev,mode)).join('')+'</div><div class="ks337-event-footer"><b>EVENT RULES</b><p>Only completed matches count. Forfeits do not count. Hard wins and clean sheets must be earned against Hard opponents. Rewards are added permanently to your selected mode collection.</p></div></section>';
+  }
+  window.KS337_renderEvent = renderEvent;
+  window.KS337_changeMode = function(mode){ if(!['fb','fs'].includes(mode)||!S)return; setMode(mode); showTab('launch'); };
+  window.KS337_claimQuest = function(id){
+    if(!S) return;
+    const ev = eventState(), q = quests.find(item=>item.id===id);
+    if(!q || ev.claimed[id] || (ev.progress[id]||0)<q.goal) return;
+    const p = rewardPlayer(S.mode, q.key);
+    if(!p) return ask('This event reward could not be found. Refresh KIKSTART and try again.');
+    S.owned = S.owned || {fb:{},fs:{}}; S.owned[S.mode] = S.owned[S.mode] || {};
+    S.owned[S.mode][p.id] = (Number(S.owned[S.mode][p.id])||0)+1;
+    S.stock = S.stock || {fb:{},fs:{}}; S.stock[S.mode] = S.stock[S.mode] || {}; S.stock[S.mode][p.id] = 0;
+    ev.claimed[id] = true;
+    save(); refresh(); showTab('launch');
+    const tab = $('launch');
+    if(tab){
+      let note = tab.querySelector('.ks337-claimed-toast');
+      if(!note){ note=document.createElement('div'); note.className='ks337-claimed-toast'; tab.prepend(note); }
+      note.innerHTML = '<b>✦ REWARD UNLOCKED</b><span>'+safe(p.n)+' · '+p.o+' OVR has been added to your collection.</span><button type="button" onclick="showTab(\'squad\')">VIEW IN SQUAD</button>';
+    }
+    if(window.sfx && sfx.coin) sfx.coin();
+  };
+
+  // Move the old event panel off Home and keep it out of the dashboard.
+  const oldHomeRender = renderHome;
+  renderHome = function(){
+    const result = oldHomeRender.apply(this, arguments);
+    const home = $('home');
+    if(home) home.querySelectorAll('.ks-launch-event').forEach(el=>el.remove());
+    return result;
+  };
+
+  // Intercept only the new tab. Normal tabs continue through the established
+  // navigation stack so Career, Online and Club Hub keep their own handlers.
+  const oldShowTab = window.showTab || showTab;
+  window.showTab = showTab = function(name){
+    if(name === 'launch'){
+      if(M && !M.over) return;
+      if($('start')) $('start').classList.add('hide');
+      document.querySelectorAll('#main>.tab').forEach(el=>el.classList.toggle('on', el.id==='launch'));
+      document.querySelectorAll('#side .sitems button').forEach(el=>el.classList.toggle('on', el.id==='nav-launch'));
+      document.querySelectorAll('#start .sitems button').forEach(el=>el.classList.toggle('sel', el.dataset.t==='launch'));
+      tabOn = 'launch'; renderEvent(); return;
+    }
+    const result = oldShowTab.apply(this, arguments);
+    const launchTab = $('launch'); if(launchTab) launchTab.classList.remove('on');
+    const launchNav = $('nav-launch'); if(launchNav) launchNav.classList.remove('on');
+    return result;
+  };
+
+  // Track Hard difficulty chosen for each match, then update the new quest record
+  // only after a real match has finished.
+  const oldStartMatch = window.startMatch || startMatch;
+  window.startMatch = startMatch = function(key){
+    window.__KS337_MATCH_DIFFICULTY = key || 'medium';
+    const result = oldStartMatch.apply(this, arguments);
+    if(M && !M.over) M.__ks337Difficulty = window.__KS337_MATCH_DIFFICULTY;
+    return result;
+  };
+  const oldFinishMatch = window.finishMatch || finishMatch;
+  window.finishMatch = finishMatch = function(forfeit){
+    const match = M, wasLive = !!(match && !match.over);
+    const goals = match ? Number(match.score && match.score[0]) || 0 : 0;
+    const conceded = match ? Number(match.score && match.score[1]) || 0 : 0;
+    const difficulty = match && match.__ks337Difficulty || window.__KS337_MATCH_DIFFICULTY || 'medium';
+    const won = wasLive && !forfeit && goals > conceded;
+    const clean = wasLive && !forfeit && conceded === 0;
+    const result = oldFinishMatch.apply(this, arguments);
+    if(wasLive && !forfeit && S){
+      const ev = eventState(); ev.progress.goals += goals;
+      if(difficulty === 'hard'){
+        ev.progress.hardMatches++;
+        if(won){ ev.progress.hardWins++; ev.streak++; }
+        else ev.streak = 0;
+        if(clean) ev.progress.hardClean++;
+      } else if(!won) ev.streak = 0;
+      save();
+      if(tabOn === 'launch') renderEvent();
+    }
+    return result;
+  };
+  const oldSubstitute = window.V22_substitute;
+  if(typeof oldSubstitute === 'function'){
+    window.V22_substitute = function(){
+      const before = Number(M && M.v22SubsUsed) || 0;
+      const result = oldSubstitute.apply(this, arguments);
+      const after = Number(M && M.v22SubsUsed) || 0;
+      if(M && after > before && S){ eventState().progress.subs += after-before; save(); if(tabOn==='launch') renderEvent(); }
+      return result;
+    };
+  }
+
+  // Rebuild both wordmarks into a compact original shield-and-pitch identity.
+  const logo = '<span class="ks337-logo-mark" aria-hidden="true"><svg viewBox="0 0 64 72"><defs><linearGradient id="ks337LogoGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8de4ff"/><stop offset=".55" stop-color="#347dff"/><stop offset="1" stop-color="#1744b8"/></linearGradient></defs><path d="M32 3 58 13v20c0 17-10 28-26 36C16 61 6 50 6 33V13Z" fill="url(#ks337LogoGrad)" stroke="#c9efff" stroke-width="2.5"/><path d="M18 19h28v34H18zM32 19v34M18 36h28M32 29a7 7 0 1 0 0 14 7 7 0 0 0 0-14" fill="none" stroke="#eaf8ff" stroke-width="2"/><path d="m25 9 7-5 7 5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span><span class="ks337-logo-type">KIK<span>START</span></span>';
+  document.querySelectorAll('.slogo').forEach(el=>{ if(!el.dataset.ks337Logo){ el.innerHTML=logo; el.dataset.ks337Logo='1'; } });
+  const bootMark = document.querySelector('.ks-boot-mark'); if(bootMark) bootMark.textContent = 'K';
+  const bootWord = document.querySelector('.ks-boot-wordmark'); if(bootWord) bootWord.textContent = 'KIKSTART';
+  const bootFooter = document.querySelector('.ks-boot-footer'); if(bootFooter) bootFooter.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v33.7';
+  document.title = 'KIKSTART v33.8 — Blue Edition';
+  const meta = document.querySelector('meta[name="kikstart-game-version"]'); if(meta) meta.content='33.7';
+  window.KIKSTART_GAME_VERSION = '33.7';
+  const versionBadge = $('#top .ks-build-version'); if(versionBadge) versionBadge.textContent='KIKSTART v33.7';
+
+  const style = document.createElement('style');
+  style.id='ks337-blue-polish';
+  style.textContent = `
+    /* Blue-night identity: title screen, boot screen and navigation */
+    #start{background:radial-gradient(ellipse at 78% 48%,#1767c8 0%,#103b86 27%,transparent 62%),linear-gradient(112deg,#030b1d 0%,#071c43 48%,#0c3470 100%)!important}
+    #start:after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(125deg,transparent 40%,#72caff0b 55%,transparent 70%),radial-gradient(ellipse at 90% 88%,#198bff22,transparent 45%);}
+    .smenu{background:linear-gradient(90deg,#030a19f7 65%,#061a36d9 100%)!important;border-right:1px solid #5ebaff24}
+    .sby{color:#9dcdfc!important;opacity:.78!important}
+    .sitems button::before{background:#50b8ff!important;box-shadow:0 0 14px #48aeff!important}
+    .sitems button{color:#a6c4e5!important}.sitems button.sel,.sitems button.on,.sitems button:hover{color:#fff!important}
+    .shero h1{color:#f5faff;text-shadow:0 8px 32px #0008}.shero p{color:#d6eaff}
+    .sbeams{background:repeating-conic-gradient(from 170deg at 100% 0,#8dccff19 0 3deg,transparent 3deg 13deg)!important}
+    .sfield{opacity:.14!important;filter:drop-shadow(0 0 16px #50aaff)}
+    #ksBootScreen{background:radial-gradient(ellipse at 50% 42%,#164b91 0%,#092650 42%,#020918 100%)!important;color:#f4f9ff!important}
+    #ksBootScreen:before{background:linear-gradient(90deg,transparent 49.8%,#a8ddff 50%,transparent 50.2%),linear-gradient(0deg,transparent 49.8%,#a8ddff 50%,transparent 50.2%)!important}
+    .ks-boot-orbit{border-color:#68bfff35!important;box-shadow:0 0 0 42px #52aaff0c,0 0 0 84px #52aaff09,0 0 90px #168cff55!important}
+    .ks-boot-mark{background:linear-gradient(145deg,#9ce2ff,#277cff 60%,#173da8)!important;box-shadow:0 0 28px #3b9dff77!important;color:white!important}
+    .ks-boot-track i{background:linear-gradient(90deg,#1d72df,#63c9ff,#e8f7ff)!important;box-shadow:0 0 16px #4dafff99!important}
+    #ksBootEnter{border-color:#b8e6ff!important;background:linear-gradient(110deg,#8edaff,#287bff)!important;color:#041630!important;box-shadow:0 8px 22px #278dff66!important}
+    .ks-boot-footer{color:#8cb9e6!important}
+    .ks337-logo-mark{display:inline-flex;width:.88em;height:1em;vertical-align:-.12em;margin-right:.13em;filter:drop-shadow(0 0 12px #49aaff75)}
+    .ks337-logo-mark svg{width:100%;height:100%;overflow:visible}
+    .ks337-logo-type{font-weight:1000;letter-spacing:-.055em;background:linear-gradient(180deg,#fff 8%,#d8efff 48%,#5baeff 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
+    .ks337-logo-type span{color:#5cb7ff}
+    #side .slogo{font-size:29px;white-space:nowrap}.smenu .slogo{font-size:clamp(40px,5.5vw,62px);white-space:nowrap}
+    #nav-launch{color:#d9ecff!important;border:1px solid #3c91dc55!important;background:linear-gradient(110deg,#123868,#0c2444)!important}
+    #nav-launch.on{background:linear-gradient(110deg,#287fe9,#1450a3)!important;color:white!important;box-shadow:0 0 18px #328bff44}
+    #nav-launch:hover{border-color:#69bcff!important}
+    #launch{max-width:1180px}
+    .ks337-event-page{padding:8px 0 36px;animation:ks337PageIn .28s ease both}
+    .ks337-event-hero{position:relative;overflow:hidden;padding:30px clamp(18px,4vw,42px);border:1px solid #4d9fe966;border-radius:22px;background:radial-gradient(circle at 84% 25%,#3095ff55,transparent 32%),linear-gradient(125deg,#071b3b,#0b3a76 58%,#0c2350);box-shadow:0 18px 46px #0005,inset 0 1px #dff3ff22}
+    .ks337-event-hero:after{content:'✦';position:absolute;right:6%;top:-38px;font-size:clamp(130px,24vw,270px);font-weight:1000;color:#d6eeff0b;transform:rotate(15deg);pointer-events:none}
+    .ks337-event-orb{position:absolute;right:8%;top:18%;width:80px;height:80px;border:1px solid #9edaff88;border-radius:50%;display:grid;place-items:center;color:#e9f8ff;font-size:32px;box-shadow:0 0 0 14px #78c7ff12,0 0 35px #66bcff55}
+    .ks337-event-kicker,.ks337-event-section-head small{font-size:10px;font-weight:1000;letter-spacing:.2em;color:#83ceff}
+    .ks337-event-hero h1{font-size:clamp(34px,6vw,66px);letter-spacing:-.055em;margin:10px 0;color:#fff;text-shadow:0 5px 24px #0007}
+    .ks337-event-hero p{max-width:680px;color:#cfe5ff;font-size:13px;line-height:1.65;margin:0 0 16px}
+    .ks337-event-progress{display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:420px;margin:16px 0}.ks337-event-progress>b{font-size:23px;color:#fff}.ks337-event-progress>span{font-size:9px;font-weight:900;letter-spacing:.14em;color:#a9d7ff}.ks337-event-progress>i{height:7px;flex-basis:100%;background:#04132c;border-radius:10px;overflow:hidden}.ks337-event-progress em{display:block;height:100%;background:linear-gradient(90deg,#318aff,#b4e9ff);border-radius:10px}
+    .ks337-mode-switch{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}.ks337-mode-switch button{background:#112f59;color:#bcdcff;border:1px solid #5aaaff55;font-size:10px;letter-spacing:.08em}.ks337-mode-switch button.active{background:linear-gradient(110deg,#287fe9,#58baff);color:#06182f;border-color:#d3f0ff}
+    .ks337-event-section-head{display:flex;justify-content:space-between;align-items:end;gap:14px;flex-wrap:wrap;margin:24px 0 14px}.ks337-event-section-head h2{font-size:23px;margin:5px 0}.ks337-event-section-head>span{font-size:9px;font-weight:1000;letter-spacing:.12em;color:#ffd88a;background:#47341655;border:1px solid #c9944266;border-radius:7px;padding:7px 10px}
+    .ks337-quests{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));gap:12px}.ks337-quest{position:relative;min-width:0;padding:16px;border:1px solid #2e5078;border-radius:15px;background:linear-gradient(150deg,#122b4b,#0a172b);box-shadow:0 10px 25px #0002}.ks337-quest.is-claimed{border-color:#368e87;background:linear-gradient(145deg,#103d49,#0a1b2c)}.ks337-quest-head{display:flex;align-items:center;gap:9px}.ks337-quest-head>span{padding:5px 7px;border-radius:5px;background:linear-gradient(110deg,#9ccfff,#effaff);color:#082044;font-size:8px;font-weight:1000;letter-spacing:.1em}.ks337-quest-head>b{font-size:14px;color:#eff7ff}.ks337-quest p{min-height:36px;margin:11px 0;color:#a9c2df;font-size:11px;line-height:1.5}.ks337-meter{height:8px;background:#030b19;border-radius:10px;overflow:hidden}.ks337-meter i{display:block;height:100%;border-radius:10px;background:linear-gradient(90deg,#1976ed,#84d6ff);box-shadow:0 0 12px #4eaaff88}.ks337-quest-foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:9px;color:#93afd0;font-size:10px}.ks337-quest-foot strong{color:#dcefff;font-size:9px}.ks337-quest button{width:100%;margin-top:13px;background:linear-gradient(110deg,#2c80ed,#7ccfff);color:#041a36;font-size:10px;letter-spacing:.08em}.ks337-quest button:disabled{background:#1b2a40;color:#7289a5;opacity:1}.ks337-event-footer{margin-top:18px;padding:14px 16px;border:1px solid #31577d;border-radius:13px;background:#0b1b30}.ks337-event-footer b{font-size:9px;color:#80c9ff;letter-spacing:.16em}.ks337-event-footer p{margin:7px 0 0;color:#91a9c4;font-size:10px;line-height:1.55}.ks337-claimed-toast{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:4px 0 16px;padding:13px 15px;border:1px solid #60b8ff66;border-radius:12px;background:linear-gradient(110deg,#103c70,#102746);color:#fff}.ks337-claimed-toast b{font-size:10px;color:#9bdcff;letter-spacing:.12em}.ks337-claimed-toast span{font-size:12px;flex:1}.ks337-claimed-toast button{background:#9bdcff;color:#06203e;font-size:10px}
+    .ks337-shrek-owned{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin:22px 0;padding:18px;border:1px solid #75d65c88;border-radius:18px;background:radial-gradient(circle at 15% 35%,#5acb3155,transparent 34%),linear-gradient(125deg,#102e24,#11233a);box-shadow:0 0 24px #65de5530}.ks337-shrek-copy>span{color:#9fed80;font-size:9px;font-weight:1000;letter-spacing:.16em}.ks337-shrek-copy h2{margin:6px 0;color:#f2ffe9}.ks337-shrek-copy p{margin:0;color:#b4d5bf;font-size:11px;max-width:440px}.ks337-shrek-owned .grid{flex:0 0 auto}.ks337-owned-tag{margin-top:5px;color:#dcffba;font-size:9px;font-weight:1000;letter-spacing:.08em}
+    .ks-shrek-card{min-height:180px!important;background:radial-gradient(circle at 50% 32%,#a9f46c 0,#4b9e38 19%,#14543c 52%,#061d2b 100%)!important;border:2px solid #c6ff8a!important;box-shadow:0 0 0 2px #4c9b3e,0 0 24px #79f34c,0 0 42px #26dbc5,inset 0 0 24px #e6ff8b66!important;animation:ksShrekGlow 2.4s ease-in-out infinite alternate}
+    .ks-ogre-art{height:80px!important;background:radial-gradient(circle,#e9ffad44,transparent 60%),linear-gradient(120deg,#183f2e,#286e42,#112d2c)!important}.ks-ogre-art span{font-size:62px!important;filter:drop-shadow(0 0 15px #c8ff6c)!important}
+    .ks-player-profile{z-index:2147483601}
+    .tab.on{animation:ks337PageIn .18s ease both}
+    button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #72c8ff;outline-offset:2px}
+    @keyframes ks337PageIn{from{opacity:.55;transform:translateY(5px)}to{opacity:1;transform:none}}
+    @keyframes ksShrekGlow{to{box-shadow:0 0 0 3px #a6f76b,0 0 35px #79f34c,0 0 55px #26dbc5,inset 0 0 30px #e4ff7755}}
+    @media(max-width:680px){.ks337-event-hero{padding:22px 17px}.ks337-event-orb{width:56px;height:56px;right:16px;top:14px;font-size:23px}.ks337-event-hero h1{font-size:38px;padding-right:45px}.ks337-event-section-head>span{line-height:1.4}.ks337-shrek-owned{align-items:flex-start}.ks337-shrek-owned .grid{width:100%}#side .sitems{overflow-x:auto;flex-wrap:nowrap!important;scrollbar-width:thin}#side .sitems button{white-space:nowrap}}
+    @media(prefers-reduced-motion:reduce){.ks337-event-page,.tab.on,.ks-shrek-card{animation:none!important}}
+  `;
+  document.head.appendChild(style);
+
+  // If a save had previously used the all-cards code, force the repaired Shrek
+  // inventory state and repaint the currently visible collections.
+  if(S){
+    eventState();
+    if(typeof refresh === 'function'){
+      try{ refresh(); }catch(err){ console.warn('KIKSTART v33.7 refresh:',err); }
+    }
+  }
+  if($('launch') && tabOn === 'launch') renderEvent();
+})();
+</script>
+<script>
+/* KIKSTART v33.8 — direct Shrek code path + collection repair + icon mark polish. */
+(function KIKSTART_V338(){
+  'use strict';
+  if(window.__KIKSTART_V338__) return;
+  window.__KIKSTART_V338__ = true;
+  const $ = id => document.getElementById(id);
+  const modes = ['fb','fs'];
+  const esc338 = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+  // Guarantee the Shrek player records exist in both modes, even in saves
+  // created before the special-card database patch was installed.
+  function ensureShrekPlayer(mode){
+    if(!window.POOL || !Array.isArray(POOL[mode])) return null;
+    const pool = POOL[mode];
+    let p = pool.find(x => x && (x.shrekCard || String(x.n || '').toLowerCase() === 'shrek'));
+    if(!p){
+      const ids = pool.map(x => Number(x && x.id)).filter(Number.isFinite);
+      const nextId = ids.length ? Math.max(...ids) + 1 : pool.length;
+      p = {id:nextId,n:'Shrek',pos:'FWD',o:100,f:'🧌',look:'3330',r:'diamond',kind:'hero',country:'Fantasy',secret:true,shrekCard:true,launchEvent:true,launchEventKey:'swamp_ogre_'+mode,traits:['Swamp Strength','Bog Sprint','Muddy Footwork','Ogre Power','Swamp Guardian']};
+      pool.push(p);
+    }
+    p.shrekCard = true; p.secret = true; p.o = 100; p.r = 'diamond'; p.kind = p.kind || 'hero';
+    p.launchEventKey = p.launchEventKey || 'swamp_ogre_'+mode;
+    return p;
+  }
+  function ownShrek(){
+    if(typeof S === 'undefined' || !S) return false;
+    S.owned = S.owned || {fb:{},fs:{}};
+    S.stock = S.stock || {fb:{},fs:{}};
+    S.redeemed = S.redeemed || {};
+    let success = true;
+    modes.forEach(mode => {
+      S.owned[mode] = S.owned[mode] || {};
+      S.stock[mode] = S.stock[mode] || {};
+      const p = ensureShrekPlayer(mode);
+      if(!p){ success = false; return; }
+      S.owned[mode][p.id] = Math.max(1, Number(S.owned[mode][p.id]) || 0);
+      S.stock[mode][p.id] = 0;
+    });
+    if(success){ S.redeemed.shrek100 = true; S.shrekClaimed = true; S.unlockedSecret = true; }
+    return success;
+  }
+  window.KS338_ownShrek = ownShrek;
+  window.KS338_claimShrek = function(){
+    const input = $('ks338ShrekCodeInput');
+    const message = $('ks338ShrekCodeMessage');
+    const setMessage = (kind, value) => { if(message){ message.className='ks338-code-message '+kind; message.textContent=value; } };
+    const typed = input && input.value ? input.value.trim().toLowerCase().replace(/\s+/g,'') : '';
+    if(typed !== 'shrek100'){
+      setMessage('error', 'Invalid secret code.');
+      if(window.sfx && sfx.err) sfx.err();
+      return false;
+    }
+    if(typeof S === 'undefined' || !S){ setMessage('error','Choose your club first, then redeem the code.'); return false; }
+    if(!ownShrek()) { setMessage('error','The Shrek card could not be added. Refresh KIKSTART and try again.'); return false; }
+    if(input) input.value='';
+    if(typeof save === 'function') save();
+    try { if(typeof refresh === 'function') refresh(); } catch(err){ console.warn('Shrek collection refresh:',err); }
+    // Re-acquire status after refresh because Home may have been rebuilt.
+    const freshMessage = $('ks338ShrekCodeMessage');
+    if(freshMessage){ freshMessage.className='ks338-code-message success'; freshMessage.textContent='SHREK UNLOCKED — 100 OVR added to Football and Futsal.'; }
+    const selectedMode = S.mode || 'fb';
+    const shrek = ensureShrekPlayer(selectedMode);
+    if(shrek && window.KS_openPlayerProfile) setTimeout(() => window.KS_openPlayerProfile(selectedMode, shrek.id), 120);
+    if(window.sfx && sfx.coin) sfx.coin();
+    return true;
+  };
+
+  // Also route SHREK100 from the original shared redeem field, so either
+  // input path works even when older layered redeem handlers are present.
+  const previousRedeem338 = window.redeemCode || redeemCode;
+  window.redeemCode = redeemCode = function(){
+    const input = $('v27CodeInput');
+    const message = $('v27CodeMsg');
+    const typed = input && input.value ? input.value.trim().toLowerCase().replace(/\s+/g,'') : '';
+    if(typed !== 'shrek100') return previousRedeem338.apply(this, arguments);
+    if(!S || !input || !message){ if(message){message.className='v27-code-error';message.textContent='Choose your club first, then redeem SHREK100.';} return false; }
+    if(!ownShrek()){ message.className='v27-code-error';message.textContent='Shrek could not be added. Refresh KIKSTART and try again.';return false; }
+    input.value=''; if(typeof save==='function')save();
+    try{if(typeof refresh==='function')refresh();}catch(err){console.warn('Shrek claim refresh:',err);}
+    const fresh=$('v27CodeMsg');if(fresh){fresh.className='v27-code-success';fresh.textContent='✓ SHREK100 CLAIMED — Shrek 100 OVR has been added to Football and Futsal.';}
+    if(window.sfx&&sfx.coin)sfx.coin();
+    return true;
+  };
+
+  // Shrek is deliberately not advertised on Home or in a public unlock panel.
+  const baseHomeRender = renderHome;
+  renderHome = function(){ const result=baseHomeRender.apply(this,arguments); const oldPanel=$('ks338ShrekCodePanel'); if(oldPanel) oldPanel.remove(); return result; };
+
+  // Force the card to appear in both collection screens after a successful claim.
+  function addOwnedShrekSection(root, mode){
+    if(!root || !S) return;
+    root.querySelectorAll('.ks338-shrek-collection').forEach(el=>el.remove());
+    const p = ensureShrekPlayer(mode);
+    if(!p || !S.owned || !S.owned[mode] || Number(S.owned[mode][p.id]) < 1) return;
+    const section = document.createElement('section');
+    section.className = 'ks338-shrek-collection';
+    section.innerHTML = '<div><span>SECRET CODE CARD</span><h2>🧌 SHREK · 100 OVR</h2><p>Swamp Legend · claimed permanently</p></div><div class="ks338-shrek-card-slot"></div>';
+    const slot = section.querySelector('.ks338-shrek-card-slot');
+    if(slot && typeof cardHTML === 'function') slot.innerHTML = cardHTML(p, '<div class="ks338-shrek-owned-tag">SHREK100 · UNLOCKED</div>');
+    root.appendChild(section);
+  }
+  const baseSquadRender = renderSquad;
+  renderSquad = function(){ const result=baseSquadRender.apply(this,arguments); addOwnedShrekSection($('squad'),S&&S.mode||'fb'); return result; };
+  const baseIndexRender = renderIndex;
+  renderIndex = function(){ const result=baseIndexRender.apply(this,arguments); addOwnedShrekSection($('index'),S&&S.mode||'fb'); return result; };
+
+  // Repair old saves that already used KIKSTARTALL / everycard, and ensure the
+  // new card records exist even when the player has not redeemed it yet.
+  modes.forEach(ensureShrekPlayer);
+  if(typeof S !== 'undefined' && S && S.redeemed && S.redeemed.ksShrekSecret339){
+    ownShrek();
+    if(typeof save === 'function') save();
+  }
+
+  // Keep the KIKSTART wordmark in-game matched to the app icon shield.
+  const mark = '<span class="ks338-logo-emblem" aria-hidden="true"><svg viewBox="0 0 80 88"><defs><linearGradient id="ks338g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9ecff"/><stop offset=".48" stop-color="#378bff"/><stop offset="1" stop-color="#102f9f"/></linearGradient></defs><path d="M40 3 73 15v27c0 22-12 35-33 43C19 77 7 64 7 42V15Z" fill="url(#ks338g)" stroke="#e2f8ff" stroke-width="3"/><path d="M40 19 60 27v15c0 14-7 23-20 29-13-6-20-15-20-29V27Z" fill="#061c42" stroke="#8cdbff" stroke-width="2"/><path d="M24 34h32M24 44h32M24 54h32" stroke="#dff7ff" stroke-width="2" opacity=".65"/><path d="M31 29v28l18-28v28" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="58" cy="19" r="4" fill="#fff"/></svg></span><span class="ks338-wordmark">KIK<span>START</span></span>';
+  document.querySelectorAll('.slogo').forEach(el=>{el.innerHTML=mark;el.dataset.ks338Logo='1';});
+  const bootMark=$('.ks-boot-mark'); if(bootMark) bootMark.innerHTML='<svg viewBox="0 0 80 88" aria-hidden="true"><path d="M40 3 73 15v27c0 22-12 35-33 43C19 77 7 64 7 42V15Z" fill="#287dff" stroke="#e2f8ff" stroke-width="4"/><path d="M31 29v28l18-28v28" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  document.title='KIKSTART v33.8 — Blue Edition';
+  const meta=$('meta-kikstart-dummy');
+  const versionMeta=document.querySelector('meta[name="kikstart-game-version"]'); if(versionMeta)versionMeta.content='33.8';
+  window.KIKSTART_GAME_VERSION='33.8';
+  const versionBadge=$('#top .ks-build-version'); if(versionBadge)versionBadge.textContent='KIKSTART v33.8';
+
+  const style=document.createElement('style'); style.id='ks338-final-polish'; style.textContent=`
+    .ks338-shrek-code-panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.82fr);gap:18px;align-items:center;margin:14px 0 22px;padding:19px;border:1px solid #83df6b88;border-radius:18px;background:radial-gradient(circle at 9% 18%,#70e44c33,transparent 35%),linear-gradient(125deg,#102a28,#0c2748 75%,#0b1b34);box-shadow:0 12px 34px #0004,inset 0 1px #e7ffe922}
+    .ks338-shrek-code-copy>span,.ks338-shrek-collection>div:first-child>span{font-size:9px;font-weight:1000;letter-spacing:.16em;color:#a5ee7d}.ks338-shrek-code-copy h3{margin:7px 0;color:#f5ffeb;font-size:19px}.ks338-shrek-code-copy p,.ks338-shrek-collection p{color:#b6d5c0;font-size:11px;line-height:1.5;margin:0;max-width:500px}.ks338-shrek-code-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.ks338-shrek-code-entry input{min-width:0;background:#061827;border:1px solid #6ccf8588;border-radius:9px;padding:12px;color:#f4ffe8;font-weight:900;letter-spacing:.08em}.ks338-shrek-code-entry button{background:linear-gradient(110deg,#91eb61,#d7ff9b);color:#17391e;font-size:10px;font-weight:1000}.ks338-code-message{grid-column:1/-1;min-height:15px;font-size:10px}.ks338-code-message.success{color:#b6ff93}.ks338-code-message.error{color:#ffb0a9}
+    .ks338-shrek-collection{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:22px 0;padding:18px;border:1px solid #8de86d88;border-radius:17px;background:radial-gradient(circle at 13% 30%,#6fe45133,transparent 40%),linear-gradient(125deg,#0c2a25,#10233d);box-shadow:0 0 22px #63d94a22}.ks338-shrek-collection h2{margin:6px 0;color:#eeffe6}.ks338-shrek-card-slot .grid{margin:0}.ks338-shrek-owned-tag{color:#caffad;font-size:9px;font-weight:1000;letter-spacing:.1em;margin-top:5px}.ks338-logo-emblem{display:inline-flex;width:.9em;height:1.02em;vertical-align:-.13em;margin-right:.12em;filter:drop-shadow(0 0 12px #4aaaff88)}.ks338-logo-emblem svg{width:100%;height:100%;overflow:visible}.ks338-wordmark{font-weight:1000;letter-spacing:-.06em;background:linear-gradient(180deg,#fff 0%,#d8efff 42%,#57aaff 100%);-webkit-background-clip:text;background-clip:text;color:transparent}.ks338-wordmark span{color:#68c4ff}
+    .ks-boot-mark svg{width:100%;height:100%;display:block;filter:drop-shadow(0 0 10px #54baff88)}
+    @media(max-width:650px){.ks338-shrek-code-panel{grid-template-columns:1fr}.ks338-shrek-code-entry{grid-template-columns:1fr}.ks338-shrek-code-entry button{width:100%}.ks338-shrek-collection{align-items:flex-start}}
+  `; document.head.appendChild(style);
+  if(typeof refresh==='function' && typeof S!=='undefined' && S){try{refresh();}catch(e){console.warn('KIKSTART v33.8 initial repaint:',e);}}
+})();
+</script>
+
+<script>
+/* KIKSTART v33.9 — secret-only Shrek claim, harder full-collection code,
+   definitive version marker and cleanup of older public Shrek UI. */
+(function KIKSTART_V339_FINAL(){
+  'use strict';
+  if (window.__KIKSTART_V339_FINAL__) return;
+  window.__KIKSTART_V339_FINAL__ = true;
+  const $ = id => document.getElementById(id);
+  const modes = ['fb','fs'];
+  const normalise = value => String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '');
+  const FULL_COLLECTION_CODE = '__KS404_FULL_COLLECTION__';
+  const PRIVATE_SHREK_CODE = '__KS404_SHREK__';
