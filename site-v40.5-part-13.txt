@@ -1,0 +1,1000 @@
+      // Etihad North Stand: a taller, steeper single upper tier, kept distinct from the side stands.
+      const x=mode==='match'?-L/2-10:-66,span=mode==='match'?W+38:108,rows=level>=8?22:level>=6?16:9;
+      for(let r=0;r<rows;r++){
+        const xx=x-r*.68,yy=3+r*.82;
+        addBox(.78,.48,span+r*.3,xx,yy,0,mats.clubA);
+      }
+      if(levelGate(7)){
+        beam([x+3,15,-span/2],[x-rows*.68-8,roofY,0],.42,mats.steel);
+        beam([x+3,15,span/2],[x-rows*.68-8,roofY,0],.42,mats.steel);
+        for(const z of [-span/2,span/2])beam([x-rows*.68-8,roofY,0],[x-rows*.68-8,roofY-8,z],.2,mats.white);
+      }
+    }
+    if(style==='metalLouvre'&&levelGate(5)){
+      const finCount=mode==='match'?52:76;
+      for(let i=0;i<finCount;i++){
+        const a=i/finCount*Math.PI*2,x=Math.cos(a)*outerX,z=Math.sin(a)*outerZ;
+        beam([x,2,z],[x*.96,levelGate(8)?32:19,z*.96],.32,mats.silver||mats.steel);
+      }
+      if(levelGate(8)){
+        ellipse(outerX-17,outerZ-14,23,mats.darkSteel,1.35);
+        if(levelGate(9))ellipse(outerX-19,outerZ-16,24,mats.clubA,.8);
+        // Retractable roof rails sit above the continuous inner video ribbon.
+        for(const side of [-1,1])addBox(outerX*1.84,.9,1.2,0,roofY+1,side*(outerZ-7),mats.steel);
+      }
+    }
+    if(style==='grandBowl'&&levelGate(6)){
+      for(const y of [13,20,26])ellipse(outerX-8-(y-13)*.7,outerZ-7-(y-13)*.55,y,mats.clubA,.62);
+      if(levelGate(8))for(let i=0;i<24;i++){const a=i/24*Math.PI*2;beam([Math.cos(a)*65,19,Math.sin(a)*51],[Math.cos(a)*88,roofY,Math.sin(a)*69],.2,mats.steel);}
+    }
+    if(style==='sanSiroTowers'&&levelGate(5)){
+      // Current San Siro: cylindrical external towers and helical access ramps.
+      for(const [x,z] of (mode==='match'?[[-L/2-42,-W/2-38],[L/2+42,-W/2-38],[-L/2-42,W/2+38],[L/2+42,W/2+38]]:[[-outerX-14,-outerZ-12],[outerX+14,-outerZ-12],[-outerX-14,outerZ+12],[outerX+14,outerZ+12]])){
+        cylinder(2.0,38,x,19,z,mats.concrete,16);cylinder(2.4,1.1,x,38.5,z,mats.steel,16);
+        const pts=[];for(let i=0;i<=96;i++){const t=i/96,ang=t*Math.PI*5;pts.push([x+Math.cos(ang)*4,3+t*31,z+Math.sin(ang)*4]);}
+        tube(pts,.34,mats.clubA,120);
+        for(let y=7;y<35;y+=7)beam([x-4,y,z],[x+4,y,z],.15,mats.steel);
+      }
+    }
+    if(style==='waterfrontBrick'&&levelGate(5)){
+      for(const side of [-1,1]){
+        const z=side*(mode==='match'?W/2+35:outerZ+7);
+        addBox(L+35,12,2.5,0,6,z,mats.brick);
+        for(let x=-L/2-5;x<=L/2+5;x+=9){addBox(3.4,5.8,.2,x,6,z+side*1.36,mats.glass);addBox(.5,7,.6,x-2,6,z+side*1.5,mats.darkSteel);}
+        for(let x=-L/2;x<=L/2;x+=18)beam([x,1,z],[x+8,17,z+side*2],.28,mats.steel);
+      }
+      addBox(L+78,.35,30,0,.1,-(mode==='match'?W/2+57:outerZ+30),mats.concrete);
+      for(let x=-52;x<=52;x+=13){cylinder(.35,7,x,3.5,-(mode==='match'?W/2+54:outerZ+27),mats.steel,10);}
+    }
+    if(style==='etfeDiamond'&&levelGate(5)){
+      for(let i=0;i<64;i++){
+        const a=i/64*Math.PI*2,x=Math.cos(a)*(outerX+2),z=Math.sin(a)*(outerZ+2);
+        const b=addBox(5.4,5.4,.38,x,17,z,mats.glass,0,a+Math.PI/2,Math.PI/4);
+        if(i%2===0)b.material=mats.clubA;
+      }
+    }
+    if((style==='radialCanopy'||style==='cableBowl'||style==='waveCanopy'||style==='tensionCanopy')&&levelGate(7)){
+      for(let i=0;i<32;i++){
+        const a=i/32*Math.PI*2,inside=[Math.cos(a)*63,roofY-3,Math.sin(a)*48],outside=[Math.cos(a)*outerX,roofY,Math.sin(a)*outerZ];
+        beam(inside,outside,.16,mats.white);
+      }
+      if(style==='cableBowl'&&key==='MCI'){
+        for(const side of [-1,1]){const x=side*70;beam([x,3,-53],[x,43,-53],.65,mats.steel);beam([x,43,-53],[x*.45,29,0],.24,mats.white);beam([x,43,-53],[x*.45,29,53],.24,mats.white);}
+      }
+    }
+    if(style==='slidingRoof'&&levelGate(7)){
+      for(const side of [-1,1]){
+        addBox(8,1,outerZ-12,side*36,roofY+1,0,mats.darkSteel);
+        for(let x=-38;x<=38;x+=19)beam([x,roofY-2,side*25],[x,roofY+4,side*35],.18,mats.steel);
+      }
+      if(levelGate(9)){addBox(34,.55,outerZ-16,-18,roofY+2,0,mats.white);addBox(34,.55,outerZ-16,18,roofY+2,0,mats.white);}
+    }
+    if(style==='meshSkin'&&levelGate(5)){
+      for(let side=-1;side<=1;side+=2)for(let x=-outerX;x<=outerX;x+=9){
+        beam([x,2,side*outerZ],[x+8,23,side*(outerZ+3)],.11,mats.white);
+        beam([x+8,2,side*outerZ],[x,23,side*(outerZ+3)],.11,mats.steel);
+      }
+    }
+    if((style==='dallAraTower'||style==='marathonTower')&&levelGate(5)){
+      const x=mode==='match'?-L/2-36:-outerX-12,z=0;
+      addBox(10,38,10,x,19,z,mats.brick);addBox(14,3,14,x,39,z,mats.steel);
+      for(let y=8;y<37;y+=7)addBox(11,.7,11,x,y,z,mats.darkSteel);
+    }
+    if(style==='gothicFerraris'&&levelGate(5)){
+      for(const x of [-1,1])for(const z of [-1,1]){
+        const xx=x*(mode==='match'?L/2+36:outerX+12),zz=z*(mode==='match'?W/2+34:outerZ+10);
+        addBox(7,29,7,xx,14.5,zz,mats.brick);addBox(10,1.2,10,xx,29.6,zz,mats.clubA);
+        beam([xx-3,25,zz],[xx,32,zz],.22,mats.white);beam([xx+3,25,zz],[xx,32,zz],.22,mats.white);
+      }
+    }
+    if(style==='greenCauldron'&&levelGate(5)){
+      for(const side of [-1,1]){
+        addBox(3,19,W+23,side*(L/2+16),9,0,mats.clubA);
+        for(let z=-W/2-4;z<=W/2+4;z+=6)beam([side*(L/2+14),3,z],[side*(L/2+21),24,z],.18,mats.white);
+      }
+    }
+    // Additional club-specific signatures based on the real venue profiles.
+    if(style==='ovalTruss'&&levelGate(5)){
+      // Emirates / RCDE / similar oval bowls: continuous perimeter roof trusses and open concourse glazing.
+      const rx=mode==='match'?L/2+33:outerX+2,rz=mode==='match'?W/2+35:outerZ+3;
+      ellipse(rx,rz,levelGate(7)?roofY:22,mats.steel,.5);
+      for(let i=0;i<32;i++){const a=i/32*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);beam([ca*(rx-8),13,sa*(rz-7)],[ca*rx,levelGate(7)?roofY:22,sa*rz],.2,mats.white);}
+      if(levelGate(6))for(const x of [-1,1])for(const z of [-1,1])addBox(5,4,1,x*L*.36,20,z*W*.39,mats.screen);
+      if(key==='ARS'&&levelGate(8)){for(let x=-L/2;x<=L/2;x+=18)beam([x,roofY,-W/2-8],[x+5,roofY+3,0],.16,mats.clubA);}
+    }
+    if(style==='asymTwin'&&levelGate(4)){
+      // Old Trafford: a visibly deeper west/main stand and a four-corner roof-support rhythm.
+      const z=mode==='match'?W/2+7:outerZ-9,span=L+18;
+      for(let tier=0;tier<(level>=7?3:2);tier++){
+        addBox(span+12,1.0,4,-2,10+tier*7,z,mats.clubA);
+        for(let x=-L/2-5;x<=L/2+5;x+=17)beam([x,4+tier*7,z-3],[x+2,18+tier*7,z+2],.3,mats.steel);
+      }
+      if(levelGate(7))for(const x of [-1,1])beam([x*L*.42,15,z],[x*L*.46,roofY+5,z+13],.48,mats.darkSteel);
+      if(levelGate(6))addBox(9,5,1,-L*.33,18,z-2,mats.screen);
+    }
+    if(style==='asymGrandstand'&&levelGate(4)){
+      // St James' Park: one high asymmetric stand and a pronounced cantilever roof.
+      const z=mode==='match'?W/2+8:outerZ-10;
+      for(let row=0;row<(level>=7?18:9);row++)addBox(L+18+row*.3,.55,1.15,0,4+row*.9,z+row*.48,mats.clubA);
+      if(levelGate(7)){beam([-L/2,17,z],[-L/2,roofY+4,z+14],.6,mats.steel);beam([L/2,17,z],[L/2,roofY+4,z+14],.6,mats.steel);addBox(L+28,.75,2,0,roofY+2,z+14,mats.darkSteel);}
+    }
+    if(style==='heritageGable'&&levelGate(5)){
+      // Villa Park: separate traditional gabled roof forms rather than a continuous generic ring.
+      for(const side of [-1,1]){
+        const z=side*(mode==='match'?W/2+12:outerZ-5);
+        for(const x of [-L*.34,-L*.12,L*.12,L*.34]){
+          beam([x,18,z],[x,roofY+4,z+side*7],.42,mats.brick);
+          beam([x-8,roofY+3,z+side*7],[x,roofY+9,z+side*7],.36,mats.white);
+          beam([x,roofY+9,z+side*7],[x+8,roofY+3,z+side*7],.36,mats.white);
+        }
+      }
+      if(levelGate(6)){addBox(14,5,1,0,19,-(mode==='match'?W/2+14:outerZ+1),mats.clubB);}
+    }
+    if(style==='steepMestalla'&&levelGate(4)){
+      // Mestalla / Elland Road: steep, high side-stand profiles and strongly exposed support frames.
+      for(const side of [-1,1]){
+        const z=side*(mode==='match'?W/2+6:outerZ-12);
+        for(let row=0;row<(level>=7?18:10);row++)addBox(L+10+row*.3,.55,1.1,0,4+row*1.0,z+side*row*.55,mats.clubA);
+        if(levelGate(7))for(let x=-L/2;x<=L/2;x+=21)beam([x,8,z],[x+4,roofY+4,z+side*13],.38,mats.steel);
+      }
+    }
+    if(style==='concreteRibs'&&levelGate(5)){
+      // Parc des Princes: repeated sculptural concrete ribs wrapping the exterior.
+      const rx=mode==='match'?L/2+34:outerX+4,rz=mode==='match'?W/2+36:outerZ+5;
+      for(let i=0;i<36;i++){const a=i/36*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);beam([ca*(rx+5),2,sa*(rz+5)],[ca*(rx-4),roofY+3,sa*(rz-4)],.72,mats.concrete);}
+      if(levelGate(7))ellipse(rx,rz,roofY+2,mats.darkSteel,.55);
+    }
+    if(style==='redWhiteFacade'&&levelGate(5)){
+      const rx=mode==='match'?L/2+34:outerX+3,rz=mode==='match'?W/2+34:outerZ+4;
+      for(let i=0;i<64;i++){const a=i/64*Math.PI*2,x=Math.cos(a)*rx,z=Math.sin(a)*rz;beam([x,2,z],[x*.98,levelGate(7)?roofY:21,z*.98],.24,i%2?mats.white:mats.clubA);}
+    }
+    if(style==='ceramicYellow'&&levelGate(5)){
+      const rx=mode==='match'?L/2+32:outerX+3,rz=mode==='match'?W/2+32:outerZ+4;
+      for(let i=0;i<44;i++){const a=i/44*Math.PI*2,x=Math.cos(a)*rx,z=Math.sin(a)*rz;addBox(5.5,4,.35,x,9,z,mats.yellow,0,-a-Math.PI/2,Math.PI/4);}
+      if(levelGate(7))ellipse(rx+3,rz+3,roofY,mats.white,.5);
+    }
+    if(style==='vArena'&&levelGate(5)){
+      for(const side of [-1,1])for(const x of [-L*.42,0,L*.42]){
+        beam([x,1,side*(W/2+25)],[x+side*8,roofY,side*(W/2+37)],.62,mats.steel);
+        beam([x+side*8,roofY,side*(W/2+37)],[x+side*15,2,side*(W/2+25)],.62,mats.clubA);
+      }
+    }
+    if(style==='cornerMasts'&&levelGate(5)){
+      for(const x of [-1,1])for(const z of [-1,1]){
+        const px=x*(mode==='match'?L/2+34:outerX+6),pz=z*(mode==='match'?W/2+35:outerZ+6);
+        beam([px,1,pz],[px+x*6,roofY+9,pz+z*6],.62,mats.white);
+        beam([px+x*6,roofY+9,pz+z*6],[px-x*10,roofY-2,pz-z*10],.24,mats.steel);
+      }
+    }
+    if(style==='solarShell'&&levelGate(8)){
+      const z=mode==='match'?W/2+36:outerZ+5;
+      for(const side of [-1,1])for(let x=-L/2;x<=L/2;x+=8){addBox(6,.12,4,x,roofY-1,side*z,mats.darkSteel,0,0,side*.08);}
+    }
+    if(style==='modularArena'&&levelGate(3)){
+      for(const side of [-1,1])for(let x=-L/2;x<=L/2;x+=8){beam([x,1,side*(W/2+8)],[x,levelGate(6)?19:10,side*(W/2+8)],.22,mats.steel);}
+    }
+    // Common matchday details: vomitory portals, roof lighting bars and scoreboards.
+    if(levelGate(5)){
+      for(const side of [-1,1])for(let x=-L/2+10;x<=L/2-10;x+=25){
+        addBox(4,5,.45,x,4,side*(W/2+19),mats.dark);addBox(4.8,.42,.7,x,6.7,side*(W/2+19),mats.clubB);
+      }
+    }
+    if(levelGate(8)){
+      for(const side of [-1,1]){
+        addBox(L+18,.65,1.2,0,roofY-2,side*(outerZ-4),mats.darkSteel);
+        if(level>=9)addBox(L+12,.23,.25,0,roofY-1.5,side*(outerZ-3),mats.white);
+      }
+    }
+  }
+
+  // Wrap both builds after v35 so the new architecture is rebuilt whenever club/level changes.
+  const v36OldBuildStad=buildStad;
+  buildStad=function(){const result=v36OldBuildStad.apply(this,arguments);try{if(sw&&S)v36AddClubArchitecture(sw,'viewer');}catch(e){console.warn('KIKSTART v36 stadium-viewer detail:',e);}return result;};
+  const v36OldBuildWorld=buildWorld;
+  buildWorld=function(F,club){const result=v36OldBuildWorld.apply(this,arguments);try{if(world&&S)v36AddClubArchitecture(world,'match');}catch(e){console.warn('KIKSTART v36 match-stadium detail:',e);}return result;};
+
+  // Stadium-specific notes sit below the live construction progress panel.
+  const v36OldRenderStadium=renderStadium;
+  renderStadium=function(){
+    const result=v36OldRenderStadium.apply(this,arguments);
+    try{
+      const root=document.getElementById('stadP'),key=v36ClubKey(),profile=window.KIKSTART_getStadiumProfile?window.KIKSTART_getStadiumProfile():{};
+      if(root){root.querySelector('.v36-project-panel')?.remove();const info=V36_PROJECT_NOTES[key]||{status:'Club-specific architecture profile',detail:profile.note||'This stadium uses its own profile, materials, stand silhouette, roof structure and exterior treatment.',type:'club stadium profile'};
+        const card=document.createElement('section');card.className='panel v36-project-panel';
+        card.innerHTML='<div class="v36-kicker">VENUE ARCHITECTURE · '+v36Escape(info.type.toUpperCase())+'</div><h3>'+v36Escape(profile.venue||CL[S.club].n+' Stadium')+'</h3><b>'+v36Escape(info.status)+'</b><p>'+v36Escape(info.detail)+'</p><small>Model reference: '+v36Escape(profile.label||profile.style||'Club-specific design')+'</small>';
+        root.insertBefore(card,root.children[1]||null);
+      }
+    }catch(e){console.warn('KIKSTART v36 venue notes:',e);}
+    return result;
+  };
+
+  // --------------------------------------------------------------------
+  // Header controls. Update Log is now a compact top-bar action; Settings
+  // opens the existing graphics, weather, crowd and keyboard settings page.
+  // --------------------------------------------------------------------
+  function v36OpenSettings(){
+    if(!S||S.club===undefined){if(typeof openPick==='function')openPick();return;}
+    if(typeof showTab==='function')showTab('clubhub');
+    setTimeout(()=>{if(typeof window.V22_openHub==='function')window.V22_openHub('settings');},0);
+  }
+  function v36InstallHeader(){
+    const top=document.getElementById('top');if(!top)return;
+    document.getElementById('nav-updates')?.remove();
+    document.querySelector('#start .sitems [data-t="updates"]')?.remove();
+    let wrap=document.getElementById('v36-top-actions');
+    if(!wrap){wrap=document.createElement('div');wrap.id='v36-top-actions';wrap.setAttribute('role','toolbar');wrap.setAttribute('aria-label','Game tools');top.appendChild(wrap);}
+    wrap.innerHTML='';
+    const log=document.createElement('button');log.type='button';log.className='v36-top-action';log.innerHTML='<span aria-hidden="true">▤</span><span>Updates</span>';log.title='Open public update log';log.onclick=()=>showTab('updates');
+    const settings=document.createElement('button');settings.type='button';settings.className='v36-settings-action';settings.innerHTML='<span aria-hidden="true">⚙</span>';settings.title='Settings & controls';settings.setAttribute('aria-label','Settings and controls');settings.onclick=v36OpenSettings;
+    wrap.append(log,settings);
+  }
+
+  // Extend the public changelog without exposing private player/card rewards.
+  const v36OldShowTab=showTab;
+  showTab=function(name){
+    const result=v36OldShowTab.apply(this,arguments);
+    if(name==='updates'){
+      const root=document.getElementById('updates'),timeline=root&&root.querySelector('.v35-timeline');
+      if(timeline&&!timeline.querySelector('.v36-release')){
+        const article=document.createElement('article');article.className='v35-release current v36-release';
+        article.innerHTML='<div class="v35-release-dot"></div><div class="v35-release-top"><b>v36.0</b><span>LATEST RELEASE</span></div><h3>Club stadium architecture & save recovery</h3><p>Added stronger club-specific stadium silhouettes and exterior structures, real venue development notes, an improved matchday stadium detail pass, stable player-ownership saves and recovery for previously claimed rewards. Moved Update Log and Settings into the top bar.</p>';
+        timeline.prepend(article);
+      }
+      const pill=root&&root.querySelector('.v35-version-pill');if(pill)pill.textContent='CURRENT · v36.0';
+      const roadmap=root&&root.querySelector('.v35-roadmap');
+      if(roadmap&&!roadmap.querySelector('.v36-roadmap-card')){
+        const item=document.createElement('article');item.className='v35-roadmap-card v36-roadmap-card';item.innerHTML='<span>Future · Planned</span><h3>Mac app online updater</h3><p>Design and test a safe updater for installed Mac apps after the hosted game has been verified. The current Pages deployment updates the website only.</p>';roadmap.prepend(item);
+      }
+    }
+    return result;
+  };
+
+  document.title='KIKSTART v36.0 — Stadium Architecture';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content='36.0';
+  window.KIKSTART_GAME_VERSION='36.0';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v36.0');
+  document.querySelectorAll('.ks-boot-footer').forEach(el=>el.textContent='KIKSTART · FOOTBALL EXPERIENCE · v36.0');
+
+  const style=document.createElement('style');style.id='kikstart-v36-style';style.textContent=`
+    #v36-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;margin-left:auto;flex:0 0 auto}
+    .v36-top-action,.v36-settings-action{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:6px 11px!important;border:1px solid #436483!important;border-radius:10px!important;background:linear-gradient(135deg,#152e4b,#0d1c30)!important;color:#d9f4ff!important;font-size:11px!important;font-weight:900!important;letter-spacing:.04em;box-shadow:0 5px 14px #0003}
+    .v36-top-action span:first-child{font-size:15px;color:#89ead9}.v36-settings-action{width:36px;min-width:36px;padding:0!important;font-size:19px!important;color:#c7e6ff!important}
+    .v36-top-action:hover,.v36-settings-action:hover{border-color:#83c9ec!important;filter:brightness(1.16)}
+    .v36-project-panel{grid-column:1/-1!important;padding:17px!important;border:1px solid #55708c!important;background:linear-gradient(140deg,#122941,#091726)!important}
+    .v36-project-panel h3{font-size:18px;margin:5px 0 7px}.v36-project-panel b{display:inline-block;color:#a9eddf;font-size:12px;margin-bottom:5px}.v36-project-panel p{color:#c0d0df;font-size:12px;line-height:1.58;margin:5px 0}.v36-project-panel small{color:#8da8be;font-size:10px}
+    .v36-kicker{font-size:9px;letter-spacing:.16em;color:#78d7ca;font-weight:1000}
+    #updates .v36-release{border-left-color:#3b9e91}#updates .v36-release .v35-release-dot{background:#64efd0;box-shadow:0 0 0 4px #174b48,0 0 16px #4df0ca}
+    @media(max-width:560px){#top{padding:10px 12px}#v36-top-actions{gap:5px}.v36-top-action{padding:6px 8px!important}.v36-top-action span:last-child{font-size:10px}}
+  `;document.head.appendChild(style);
+  v36InstallHeader();
+  if(typeof renderStadium==='function'&&S&&CL[S.club]){try{renderStadium();}catch(e){console.warn('KIKSTART v36 initial stadium refresh:',e);}}
+  try{if(typeof refresh==='function'&&S)refresh();}catch(e){console.warn('KIKSTART v36 startup refresh:',e);}
+  console.info('KIKSTART v36 loaded. Save recovery:',v36SaveRecovery);
+})();
+</script>
+
+<script>
+/* KIKSTART v37.0 — stadium architecture, camera, reset and save integrity. */
+(function KIKSTART_V37(){
+  'use strict';
+  if(window.__KIKSTART_V37__)return;
+  window.__KIKSTART_V37__=true;
+
+  const clean=s=>String(s??'').trim().toLowerCase().replace(/\s+/g,' ');
+  const modes=['fb','fs'];
+  const clubNow=()=>S&&Array.isArray(CL)?CL[S.club]:null;
+  const levelNow=()=>Math.max(0,Math.min(10,Number(S&&S.st&&S.st.a)||0));
+
+  // ---------- Stable ownership and reward recovery ----------
+  function playerKey(p){
+    if(!p)return '';
+    if(p.allTimeXI&&p.allTimeKey)return 'alltime:'+String(p.allTimeKey);
+    if(p.daniyal)return 'secret:daniyal';
+    if(p.khizargive)return 'secret:khizar';
+    if(p.messiExclusive)return 'secret:messi100';
+    if(p.shrekCard)return 'private:shrek';
+    if(p.launchEventKey)return 'event:'+String(p.launchEventKey);
+    return 'player:'+ [clean(p.n),clean(p.pos),clean(p.f),clean(p.look),clean(p.country)].join('|');
+  }
+  function indexedPlayers(mode){
+    const out=new Map(),counts=new Map();
+    (Array.isArray(POOL&&POOL[mode])?POOL[mode]:[]).forEach(p=>{
+      const key=playerKey(p);if(!key)return;
+      const n=counts.get(key)||0;counts.set(key,n+1);out.set(key+'#'+n,p);
+    });
+    return out;
+  }
+  function captureOwnership(){
+    if(!S||!POOL)return;
+    const snap={version:2,fb:{},fs:{}};
+    modes.forEach(mode=>{
+      const owned=S.owned&&S.owned[mode]||{},counts=new Map();
+      (POOL[mode]||[]).forEach(p=>{
+        const key=playerKey(p);if(!key)return;
+        const n=counts.get(key)||0;counts.set(key,n+1);
+        const amount=Math.max(0,Number(owned[p.id])||0);
+        if(amount>0)snap[mode][key+'#'+n]=amount;
+      });
+    });
+    S.ksV37Ownership=snap;
+  }
+  function remapOwnership(){
+    if(!S)return;
+    const snapshots=[];
+    if(S.ksV37Ownership&&S.ksV37Ownership.version===2)snapshots.push(S.ksV37Ownership);
+    if(S.ksV36Ownership&&S.ksV36Ownership.version===1)snapshots.push(S.ksV36Ownership);
+    if(!snapshots.length)return;
+    S.owned=S.owned||{fb:{},fs:{}};
+    modes.forEach(mode=>{
+      const valid=new Set((POOL[mode]||[]).map(p=>String(p.id)));
+      const merged={};
+      Object.entries(S.owned[mode]||{}).forEach(([id,n])=>{if(valid.has(String(id))&&Number(n)>0)merged[id]=Number(n)});
+      const lookup=indexedPlayers(mode);
+      // Newer snapshot wins over the older v36 snapshot; merge only positive owned cards.
+      snapshots.forEach(snapshot=>{
+        const data=snapshot[mode]||{};
+        Object.entries(data).forEach(([key,n])=>{const p=lookup.get(key);if(p&&Number(n)>0)merged[p.id]=Math.max(Number(merged[p.id])||0,Number(n)||1)});
+      });
+      S.owned[mode]=merged;
+    });
+  }
+  function grant(mode,p){
+    if(!S||!p)return;
+    S.owned=S.owned||{fb:{},fs:{}};S.stock=S.stock||{fb:{},fs:{}};
+    S.owned[mode]=S.owned[mode]||{};S.stock[mode]=S.stock[mode]||{};
+    S.owned[mode][p.id]=Math.max(1,Number(S.owned[mode][p.id])||0);S.stock[mode][p.id]=0;
+  }
+  function restoreCodeRewards(){
+    if(!S||!POOL)return {restored:0};
+    S.redeemed=S.redeemed||{};let restored=0;
+    const full=!!(S.allCardsUnlocked||S.redeemed.ksFullCollection339||S.redeemed.kikstartall||S.redeemed.everycard);
+    const allTime=!!(S.allTimeXIClaimed||S.redeemed.alltimelegends||(Array.isArray(S.allTimeXIPlayerKeys)&&S.allTimeXIPlayerKeys.length));
+    const daniyal=!!(S.daniyalSecretClaimed||S.redeemed.daniyalsveryown);
+    const khizar=!!(S.khizargiveClaimed||S.redeemed.khizarspecialcardonly);
+    const messi=!!(S.messi100Claimed||S.redeemed.messi100legend);
+    const shrek=!!(S.shrekClaimed||(S.redeemed.ksShrekSecret339&&S.redeemed.shrek100));
+    const academy=!!S.akFullCollectionUnlockedV10;
+    const event=S.launchEvent&&S.launchEvent.claimed||{},hard=S.ksLaunch337&&S.ksLaunch337.claimed||{};
+    const eventKeys={launch_mid_1:!!(event.matches||hard.hardMatches),launch_mid_2:!!(event.goals||hard.goals),launch_high_1:!!(event.wins||hard.hardWins),launch_high_2:!!(event.subs||hard.hardClean),launch_high_3:!!(event.clean||hard.subs)};
+    modes.forEach(mode=>(POOL[mode]||[]).forEach(p=>{
+      const should=(full&&!p.shrekCard&&clean(p.n)!=='shrek')||(allTime&&p.allTimeXI)||(daniyal&&p.daniyal)||(khizar&&p.khizargive)||(messi&&p.messiExclusive)||(shrek&&p.shrekCard)||(academy&&p.academy)||(p.launchEventKey&&eventKeys[p.launchEventKey]);
+      if(should){const before=Number(S.owned&&S.owned[mode]&&S.owned[mode][p.id])||0;grant(mode,p);if(!before)restored++;}
+    }));
+    if(full){S.got=S.got||{fb:0,fs:0};S.got.fb=1;S.got.fs=1;S.owm=S.owm||{};if(Array.isArray(MGRS))MGRS.forEach(m=>{if(m)S.owm[m.id]=Math.max(1,Number(S.owm[m.id])||0)});S.unlockedSecret=true;}
+    if(allTime){S.allTimeXIClaimed=true;S.redeemed.alltimelegends=true;}
+    if(daniyal)S.daniyalSecretClaimed=true;
+    if(khizar)S.khizargiveClaimed=true;
+    if(messi)S.messi100Claimed=true;
+    if(shrek)S.shrekClaimed=true;
+    return {restored,full,allTime,daniyal,khizar,messi,privateShrek:shrek};
+  }
+  function inferClaimsFromOwned(){
+    if(!S||!POOL)return;
+    S.redeemed=S.redeemed||{};
+    for(const mode of modes){const owned=S.owned&&S.owned[mode]||{};
+      if((POOL[mode]||[]).some(p=>p.daniyal&&Number(owned[p.id])>0)){S.daniyalSecretClaimed=true;S.redeemed.daniyalsveryown=true;}
+      if((POOL[mode]||[]).some(p=>p.khizargive&&Number(owned[p.id])>0)){S.khizargiveClaimed=true;S.redeemed.khizarspecialcardonly=true;}
+      if((POOL[mode]||[]).some(p=>p.shrekCard&&Number(owned[p.id])>0)){S.shrekClaimed=true;S.redeemed.ksShrekSecret339=true;S.redeemed.shrek100=true;}
+    }
+    const xi=(POOL.fb||[]).filter(p=>p.allTimeXI);
+    const xiOwned=xi.length>0&&modes.every(mode=>xi.every(p=>Number(S.owned&&S.owned[mode]&&S.owned[mode][p.id])>0));
+    if(xiOwned){S.allTimeXIClaimed=true;S.redeemed.alltimelegends=true;S.allTimeXIPlayerKeys=xi.map(p=>p.allTimeKey).filter(Boolean);}
+  }
+  let v37Recovery={restored:0};
+  if(S){try{remapOwnership();inferClaimsFromOwned();v37Recovery=restoreCodeRewards();captureOwnership();S.ksV37SaveVersion=1;}catch(e){console.warn('KIKSTART v37 save recovery:',e);}}
+  window.KIKSTART_V37_SAVE_RECOVERY=v37Recovery;
+
+  // Wrap the final save function after all old save/backup wrappers. Verify the write.
+  const v37PreviousSave=save;
+  save=function(){
+    if(window.__KIKSTART_RESET_IN_PROGRESS__)return false;
+    try{if(S){inferClaimsFromOwned();captureOwnership();S.ksV37SaveVersion=1;}}catch(e){console.warn('KIKSTART v37 ownership snapshot:',e);}
+    try{
+      const result=v37PreviousSave.apply(this,arguments);
+      if(S){
+        const snapshot=JSON.stringify(S);
+        try{
+          let stored=localStorage.getItem('kikstartV2');
+          if(stored!==snapshot){localStorage.setItem('kikstartV2',snapshot);stored=localStorage.getItem('kikstartV2');}
+          window.KIKSTART_SAVE_STATUS=stored===snapshot?'saved':'failed';
+        }catch(e){window.KIKSTART_SAVE_STATUS='failed';window.KIKSTART_SAVE_ERROR=String(e&&e.message||e);}
+      }
+      return result;
+    }catch(e){window.KIKSTART_SAVE_STATUS='failed';window.KIKSTART_SAVE_ERROR=String(e&&e.message||e);console.error('KIKSTART v37 save failed:',e);return false;}
+  };
+  // Persist when a browser tab is backgrounded, closed or navigated away from.
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&S&&!window.__KIKSTART_RESET_IN_PROGRESS__)save();});
+  window.addEventListener('pagehide',()=>{if(S&&!window.__KIKSTART_RESET_IN_PROGRESS__)save();});
+
+  // ---------- Reset really means reset: stop unload autosave before clearing storage. ----------
+  askReset=function(){
+    ask('Reset ALL KIKSTART progress? This permanently removes your club, coins, players, stadium, career, save slots and automatic save snapshots. Your settings and controls will be kept.',()=>{
+      window.__KIKSTART_RESET_IN_PROGRESS__=true;
+      try{
+        // The progress reset clears every game-progress save, but leaves graphics and key settings intact.
+        const progressKeys=['kikstartV2','kikstartV22_backup_meta','kikstart-v25-test'];
+        for(let n=1;n<=3;n++)progressKeys.push('kikstartV22_slot_'+n,'kikstartV22_slot_'+n+'_meta','kikstartV22_backup_'+n);
+        progressKeys.forEach(key=>localStorage.removeItem(key));
+      }catch(e){console.error('KIKSTART reset storage error:',e);}
+      // The legacy beforeunload callback checks S before calling save(). Null it before reload.
+      try{S=null;}catch(_){}
+      try{if(typeof M!=='undefined')M=null;}catch(_){}
+      location.reload();
+    });
+  };
+  window.KIKSTART_resetProgress=askReset;
+
+  // ---------- Etihad profile: cable-net roof, high long stands, low open ends, expanded North Stand. ----------
+  function disposeGroupChild(target,name){
+    const old=target&&target.getObjectByName(name);if(!old)return;
+    target.remove(old);old.traverse(o=>{if(o.geometry&&o.geometry.dispose)o.geometry.dispose();if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m&&m.dispose&&m.dispose());});
+  }
+  function v37Materials(club){
+    return {
+      steel:new THREE.MeshStandardMaterial({color:0x9ba9b7,roughness:.36,metalness:.74}),
+      brightSteel:new THREE.MeshStandardMaterial({color:0xd7e0e8,roughness:.25,metalness:.78}),
+      darkSteel:new THREE.MeshStandardMaterial({color:0x26394c,roughness:.54,metalness:.6}),
+      concrete:new THREE.MeshStandardMaterial({color:0x65717c,roughness:.93,metalness:.03}),
+      brick:new THREE.MeshStandardMaterial({color:0x895d4b,roughness:.94,metalness:.01}),
+      glass:new THREE.MeshStandardMaterial({color:0x78b8d7,roughness:.2,metalness:.22,transparent:true,opacity:.48,side:THREE.DoubleSide}),
+      roof:new THREE.MeshStandardMaterial({color:0x8797a6,roughness:.74,metalness:.17,side:THREE.DoubleSide}),
+      clubA:new THREE.MeshStandardMaterial({color:club&&club.a||'#63b9e8',roughness:.65,metalness:.14}),
+      clubB:new THREE.MeshStandardMaterial({color:club&&club.b||'#ffffff',roughness:.67,metalness:.12})
+    };
+  }
+  function v37AddEtihad(target,mode,club,F){
+    const g=new THREE.Group();g.name='KIKSTART_V37_ETIHAD_ARCHITECTURE';target.add(g);
+    const level=levelNow(),s=mode==='match'?Math.max(.38,Math.min(1,Number(F&&F.L||105)/105,Number(F&&F.W||68)/68)):1;
+    const m=v37Materials(club),rx=98*s,rz=84*s,innerX=61*s,innerZ=51*s,roofY=34*s,topY=47*s;
+    const box=(w,h,d,x,y,z,material)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w*s,h*s,d*s),material);o.position.set(x*s,y*s,z*s);o.castShadow=true;o.receiveShadow=true;g.add(o);return o;};
+    const beam=(a,b,r,material)=>{const A=new THREE.Vector3(...a.map(v=>v*s)),B=new THREE.Vector3(...b.map(v=>v*s)),d=B.clone().sub(A);const o=new THREE.Mesh(new THREE.CylinderGeometry(r*s,r*s,d.length(),8),material);o.position.copy(A.add(B).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());o.castShadow=true;g.add(o);return o;};
+    const ring=(ax,az,y,r,material)=>{const pts=[];for(let i=0;i<=160;i++){const a=i/160*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*ax,y,Math.sin(a)*az));}const mesh=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),220,r,8,false),material);g.add(mesh);return mesh;};
+    // The North Stand redevelopment is a single steep upper tier; the other ends remain lower.
+    if(level>=6){
+      const x=-76,span=112,rows=level>=9?18:level>=7?13:8;
+      for(let r=0;r<rows;r++){
+        const xx=x-r*1.12,yy=3.2+r*1.55;
+        box(1.45,.52,span+r*.35,xx,yy,0,m.clubA);
+      }
+      for(let z=-54;z<=54;z+=27)beam([-68,4,z],[-76-(rows-1)*1.12,rows>=13?33:20,z],.48,m.steel);
+      box(10,1.0,span+8,x-(rows-1)*1.12,rows>=13?32:21,0,m.darkSteel);
+      if(level>=9){box(9,2.4,90,x-(rows-1)*1.12-4,36,0,m.glass);box(12,.6,98,x-(rows-1)*1.12-4,37.5,0,m.brightSteel);}
+    }
+    if(level<7)return g;
+    // Etihad cable-supported roof: perimeter masts, compression/tension rings and radial stays.
+    ring(rx,rz,roofY,.78*s,m.brightSteel);ring(innerX,innerZ,roofY-.4*s,.48*s,m.steel);
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6-Math.PI/2,c=Math.cos(a),z=Math.sin(a),x=c*(rx+5*s),zz=z*(rz+5*s);
+      beam([x/s,2,zz/s],[x/s,topY/s,zz/s],.7,m.steel);
+      beam([x/s,topY/s,zz/s],[c*rx/s,roofY/s,z*rz/s],.23,m.brightSteel);
+      beam([x/s,topY*.92/s,zz/s],[c*(innerX+5*s)/s,roofY/s,z*(innerZ+5*s)/s],.14,m.brightSteel);
+      beam([x/s,topY*.72/s,zz/s],[c*(rx-10*s)/s,(roofY-1*s)/s,z*(rz-10*s)/s],.12,m.steel);
+      beam([x/s,12,zz/s],[x*.92/s,3,zz*.92/s],.28,m.darkSteel);
+    }
+    for(let i=0;i<48;i++){
+      const a=i*Math.PI/24,c=Math.cos(a),z=Math.sin(a);
+      beam([c*rx/s,roofY/s,z*rz/s],[c*innerX/s,(roofY-.45*s)/s,z*innerZ/s],.075,m.steel);
+    }
+    // Roof construction stages: frame at 8, partial canopy at 9, full perimeter petals at 10.
+    if(level>=9){
+      const panels=level>=10?12:6,step=Math.PI*2/panels,span=step-.08;
+      const panelMat=new THREE.MeshStandardMaterial({color:0x9eacb9,roughness:.46,metalness:.24,transparent:true,opacity:.82,side:THREE.DoubleSide});
+      for(let i=0;i<panels;i++){
+        const mesh=new THREE.Mesh(new THREE.RingGeometry(68*s,86*s,12,1,i*step+.04,span),panelMat);
+        mesh.rotation.x=-Math.PI/2;mesh.scale.y=.84;mesh.position.y=roofY-.3*s;mesh.castShadow=true;g.add(mesh);
+      }
+    }
+    // Four corners stay open; there are no broad end-cap sheets across the low stands.
+    for(const side of [-1,1])for(let z=-45;z<=45;z+=30)beam([side*73,17,z],[side*88,22,z],.18,m.darkSteel);
+    return g;
+  }
+  function v37AddOtherIdentity(target,mode,club,profile,F){
+    const style=profile&&profile.style||'compactStand',key=club&&club.k||'';
+    if(key==='MCI')return v37AddEtihad(target,mode,club,F);
+    const s=mode==='match'?Math.max(.38,Math.min(1,Number(F&&F.L||105)/105,Number(F&&F.W||68)/68)):1;
+    const g=new THREE.Group();g.name='KIKSTART_V37_STADIUM_IDENTITY';target.add(g);
+    const m=v37Materials(club),level=levelNow();
+    const addBox=(w,h,d,x,y,z,material,rz=0)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w*s,h*s,d*s),material);o.position.set(x*s,y*s,z*s);o.rotation.z=rz;o.castShadow=true;o.receiveShadow=true;g.add(o);return o;};
+    const beam=(a,b,r,material)=>{const A=new THREE.Vector3(...a.map(v=>v*s)),B=new THREE.Vector3(...b.map(v=>v*s)),d=B.clone().sub(A);const o=new THREE.Mesh(new THREE.CylinderGeometry(r*s,r*s,d.length(),8),material);o.position.copy(A.add(B).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());o.castShadow=true;g.add(o);return o;};
+    const tube=(points,r,material)=>{const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p.map(v=>v*s))));const o=new THREE.Mesh(new THREE.TubeGeometry(curve,96,r*s,7,false),material);g.add(o);return o;};
+    if(level<3)return g;
+    // Add a venue's recognisable silhouette details; the K16 base model supplies its own seating bowl.
+    if(style==='singleSouth' || key==='TOT'){
+      const x=mode==='match'?72:78,span=mode==='match'?82:112;
+      addBox(10,31,span,x,18,0,m.darkSteel);
+      for(let z=-span/2;z<=span/2;z+=10)beam([x-7,5,z],[x+3,36,z],.34,m.brightSteel);
+      if(level>=7){tube([[x-10,32,-span/2],[x,44,0],[x-10,32,span/2]],.68,m.steel);}
+    }else if(style==='kop' || key==='LIV' || style==='yellowWall' || key==='BVB'){
+      const x=mode==='match'?-72:-80,span=mode==='match'?82:112;
+      addBox(12,30,span,x,17,0,key==='BVB'?m.clubA:m.darkSteel);
+      for(let z=-span/2;z<=span/2;z+=8)beam([x+7,4,z],[x-5,34,z],.32,key==='BVB'?m.clubA:m.steel);
+      if(level>=7)addBox(15,1.1,span+8,x-4,34,0,m.clubB);
+    }else if(style==='asymTwin' || key==='MUN'){
+      const z=mode==='match'?42:79;
+      addBox(126,31,11,0,18,z,m.darkSteel);
+      for(let x=-60;x<=60;x+=12)beam([x,6,z-5],[x+2,36,z+8],.42,m.steel);
+      if(level>=7)addBox(134,1.1,16,0,36,z+5,m.clubA);
+    }else if(style==='asymGrandstand' || key==='NEW'){
+      const z=mode==='match'?43:81;
+      for(let row=0;row<10;row++)addBox(126+row*1.1,.65,1.2,0,5+row*2.1,z+row*.9,m.clubA);
+      if(level>=7){beam([-66,23,z-2],[-66,39,z+17],.55,m.steel);beam([66,23,z-2],[66,39,z+17],.55,m.steel);}
+    }else if(style==='etfeDiamond' || key==='BAY'){
+      const panelMat=new THREE.MeshStandardMaterial({color:0xe9f4fb,roughness:.23,metalness:.2,transparent:true,opacity:.58,side:THREE.DoubleSide});
+      const z=mode==='match'?48:79;
+      for(let x=-64;x<=64;x+=10)for(let y=8;y<=27;y+=8){const tile=new THREE.Mesh(new THREE.BoxGeometry(7*s,5*s,.26*s),panelMat);tile.position.set(x*s,y*s,z*s);tile.rotation.z=Math.PI/4;g.add(tile);}
+    }else if(style==='metalLouvre' || key==='RMA'){
+      const rx=mode==='match'?80:96,rz=mode==='match'?50:84;
+      for(let y=8;y<=25;y+=2.2){const pts=[];for(let i=0;i<=96;i++){const a=i/96*Math.PI*2;pts.push([Math.cos(a)*rx,y,Math.sin(a)*rz]);}tube(pts,.13,m.brightSteel);}
+      if(level>=8)for(let i=0;i<24;i++){const a=i*Math.PI/12;beam([Math.cos(a)*rx,28,Math.sin(a)*rz],[Math.cos(a)*48,31,Math.sin(a)*39],.15,m.steel);}
+    }else if(style==='sanSiroTowers' || key==='INT' || key==='MIL'){
+      const rx=mode==='match'?82:112,rz=mode==='match'?70:98;
+      for(let i=0;i<11;i++){const a=i*Math.PI*2/11-Math.PI/2,x=Math.cos(a)*rx,z=Math.sin(a)*rz;const tower=new THREE.Mesh(new THREE.CylinderGeometry(2.3*s,3.1*s,37*s,14),m.concrete);tower.position.set(x*s,18.5*s,z*s);g.add(tower);const spiral=[];for(let q=0;q<=80;q++){const u=q/80;const t=u*Math.PI*5;spiral.push([x+Math.cos(t)*4,2+u*33,z+Math.sin(t)*4]);}tube(spiral,.25,m.clubA);}
+    }else if(style==='waterfrontBrick' || key==='EVE'){
+      const z=mode==='match'?51:88;
+      for(const side of [-1,1]){addBox(142,11,2.2,0,7,side*z,m.brick);for(let x=-65;x<=65;x+=13){addBox(5,5.5,.18,x,7,side*(z+1.3),m.glass);beam([x-3,1,side*z],[x+3,17,side*(z+2)],.25,m.steel);}}
+    }else if(style==='concreteRibs' || key==='PSG'){
+      const rx=mode==='match'?84:110,rz=mode==='match'?69:94;
+      for(let i=0;i<28;i++){const a=i*Math.PI*2/28;beam([Math.cos(a)*rx,3,Math.sin(a)*rz],[Math.cos(a)*(rx+12),34,Math.sin(a)*(rz+12)],.62,m.concrete);}
+    }else if(style==='heritageGable' || key==='AVL'){
+      const z=mode==='match'?49:86;
+      for(const x of [-52,-26,0,26,52]){beam([x,17,z],[x,37,z+7],.4,m.brick);beam([x-9,36,z+7],[x,44,z+7],.3,m.brightSteel);beam([x,44,z+7],[x+9,36,z+7],.3,m.brightSteel);}
+    }else if(style==='waveCanopy'){
+      for(const side of [-1,1])for(let x=-64;x<=64;x+=16)tube([[x,22,side*44],[x,31,side*61],[x,28+3*Math.sin(x/16),side*82]],.38,m.brightSteel);
+    }else if(style==='tensionCanopy' || style==='radialCanopy'){
+      const rx=mode==='match'?86:110,rz=mode==='match'?70:92;
+      for(let i=0;i<16;i++){const a=i*Math.PI/8,x=Math.cos(a)*rx,z=Math.sin(a)*rz;beam([x,2,z],[x*1.03,42,z*1.03],.45,m.steel);beam([x*1.03,42,z*1.03],[x*.54,30,z*.54],.16,m.brightSteel);}
+    }else if(style==='cornerMasts'){
+      for(const x of [-1,1])for(const z of [-1,1]){const px=x*(mode==='match'?85:110),pz=z*(mode==='match'?73:94);beam([px,2,pz],[px+x*7,41,pz+z*7],.68,m.brightSteel);beam([px+x*7,41,pz+z*7],[px-x*12,28,pz-z*12],.22,m.steel);}
+    }
+    return g;
+  }
+  function v37RemoveOldOverlay(target){disposeGroupChild(target,'KIKSTART_V36_CLUB_ARCHITECTURE');disposeGroupChild(target,'KIKSTART_V37_ETIHAD_ARCHITECTURE');disposeGroupChild(target,'KIKSTART_V37_STADIUM_IDENTITY');}
+
+  // The final viewer builder in v36 was wrapping a broad, generic translucent roof ring around every club.
+  // Remove it, then build the correct club profile once the old stadium has been refreshed.
+  const v37BaseBuildStad=buildStad;
+  buildStad=function(){
+    const result=v37BaseBuildStad.apply(this,arguments);
+    try{
+      if(sw&&typeof THREE!=='undefined'&&S){
+        v37RemoveOldOverlay(sw);
+        const club=clubNow(),profile=window.KIKSTART_getStadiumProfile?window.KIKSTART_getStadiumProfile():{};
+        if(club)v37AddOtherIdentity(sw,'viewer',club,profile,null);
+        improveStadiumRenderer();
+      }
+    }catch(e){console.warn('KIKSTART v37 viewer stadium:',e);}
+    return result;
+  };
+
+  // Matchday ground: remove v36's generic ring and add an enclosing, club-style-aware bowl.
+  function v37AddMatchArchitecture(target,F,club){
+    if(!target||!F||!club||typeof THREE==='undefined')return;
+    const profile=window.KIKSTART_getStadiumProfile?window.KIKSTART_getStadiumProfile():{};
+    v37AddOtherIdentity(target,'match',club,profile,F);
+  }
+  const v37BaseBuildWorld=buildWorld;
+  buildWorld=function(F,club){
+    const result=v37BaseBuildWorld.apply(this,arguments);
+    try{
+      if(world&&typeof THREE!=='undefined'){
+        v37RemoveOldOverlay(world);disposeGroupChild(world,'KIKSTART_V37_MATCH_BOWL');
+        v37AddMatchArchitecture(world,F,club);
+      }
+    }catch(e){console.warn('KIKSTART v37 match stadium:',e);}
+    return result;
+  };
+
+  // ---------- Stadium camera presets: exact positions rather than orbit-radius approximations. ----------
+  const cameraViews={
+    aerial:{label:'Aerial',pos:[0,172,205],look:[0,12,0]},
+    bowl:{label:'Inside bowl',pos:[92,48,86],look:[0,16,0]},
+    pitchside:{label:'Pitchside',pos:[0,9,47],look:[0,5,0]},
+    mainstand:{label:'Main stand',pos:[0,27,89],look:[0,15,0]},
+    endstand:{label:'End stand',pos:[116,29,0],look:[0,14,0]},
+    roof:{label:'Roof view',pos:[0,142,8],look:[0,15,0]},
+    exterior:{label:'Exterior',pos:[0,38,148],look:[0,14,0]}
+  };
+  let activeView='aerial',camTo=[0,172,205],lookTo=[0,12,0];
+  window.KIKSTART_setStadiumView=function(mode){
+    const v=cameraViews[mode];if(!v||!sc)return false;
+    activeView=mode;camTo=v.pos.slice();lookTo=v.look.slice();sang=Math.atan2(camTo[2]-lookTo[2],camTo[0]-lookTo[0]);sauto=mode==='aerial';if(sc){sc.position.set(...camTo);sc.lookAt(...lookTo);}
+    document.querySelectorAll('[data-v37-camera]').forEach(b=>b.classList.toggle('active',b.dataset.v37Camera===mode));
+    const status=document.getElementById('k16StadiumStatus');if(status)status.textContent=v.label+' view · Drag to rotate the view.';
+    return true;
+  };
+  stadLoop=function(){
+    requestAnimationFrame(stadLoop);
+    if(tabOn!=='stadium'||!sw||!sr||!sc||!ss)return;
+    const target=new THREE.Vector3(...camTo),look=new THREE.Vector3(...lookTo);
+    if(activeView==='aerial'&&sauto)sang+=.0011;
+    if(sdrag&&Number.isFinite(sang)){const radius=Math.hypot(camTo[0]-lookTo[0],camTo[2]-lookTo[2]);target.x=lookTo[0]+Math.cos(sang)*radius;target.z=lookTo[2]+Math.sin(sang)*radius;}
+    sc.position.lerp(target,.075);sc.lookAt(look);sr.render(ss,sc);
+  };
+  const v37BaseRenderStadium=renderStadium;
+  renderStadium=function(){
+    const result=v37BaseRenderStadium.apply(this,arguments);
+    try{
+      const row=document.querySelector('#stadP .k16-camera-row');
+      if(row){
+        row.innerHTML=Object.entries(cameraViews).map(([id,v])=>'<button type="button" data-v37-camera="'+id+'" class="'+(id===activeView?'active':'')+'">'+v.label+'</button>').join('');
+        row.querySelectorAll('[data-v37-camera]').forEach(b=>b.addEventListener('click',()=>window.KIKSTART_setStadiumView(b.dataset.v37Camera)));
+      }
+      const status=document.getElementById('k16StadiumStatus');if(status)status.textContent='Choose a camera view or drag the stadium. Each view moves to a fixed position.';
+    }catch(e){console.warn('KIKSTART v37 camera UI:',e);}
+    return result;
+  };
+
+  // Improve renderer clarity without forcing an expensive high pixel ratio on an M1 laptop.
+  function improveStadiumRenderer(){
+    try{
+      if(sr){sr.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));sr.shadowMap.enabled=true;sr.shadowMap.type=THREE.PCFSoftShadowMap;}
+      if(ss&&!ss.getObjectByName('KIKSTART_V37_HEMISPHERE')){const h=new THREE.HemisphereLight(0xddeeff,0x24334a,.48);h.name='KIKSTART_V37_HEMISPHERE';ss.add(h);}
+    }catch(e){console.warn('KIKSTART v37 renderer settings:',e);}
+  }
+  improveStadiumRenderer();
+
+  // ---------- Simple, consistent layout ----------
+  const style=document.createElement('style');style.id='kikstart-v37-style';style.textContent=`
+    #main{width:min(100%,1420px)!important;margin-inline:auto!important;padding:clamp(10px,2vw,22px)!important;box-sizing:border-box!important}
+    #main .tab.on{min-width:0!important}
+    #main .grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))!important;gap:12px!important;align-items:stretch}
+    #main .panel,#main .banner{border-radius:14px!important;box-shadow:0 10px 28px #0003}
+    #main h2{font-size:clamp(18px,2.2vw,23px)!important;letter-spacing:-.02em;margin:20px 0 10px!important}
+    #main p{line-height:1.55}
+    #main button{min-height:36px;border-radius:9px!important}
+    #top{gap:9px!important;align-items:center!important;flex-wrap:wrap!important}
+    #v36-top-actions{margin-left:auto!important;flex-shrink:0!important}
+    .k16-camera-row{display:flex;flex-wrap:wrap;gap:7px!important}
+    .k16-camera-row button{flex:1 1 auto;min-width:95px}
+    #stad3d{height:clamp(320px,56vw,640px)!important;min-height:320px!important;overflow:hidden;border-radius:15px!important;border:1px solid #38516d!important;background:radial-gradient(ellipse at 50% 34%,#172941,#050b17 75%)!important}
+    #stad3d canvas{display:block;width:100%!important;height:100%!important}
+    @media(max-width:700px){#main{padding:9px!important}#v36-top-actions{width:100%;justify-content:flex-end}#stad3d{height:390px!important}.k16-camera-row button{min-width:calc(50% - 8px)}}
+    @media(prefers-reduced-motion:reduce){.v37-boot-mark,.v37-boot-line{animation:none!important}}
+  `;document.head.appendChild(style);
+
+  // ---------- Public update history; never list private reward names or codes. ----------
+  const v37OldShowTab=showTab;
+  showTab=function(name){
+    const result=v37OldShowTab.apply(this,arguments);
+    if(name==='updates'){
+      const root=document.getElementById('updates'),timeline=root&&root.querySelector('.v35-timeline');
+      if(timeline&&!timeline.querySelector('.v37-release')){
+        const article=document.createElement('article');article.className='v35-release current v37-release';
+        article.innerHTML='<div class="v35-release-dot"></div><div class="v35-release-top"><b>v37.0</b><span>LATEST RELEASE</span></div><h3>Stadium, camera and save integrity</h3><p>Reworked stadium construction progression, removed the oversized shared roof overlay, added club-profile architectural details and direct camera positions, repaired the reset/autosave conflict and strengthened saved-player ownership recovery. Added a simpler responsive layout and a skippable matchday intro.</p>';
+        timeline.prepend(article);
+      }
+      const pill=root&&root.querySelector('.v35-version-pill');if(pill)pill.textContent='CURRENT · v37.0';
+    }
+    return result;
+  };
+
+  // ---------- A short, skippable matchday introduction (no autoplay sound). ----------
+  function installBootIntro(){
+    if(!document.body||window.__KIKSTART_V37_INTRO_INSTALLED__)return;
+    window.__KIKSTART_V37_INTRO_INSTALLED__=true;
+    let seen=false;try{seen=sessionStorage.getItem('kikstart_v37_intro_seen')==='1';}catch(_){}
+    if(seen)return;
+    try{sessionStorage.setItem('kikstart_v37_intro_seen','1');}catch(_){}
+    const overlay=document.createElement('div');overlay.id='v37BootIntro';
+    overlay.innerHTML='<div class="v37-boot-mark">KIKSTART</div><div class="v37-boot-line"></div><div class="v37-boot-sub">YOUR CLUB. YOUR GROUND. YOUR STORY.</div><button type="button" class="v37-boot-skip">SKIP INTRO</button>';
+    document.body.appendChild(overlay);
+    const finish=()=>{if(!overlay.isConnected)return;overlay.classList.add('out');setTimeout(()=>overlay.remove(),520);};
+    overlay.querySelector('button').addEventListener('click',finish);setTimeout(finish,2100);
+  }
+  const bootStyle=document.createElement('style');bootStyle.textContent=`
+    #v37BootIntro{position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px;background:radial-gradient(ellipse at 50% 62%,#163b5a 0%,#07182a 36%,#020711 76%);color:#f4f8ff;opacity:1;transition:opacity .48s ease;overflow:hidden}
+    #v37BootIntro:before{content:'';position:absolute;inset:auto -10% -28% -10%;height:55%;background:repeating-linear-gradient(90deg,transparent 0 7%,#7aa5c322 7.2% 7.4%),linear-gradient(0deg,#0b192b,#183958);clip-path:polygon(0 55%,8% 45%,18% 50%,28% 24%,38% 38%,50% 8%,62% 35%,72% 20%,83% 43%,92% 30%,100% 48%,100% 100%,0 100%);opacity:.8}
+    #v37BootIntro.out{opacity:0;pointer-events:none}.v37-boot-mark{position:relative;font-size:clamp(38px,8vw,76px);font-weight:1000;letter-spacing:.2em;text-shadow:0 0 28px #65cfff75,0 8px 22px #0009;animation:v37BootRise .9s cubic-bezier(.2,.8,.2,1) both}
+    .v37-boot-sub{position:relative;color:#9cc8e8;font-size:10px;font-weight:900;letter-spacing:.26em;text-align:center}.v37-boot-line{position:relative;width:min(250px,48vw);height:3px;background:linear-gradient(90deg,#47b8ff,#a8f4ec);box-shadow:0 0 18px #61bfff;transform-origin:left;animation:v37BootLoad 1.6s ease both}
+    .v37-boot-skip{position:absolute;right:22px;bottom:20px;background:#132b43;border:1px solid #456b88;color:#d9eeff;border-radius:8px;padding:9px 13px;font-size:10px;font-weight:900;letter-spacing:.1em}
+    @keyframes v37BootRise{from{opacity:0;transform:translateY(18px) scale(.96);letter-spacing:.32em}to{opacity:1;transform:translateY(0) scale(1);letter-spacing:.2em}}
+    @keyframes v37BootLoad{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+    @media(prefers-reduced-motion:reduce){#v37BootIntro *{animation:none!important;transition:none!important}}
+  `;document.head.appendChild(bootStyle);
+  installBootIntro();
+
+  // Update version metadata and visible build labels.
+  document.title='KIKSTART v37.0 — Stadium & Stability Update';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content='37.0';
+  window.KIKSTART_GAME_VERSION='37.0';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v37.0');
+  document.querySelectorAll('.ks-boot-footer').forEach(el=>el.textContent='KIKSTART · FOOTBALL EXPERIENCE · v37.0');
+
+  // Refresh viewer after the new overrides are in place, without clearing existing saves.
+  try{if(S&&typeof renderStadium==='function'){renderStadium();if(typeof tabOn!=='undefined'&&tabOn==='stadium'){if(typeof initStad==='function')initStad();window.KIKSTART_setStadiumView('aerial');}}}catch(e){console.warn('KIKSTART v37 stadium startup:',e);}
+  console.info('KIKSTART v37 loaded. Recovery:',v37Recovery);
+})();
+</script>
+<script>
+/* KIKSTART v38.0 — narrowly scoped stadium identity, touch controls,
+   fullscreen sizing and kit-clash protection. No save/reward/menu edits. */
+(function KIKSTART_V38(){
+  'use strict';
+  if (window.__KIKSTART_V38__) return;
+  window.__KIKSTART_V38__ = true;
+
+  const V38_DESIGNS = {
+    MCI:{name:'Etihad Stadium',shape:'rect',roof:'cable',facade:'glass',tiers:2,focus:'north',feature:'etihad',accent:'#6CABDD'},
+    ARS:{name:'Emirates Stadium',shape:'ovalRect',roof:'truss',facade:'louvre',tiers:2,feature:'emirates',accent:'#EF0107'},
+    LIV:{name:'Anfield',shape:'rect',roof:'cantilever',facade:'brick',tiers:2,focus:'north',feature:'kop',accent:'#C8102E'},
+    CHE:{name:'Stamford Bridge',shape:'tightRect',roof:'openTruss',facade:'brick',tiers:2,feature:'stamford',accent:'#034694'},
+    MUN:{name:'Old Trafford',shape:'asymRect',roof:'cantilever',facade:'steel',tiers:3,focus:'west',feature:'oldtrafford',accent:'#DA291C'},
+    TOT:{name:'Tottenham Hotspur Stadium',shape:'rect',roof:'spoke',facade:'glass',tiers:3,focus:'south',feature:'singleSouth',accent:'#132257'},
+    NEW:{name:'St James’ Park',shape:'asymRect',roof:'truss',facade:'steel',tiers:3,focus:'east',feature:'stjames',accent:'#241F20'},
+    AVL:{name:'Villa Park',shape:'heritageRect',roof:'gable',facade:'brick',tiers:2,focus:'south',feature:'villa',accent:'#670E36'},
+    RMA:{name:'Santiago Bernabéu',shape:'roundedRect',roof:'retractable',facade:'louvre',tiers:3,feature:'bernabeu',accent:'#D7DCE2'},
+    BAR:{name:'Spotify Camp Nou',shape:'ellipse',roof:'cable',facade:'terrace',tiers:3,feature:'campnou',accent:'#A50044'},
+    ATM:{name:'Riyadh Air Metropolitano',shape:'ellipse',roof:'wave',facade:'concrete',tiers:3,feature:'metropolitano',accent:'#CB3524'},
+    SEV:{name:'Ramón Sánchez-Pizjuán',shape:'roundedRect',roof:'cantilever',facade:'mosaic',tiers:2,feature:'sanchez',accent:'#D4021D'},
+    VAL:{name:'Mestalla',shape:'steepRect',roof:'openTruss',facade:'concrete',tiers:3,focus:'north',feature:'mestalla',accent:'#F28C28'},
+    VIL:{name:'Estadio de la Cerámica',shape:'tightRect',roof:'cantilever',facade:'ceramic',tiers:2,feature:'ceramica',accent:'#FBE122'},
+    RSO:{name:'Reale Arena',shape:'ovalRect',roof:'membrane',facade:'blueMesh',tiers:2,feature:'reale',accent:'#0067B1'},
+    ATH:{name:'San Mamés',shape:'roundedRect',roof:'membrane',facade:'mesh',tiers:3,feature:'sanmames',accent:'#EE2523'},
+    JUV:{name:'Allianz Stadium Torino',shape:'tightRect',roof:'cantilever',facade:'steel',tiers:2,feature:'juventus',accent:'#111111'},
+    INT:{name:'Stadio Giuseppe Meazza · San Siro',shape:'ellipse',roof:'cantilever',facade:'concrete',tiers:3,feature:'sansiro',accent:'#0068A8'},
+    MIL:{name:'Stadio Giuseppe Meazza · San Siro',shape:'ellipse',roof:'cantilever',facade:'concrete',tiers:3,feature:'sansiro',accent:'#FB090B'},
+    NAP:{name:'Stadio Diego Armando Maradona',shape:'ellipse',roof:'openTruss',facade:'concrete',tiers:2,feature:'track',accent:'#12A0D7'},
+    ROM:{name:'Stadio Olimpico',shape:'ellipse',roof:'cantilever',facade:'concrete',tiers:2,feature:'olimpico',accent:'#8E1F2F'},
+    LAZ:{name:'Stadio Olimpico',shape:'ellipse',roof:'cantilever',facade:'concrete',tiers:2,feature:'olimpico',accent:'#87D8F7'},
+    ATA:{name:'New Balance Arena · Gewiss Stadium',shape:'tightRect',roof:'cantilever',facade:'brickSteel',tiers:2,focus:'north',feature:'gewiss',accent:'#1E71B8'},
+    FIO:{name:'Stadio Artemio Franchi',shape:'ovalRect',roof:'openTruss',facade:'concrete',tiers:2,feature:'franchi',accent:'#5B2D83'},
+    FCB:{name:'Allianz Arena',shape:'ellipse',roof:'cantilever',facade:'etfe',tiers:3,feature:'allianz',accent:'#DC052D'},
+    BVB:{name:'Signal Iduna Park',shape:'rect',roof:'cantilever',facade:'steel',tiers:2,focus:'south',feature:'yellowwall',accent:'#FDE100'},
+    B04:{name:'BayArena',shape:'roundedRect',roof:'membrane',facade:'glass',tiers:2,feature:'bayarena',accent:'#E32221'},
+    RBL:{name:'Red Bull Arena',shape:'ellipse',roof:'cantilever',facade:'concrete',tiers:2,feature:'redbull',accent:'#DD0741'},
+    SGE:{name:'Deutsche Bank Park',shape:'ellipse',roof:'retractable',facade:'steel',tiers:2,feature:'deutschebank',accent:'#E1000F'},
+    VFB:{name:'MHPArena',shape:'ovalRect',roof:'membrane',facade:'steel',tiers:2,feature:'mhparena',accent:'#E32219'},
+    WOB:{name:'Volkswagen Arena',shape:'rect',roof:'cantilever',facade:'glass',tiers:2,feature:'volkswagen',accent:'#65B32E'},
+    BMG:{name:'Borussia-Park',shape:'rect',roof:'cornerMasts',facade:'steel',tiers:2,feature:'borussiapark',accent:'#00A650'},
+    PSG:{name:'Parc des Princes',shape:'ovalRect',roof:'cantilever',facade:'concreteRibs',tiers:2,feature:'parc',accent:'#004170'},
+    OM:{name:'Orange Vélodrome',shape:'ellipse',roof:'wave',facade:'whiteMesh',tiers:3,feature:'velodrome',accent:'#2FAEE0'},
+    OL:{name:'Groupama Stadium',shape:'roundedRect',roof:'radial',facade:'steel',tiers:3,feature:'groupama',accent:'#DA0812'},
+    ASM:{name:'Stade Louis II',shape:'ovalRect',roof:'openTruss',facade:'arches',tiers:2,feature:'louisii',accent:'#E8112D'},
+    LIL:{name:'Decathlon Arena · Stade Pierre-Mauroy',shape:'rect',roof:'sliding',facade:'glass',tiers:2,feature:'pierreMauroy',accent:'#E01E13'},
+    RCL:{name:'Stade Bollaert-Delelis',shape:'rect',roof:'openTruss',facade:'brickSteel',tiers:2,feature:'bollaert',accent:'#FFD700'},
+    OGC:{name:'Allianz Riviera',shape:'ellipse',roof:'membrane',facade:'timberMesh',tiers:2,feature:'riviera',accent:'#E01E13'},
+    REN:{name:'Roazhon Park',shape:'tightRect',roof:'openTruss',facade:'brick',tiers:2,feature:'roazhon',accent:'#E13327'}
+  };
+
+  const ACTIVE_CLUBS = CL.map(c=>c.k);
+  const missing = ACTIVE_CLUBS.filter(k=>!V38_DESIGNS[k]);
+  const extraProfiles = Object.keys(V38_DESIGNS).filter(k=>!ACTIVE_CLUBS.includes(k));
+  if(extraProfiles.length)console.info('KIKSTART v38 unused venue profiles:',extraProfiles);
+  if(missing.length) console.warn('KIKSTART v38 missing stadium profiles:', missing);
+
+  const V38_COLOR = (hex, fallback=0x778899) => {
+    try { return new THREE.Color(/^#[0-9a-f]{6}$/i.test(String(hex||''))?hex:fallback); }
+    catch(_) { return new THREE.Color(fallback); }
+  };
+  const V38_SEAT_PALETTE = (club, key) => {
+    const a=V38_COLOR(club&&club.a||'#496c9b'), b=V38_COLOR(club&&club.b||'#e5e8ed');
+    const navy=new THREE.Color('#18263b'), pale=new THREE.Color('#c8d2df'), charcoal=new THREE.Color('#303b4a');
+    const map={
+      MCI:[a,b,pale,navy],ARS:[a,b,navy,pale],LIV:[a,b,'#8B1728','#D4D6DA'],CHE:[a,b,navy,pale],MUN:[a,b,'#F6E5D3',navy],TOT:[a,b,navy,pale],NEW:[a,b,'#20242A','#F5F5F5'],AVL:[a,b,'#E5D8C7','#163E75'],
+      RMA:[pale,'#D9DDE3','#263445',b],BAR:[a,b,'#153C70','#8B1746'],ATM:[a,b,'#D9DDE4','#1C2637'],SEV:[b,a,'#ECECEC','#B50C28'],VAL:[b,'#F28C28','#262626','#E4E4E4'],VIL:[a,b,'#184D84','#E8D84D'],RSO:[a,b,'#D9E4EE','#174D8A'],ATH:[a,b,'#D8DCE0','#8F1F26'],
+      JUV:[charcoal,pale,'#111111','#EAEAEA'],INT:[a,b,'#0E4B80','#151515'],MIL:[a,b,'#171717','#D7D7D7'],NAP:[a,b,'#DFF5FF','#117FB1'],ROM:[a,b,'#B38A43','#F0D9C2'],LAZ:[a,b,'#E7F8FF','#276A9A'],ATA:[a,b,'#101820','#F1F1F1'],FIO:[a,b,'#F2F2F2','#34204B'],
+      FCB:[a,b,'#F4F4F4','#1B4D87'],BVB:[a,b,'#171717','#F3D51A'],B04:[a,b,'#141414','#F2F2F2'],RBL:[a,b,'#121B30','#E9E9E9'],SGE:[a,b,'#141414','#F5F5F5'],VFB:[a,b,'#E9E9E9','#B20F26'],WOB:[a,b,'#F1F1F1','#203E31'],BMG:[a,b,'#F2F2F2','#17281F'],
+      PSG:[a,b,'#E7E7E7','#14365B'],OM:[a,b,'#E9F4F7','#1679AC'],OL:[a,b,'#EDEDED','#B90C30'],ASM:[a,b,'#F3F3F3','#263B56'],LIL:[a,b,'#10182D','#F5F5F5'],RCL:[a,b,'#E2B82B','#B60E23'],OGC:[a,b,'#171717','#F3F3F3'],REN:[a,b,'#171717','#E7E7E7']
+    };
+    const values=map[key]||[a,b,pale,navy]; return values.map(v=>v instanceof THREE.Color?v:V38_COLOR(v));
+  };
+
+  function v38BuildVenue(target, club, mode, F){
+    if(!target||!club||typeof THREE==='undefined')return null;
+    const key=club.k, d=V38_DESIGNS[key]||V38_DESIGNS.MCI;
+    const baseL=mode==='match'?Number(F&&F.L||105):105;
+    const baseW=mode==='match'?Number(F&&F.W||68):68;
+    const L=Math.max(40,baseL),W=Math.max(24,baseW);
+    const hx=Math.max(64,L/2+17), hz=Math.max(48,W/2+16);
+    const mat=(color,rough=.72,metal=0,extra={})=>new THREE.MeshStandardMaterial(Object.assign({color,roughness:rough,metalness:metal},extra));
+    const concrete=mat('#68717d',.88), dark=mat('#172333',.84), bright=mat('#d5dee8',.34,.56), glass=mat('#56758d',.22,.42,{transparent:true,opacity:.62,side:THREE.DoubleSide}),
+      brick=mat('#855642',.9), roofMat=mat(d.feature==='campnou'?'#edf2f4':'#c4ced7',.48,.22), steel=mat('#8796a7',.4,.72), accent=mat(d.accent,.56,.12),
+      seatCols=V38_SEAT_PALETTE(club,key);
+    const g=new THREE.Group();g.name='KIKSTART_V38_'+key+'_'+mode.toUpperCase();target.add(g);
+    const add=(geo,material,x,y,z,rx=0,ry=0,rz=0,cast=true)=>{const o=new THREE.Mesh(geo,material);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);o.castShadow=cast;o.receiveShadow=true;g.add(o);return o;};
+    const box=(w,h,deep,x,y,z,material,rz=0)=>add(new THREE.BoxGeometry(w,h,deep),material,x,y,z,0,0,rz);
+    const beam=(a,b,r,material)=>{const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),v=B.clone().sub(A);const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,v.length(),8),material);o.position.copy(A.add(B).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());o.castShadow=true;o.receiveShadow=true;g.add(o);return o;};
+    const tube=(points,r,material,closed=false)=>{const pts=points.map(p=>new THREE.Vector3(...p));const c=new THREE.CatmullRomCurve3(pts,closed,'catmullrom',.35);return add(new THREE.TubeGeometry(c,Math.max(60,points.length*3),r,7,closed),material,0,0,0);};
+    const ring=(rx,rz,y,r,material)=>{const pts=[];for(let i=0;i<144;i++){const a=i/144*Math.PI*2;pts.push([Math.cos(a)*rx,y,Math.sin(a)*rz]);}return tube(pts,r,material,true);};
+    const deterministic=(n)=>{let x=(n*1103515245+12345)>>>0;return (x&0x7fffffff)/0x7fffffff;};
+    // Each venue has its own footprint, from true ovals to tight rectangular and asymmetric bowls.
+    const shapePower={ellipse:2.0,ovalRect:2.8,roundedRect:4.3,asymRect:5.4,heritageRect:5.8,steepRect:7.8,tightRect:9.2,rect:6.8}[d.shape]||6.8;
+    const stadiumPoint=(a,rx,rz,y=0)=>{
+      const c=Math.cos(a),sn=Math.sin(a),p=shapePower;
+      let x=Math.sign(c)*Math.pow(Math.abs(c),2/p)*rx;
+      let z=Math.sign(sn)*Math.pow(Math.abs(sn),2/p)*rz;
+      if(d.shape==='asymRect'){x*=c>0?1.04:.98;z*=sn>0?1.08:.96;}
+      if(d.shape==='heritageRect'){x*=c>0?1.06:.98;z*=sn>0?1.04:.96;}
+      if(d.shape==='steepRect'){x*=.97;z*=.94;}
+      return [x,y,z];
+    };
+    const shapeRing=(rx,rz,y,r,material)=>{
+      const pts=[];for(let i=0;i<160;i++)pts.push(stadiumPoint(i/160*Math.PI*2,rx,rz,y));
+      return tube(pts,r,material,true);
+    };
+    const roofQuad=(a0,a1,innerRx,innerRz,outerRx,outerRz,y0,y1,material)=>{
+      const v=[stadiumPoint(a0,innerRx,innerRz,y0),stadiumPoint(a0,outerRx,outerRz,y1),stadiumPoint(a1,outerRx,outerRz,y1),stadiumPoint(a1,innerRx,innerRz,y0)];
+      const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(v.flat(),3));geo.setIndex([0,1,2,0,2,3]);geo.computeVertexNormals();
+      const mesh=new THREE.Mesh(geo,material);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);return mesh;
+    };
+
+    // Pitch and approach apron.
+    box(226,1.4,186,0,-1.05,0,mat('#273342',.98));
+    box(L+8,.32,W+8,0,-.18,0,mat('#267746',.92));
+    for(let i=0;i<10;i++)box(L/10-0.1,.035,W-1,-L/2+L/20+i*L/10,.02,0,mat(i%2?'#2e9651':'#268348',.96));
+    const lineMat=mat('#f5f8ef',.8,0,{emissive:'#8c9a91',emissiveIntensity:.08});
+    const line=(w,h,depth,x,y,z)=>box(w,h,depth,x,y,z,lineMat);
+    line(L,.06,.22,0,.08,-W/2);line(L,.06,.22,0,.08,W/2);line(.22,.06,W, -L/2,.08,0);line(.22,.06,W,L/2,.08,0);line(.22,.06,W,0,.08,0);
+    const centre=new THREE.Mesh(new THREE.RingGeometry(9.05,9.28,64),lineMat);centre.rotation.x=-Math.PI/2;centre.position.y=.1;g.add(centre);
+    const spot=new THREE.Mesh(new THREE.CircleGeometry(.34,20),lineMat);spot.rotation.x=-Math.PI/2;spot.position.y=.11;g.add(spot);
+    const boxW=16.5,boxD=40.3,smallW=5.5,smallD=18.3;
+    for(const s of [-1,1]){
+      line(16.5,.06,.22,s*(L/2-8.25),.08,0);line(.22,.06,40.3,s*(L/2-16.5),.08,0);line(16.5,.06,.22,s*(L/2-8.25),.08,0);
+      line(5.5,.06,.22,s*(L/2-5.5/2),.08,0);line(.22,.06,18.3,s*(L/2-5.5),.08,0);
+      // Goals: white frames, dark net grids, both oriented down the pitch.
+      const gx=s*(L/2+1.1),gh=2.6,gw=Math.min(7.32,Math.max(5.5,Number(F&&F.gw||7.32)));
+      beam([gx,0,-gw/2],[gx,gh,-gw/2],.18,lineMat);beam([gx,0,gw/2],[gx,gh,gw/2],.18,lineMat);beam([gx,gh,-gw/2],[gx,gh,gw/2],.18,lineMat);
+      const netMat=mat('#e9eff2',.95,0,{transparent:true,opacity:.36,wireframe:true});
+      const net=add(new THREE.BoxGeometry(2,gh,gw),netMat,gx+s*1.05,gh/2,0);net.material.side=THREE.DoubleSide;
+    }
+
+    // Seating bowl follows each club's real footprint, with inward-facing seats and tier-specific geometry.
+    const tiers=Math.max(2,Math.min(3,d.tiers||2));
+    const seatGeo=new THREE.BoxGeometry(1.0,.58,.76),seatMat=mat('#8b96a6',.56,.08);
+    const seatInstances=[];
+    for(let tier=0;tier<tiers;tier++){
+      for(let row=0;row<9;row++){
+        const r=tier*9+row;
+        const rx=hx+2+r*.78,rz=hz+2+r*.66;
+        const count=Math.round(d.shape==='ellipse'?208:176);
+        for(let i=0;i<count;i++){
+          const a=i/count*Math.PI*2,pt=stadiumPoint(a,rx,rz,0);
+          const c=Math.cos(a),sn=Math.sin(a);
+          const side=Math.abs(c)>Math.abs(sn)?(c>0?'east':'west'):(sn>0?'south':'north');
+          let y=4.1+tier*9.0+row*.88;
+          if(d.focus===side)y+=1.05+row*.12;
+          if(d.feature==='singleSouth'&&side==='south')y+=row*.72;
+          if(d.feature==='yellowwall'&&side==='south')y+=row*.5;
+          if(d.shape==='steepRect')y+=row*.28;
+          seatInstances.push({x:pt[0],y,z:pt[2],side,idx:i,row,tier,angle:a-Math.PI/2});
+        }
+      }
+    }
+    const seatMesh=new THREE.InstancedMesh(seatGeo,seatMat,Math.max(1,seatInstances.length));seatMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+    const dummy=new THREE.Object3D();seatInstances.forEach((p,i)=>{
+      dummy.position.set(p.x,p.y,p.z);dummy.rotation.y=p.angle;
+      const focus=p.side===d.focus;
+      const size=(d.shape==='tightRect'?.9:1)*(focus?1.045:1);
+      dummy.scale.set(size,1,size);dummy.updateMatrix();seatMesh.setMatrixAt(i,dummy.matrix);
+      const pattern=(p.idx+p.row*3+p.tier*9)%23;
+      let col=seatCols[pattern<13?0:pattern<17?1:pattern<20?2:3];
+      if(key==='BVB'&&p.side==='south')col=V38_COLOR(pattern%4===0?'#111111':'#F5D900');
+      if(key==='BAR')col=V38_COLOR((p.idx%5===0)?'#A50044':(p.idx%5===1?'#004D98':(p.idx%7===0?'#E5B83A':'#A50044')));
+      if(key==='FCB')col=V38_COLOR(pattern%3===0?'#DC052D':(pattern%3===1?'#F3F4F6':'#16417F'));
+      if(key==='ARS'||key==='LIV'||key==='CHE'||key==='MUN')col=V38_COLOR(pattern%5===0?'#F1F1F1':club.a);
+      seatMesh.setColorAt(i,col);
+    });
+    seatMesh.count=seatInstances.length;seatMesh.instanceMatrix.needsUpdate=true;if(seatMesh.instanceColor)seatMesh.instanceColor.needsUpdate=true;g.add(seatMesh);
+    // Continuous concrete tier fascias and vomitory-level bands make the bowl read as a built structure.
+    for(let t=0;t<tiers;t++){
+      shapeRing(hx+7+t*5.2,hz+6+t*4.3,8+t*9.1,.48,concrete);
+      shapeRing(hx+10+t*5.2,hz+8+t*4.3,9+t*9.1,.18,bright);
+    }
+
+    const wallMat=d.facade==='brick'?mat('#754c3b',.92):d.facade==='concrete'||d.facade==='concreteRibs'?concrete:mat('#24364b',.72,.18);
+    const wallTop=tiers*10.5+15;
+    const sideDistZ=W/2+42,sideDistX=L/2+43;
+    // Venue-specific outer shell: a continuous solid façade follows the club's stadium footprint.
+    const shellVerts=[],shellIndices=[],shellSegments=128;
+    for(let i=0;i<shellSegments;i++){
+      const a0=i/shellSegments*Math.PI*2,a1=(i+1)/shellSegments*Math.PI*2,base=shellVerts.length/3;
+      const p0=stadiumPoint(a0,hx+32,hz+25,4),p1=stadiumPoint(a1,hx+32,hz+25,4),p2=stadiumPoint(a1,hx+32,hz+25,wallTop),p3=stadiumPoint(a0,hx+32,hz+25,wallTop);
+      shellVerts.push(...p0,...p1,...p2,...p3);shellIndices.push(base,base+1,base+2,base,base+2,base+3);
+    }
+    const shellGeo=new THREE.BufferGeometry();shellGeo.setAttribute('position',new THREE.Float32BufferAttribute(shellVerts,3));shellGeo.setIndex(shellIndices);shellGeo.computeVertexNormals();
+    const shellMat=d.facade==='glass'?glass:wallMat;const shell=new THREE.Mesh(shellGeo,shellMat);shell.material.side=THREE.DoubleSide;shell.receiveShadow=true;g.add(shell);
+    shapeRing(hx+32,hz+25,5.4,2.6,wallMat);
+    shapeRing(hx+32,hz+25,wallTop,1.35,bright);
+    shapeRing(hx+29,hz+22,11,.45,dark);
+    const facadePosts=d.shape==='ellipse'?48:64;
+    for(let i=0;i<facadePosts;i++){
+      const a=i/facadePosts*Math.PI*2,pt=stadiumPoint(a,hx+31,hz+24,0);
+      const postMat=d.facade==='brick'?brick:steel;
+      beam([pt[0],3,pt[2]],[pt[0],wallTop-1,pt[2]],d.facade==='concrete'?.48:.28,postMat);
+    }
+    if(d.shape==='asymRect'||d.shape==='heritageRect'){
+      const longSide=d.focus==='west'?-1:1;
+      for(let z=-hz;z<=hz;z+=16){beam([longSide*(L/2+26),4,z],[longSide*(L/2+30),wallTop+8,z],.46,bright);}
+    }
+
+    // Façade systems: no single generic ring; each system has a different construction language.
+    if(d.facade==='louvre'){
+      for(let y=5;y<wallTop+1;y+=1.7){shapeRing(hx+34,hz+28,y,.19,bright);}
+      for(let a=0;a<64;a++){const t=a/64*Math.PI*2;beam([Math.cos(t)*(hx+33),4,Math.sin(t)*(hz+27)],[Math.cos(t)*(hx+33),wallTop,Math.sin(t)*(hz+27)],.18,steel);}
+    }else if(d.facade==='etfe'){
+      const panels= new THREE.InstancedMesh(new THREE.OctahedronGeometry(2.0,0),mat('#e5f1f7',.24,.14,{transparent:true,opacity:.84}),720);const obj=new THREE.Object3D();
+      for(let i=0;i<720;i++){const a=i/720*Math.PI*2*3.0,band=Math.floor(i/144),rx=hx+24+band*1.2,rz=hz+18+band*.9;obj.position.set(Math.cos(a)*rx,7+(i%144)/144*(wallTop-9),Math.sin(a)*rz);obj.rotation.set(.4, -a, .78);obj.scale.set(1.1,.48,.22);obj.updateMatrix();panels.setMatrixAt(i,obj.matrix);panels.setColorAt(i,V38_COLOR(i%3===0?'#d7e5ee':i%3===1?'#ffffff':'#b7c7d8'));}panels.instanceMatrix.needsUpdate=true;if(panels.instanceColor)panels.instanceColor.needsUpdate=true;g.add(panels);
+    }else if(d.facade==='concreteRibs'||d.facade==='arches'){
+      for(let i=0;i<32;i++){const a=i/32*Math.PI*2,p0=stadiumPoint(a,hx+28,hz+23,1),p1=stadiumPoint(a,hx+38,hz+33,wallTop+5),p2=stadiumPoint(a,hx+19,hz+14,wallTop-2);beam(p0,p1,.7,d.facade==='arches'?bright:concrete);beam(p1,p2,.34,steel);}
+    }else if(d.facade==='mesh'||d.facade==='blueMesh'||d.facade==='whiteMesh'||d.facade==='timberMesh'){
+      const col=d.facade==='timberMesh'?mat('#98795b',.7):d.facade==='blueMesh'?mat('#7aafca',.35,.24):bright;
+      for(let i=0;i<56;i++){const a=i/56*Math.PI*2,p0=stadiumPoint(a,hx+29,hz+22,3),p1=stadiumPoint(a,hx+29,hz+22,wallTop),p2=stadiumPoint(a+.12,hx+29,hz+22,wallTop*.55),p3=stadiumPoint(a,hx+28,hz+21,wallTop*.55);beam(p0,p1,.17,col);beam(p3,p2,.1,col);}
+      for(let y=7;y<wallTop;y+=4)shapeRing(hx+29,hz+22,y,.12,col);
+    }else if(d.facade==='brick'||d.facade==='brickSteel'){
+      for(let i=0;i<54;i++){const a=i/54*Math.PI*2,pt=stadiumPoint(a,hx+33,hz+26,0);box(6.8,5.2,.75,pt[0],4.5,pt[2],mat('#855642',.9),-a);beam([pt[0],2,pt[2]],[pt[0]+Math.cos(a)*1.1,9,pt[2]+Math.sin(a)*1.1],.18,steel);}
+    }else if(d.facade==='mosaic'){
+      const colors=['#d7dce3','#b82239','#f0f0f0','#363c49'];
+      for(let i=0;i<72;i++)for(let y=7;y<wallTop;y+=4){const a=i/72*Math.PI*2,pt=stadiumPoint(a,hx+34,hz+27,0),color=V38_COLOR(colors[(i+Math.floor(y/4))%colors.length]);box(3.4,3.4,.26,pt[0],y,pt[2],mat(color,.65),-a);}
+    }else if(d.facade==='ceramic'){
+      for(let i=0;i<70;i++){const a=i/70*Math.PI*2,pt=stadiumPoint(a,hx+34,hz+27,0);box(4.5,wallTop*.72,.4,pt[0],wallTop*.42,pt[2],mat(i%2?'#E7D125':'#D8B81A',.32,.12),-a);}
+    }else if(d.facade==='steel'){
+      for(let i=0;i<68;i++){const a=i/68*Math.PI*2,pt=stadiumPoint(a,hx+34,hz+27,0);beam([pt[0],2,pt[2]],[pt[0],wallTop,pt[2]],.38,steel);}
+    }
+
+    // Roof structures follow the stand perimeter. Each profile has its own support language;
+    // the centre of the pitch is never covered by a single generic translucent slab.
+    const roofY=wallTop+6,innerRx=hx+6,innerRz=hz+5,outerRx=hx+35,outerRz=hz+28;
+    const roofOpacity=d.roof==='cable'||d.roof==='membrane'||d.roof==='wave'?.9:1;
+    const roofColor=d.roof==='wave'?'#e8f0f5':d.roof==='cable'?'#dfe8ee':d.roof==='gable'?'#8799aa':'#aebbc7';
+    const canopyMaterial=mat(roofColor,d.roof==='cable'?.44:.62,d.roof==='cable'?.16:.34,{side:THREE.DoubleSide,transparent:roofOpacity<1,opacity:roofOpacity});
+    const roofSegments=72;
+    if(d.roof!=='openTruss'){
+      for(let i=0;i<roofSegments;i++){
+        const a0=i/roofSegments*Math.PI*2,a1=(i+1)/roofSegments*Math.PI*2;
+        const wave=d.roof==='wave'?Math.sin((a0+a1)*2.5)*2.2:0;
+        const crown=(d.roof==='gable'||d.roof==='truss')?1.6:0;
+        roofQuad(a0,a1,innerRx,innerRz,outerRx,outerRz,roofY-1+wave*.25,roofY+wave+crown,canopyMaterial);
+      }
+    }
+    // Main roof ring and inner lip.
+    shapeRing(outerRx,outerRz,roofY+1,.68,bright);
+    shapeRing(innerRx,innerRz,roofY-1,.32,steel);
+    // Distinct truss systems: radial/cable, cantilever, membrane, gable, sliding or open framework.
+    for(let i=0;i<32;i++){
+      const a=i/32*Math.PI*2,inner=stadiumPoint(a,innerRx,innerRz,roofY-1),outer=stadiumPoint(a,outerRx,outerRz,roofY+1);
+      if(['cable','spoke','radial','retractable','sliding','dome'].includes(d.roof)){
+        beam(outer,inner,d.roof==='cable'?.13:.22,d.roof==='cable'?bright:steel);
+      }else if(d.roof==='cantilever'||d.roof==='membrane'||d.roof==='wave'||d.roof==='truss'||d.roof==='gable'||d.roof==='cornerMasts'||d.roof==='openTruss'){
+        const base=stadiumPoint(a,outerRx+1,outerRz+1,5);
+        beam(base,outer,d.roof==='cantilever'?.56:.34,steel);
+      }
+    }
+    if(d.roof==='cable'||d.roof==='membrane'||d.roof==='spoke'||d.roof==='radial'){
+      // Light cable web gives tensile roofs an engineered, open appearance above the pitch.
+      for(let i=0;i<64;i++){
+        const a=i/64*Math.PI*2,p0=stadiumPoint(a,outerRx,outerRz,roofY+1),p1=stadiumPoint(a+.035,innerRx,innerRz,roofY-1);
+        beam(p0,p1,.075,bright);
+      }
+    }
+    if(d.roof==='retractable'||d.roof==='sliding'){
+      // Visible parallel rails and partially retracted roof leaves at the long edges.
+      for(const side of [-1,1]){
+        const z=side*(innerRz-1);beam([-innerRx,roofY-1,z],[innerRx,roofY-1,z],.28,steel);
+        for(let x=-innerRx+8;x<=innerRx-8;x+=16)beam([x,roofY-1,z],[x+2,roofY+2,z],.14,bright);
+      }
+    }
+    if(d.roof==='openTruss'||d.roof==='truss'||d.roof==='gable'){
+      for(let x=-hx;x<=hx;x+=14){beam([x,wallTop,sideDistZ-7],[x,roofY+3,sideDistZ+4],.34,steel);beam([x,roofY+3,sideDistZ+4],[x+7,roofY,sideDistZ+13],.2,bright);}
+      for(let x=-hx;x<=hx;x+=14){beam([x,wallTop,-sideDistZ+7],[x,roofY+3,-sideDistZ-4],.34,steel);beam([x,roofY+3,-sideDistZ-4],[x+7,roofY,-sideDistZ-13],.2,bright);}
+    }
+
+    // Venue-specific landmarks and asymmetries.
+    const endZ=(d.focus==='north'?-1:1)*(W/2+26),sideX=(d.focus==='west'?-1:1)*(L/2+27);
+    switch(d.feature){
+      case 'etihad':{
+        // Etihad: elongated cable-supported perimeter roof and a visibly deeper North Stand.
+        for(let row=0;row<10;row++){const y=10+row*1.85,z=-(W/2+12+row*1.45);box(L+28,1.0,1.35,0,y,z,seatCols[0]);}
+        box(L+40,4,4,0,33,-(W/2+36),mat('#203c5b',.55,.18));
+        for(let x=-hx;x<=hx;x+=16){beam([x,25,-(W/2+12)],[x,45,-(W/2+43)],.42,bright);}
+        for(let x=-hx;x<=hx;x+=8)beam([x,45,-(W/2+43)],[x+3,roofY+3,-(W/2+28)],.12,steel);
+        break;
+      }
+      case 'emirates':
+        for(const sx of [-1,1])for(const sz of [-1,1]){const x=sx*(L/2+27),z=sz*(W/2+25);box(9,15,9,x,10,z,glass);box(10,1.2,10,x,18,z,bright);}
+        break;
+      case 'kop':
+        box(14,5,92,-(L/2+34),27,0,mat('#742332',.6));for(let z=-42;z<=42;z+=14)beam([-(L/2+28),12,z],[-(L/2+42),39,z],.38,bright);
+        box(8,2.2,98,0,33,W/2+39,accent);break;
+      case 'stamford':
+        for(let x=-48;x<=48;x+=24){box(18,10,5,x,5,W/2+43,mat('#8C5946',.9));box(9,5,.4,x,9,W/2+46,glass);}
+        break;
