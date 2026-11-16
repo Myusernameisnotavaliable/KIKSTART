@@ -673,7 +673,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       const delta=Math.max(0,Number(dt)||0),moving=Math.hypot(Number(dx)||0,Number(dz)||0)>.08,sprinting=!!(K.ShiftLeft||K.ShiftRight);
       let energy=Number.isFinite(player.v32Energy)?player.v32Energy:100;
       const physical=Number(player.v32Stats.physical)||1;
-      if(moving)energy-=delta*(sprinting?.31:.045)*(1.35-physical/220);else energy+=delta*.23;
+      if(moving&&sprinting)energy-=delta*.31*(1.35-physical/220);else energy+=delta*(moving?.10:.55);
       player.v32Energy=clamp(energy,15,100);
       speed*=.80+.20*(player.v32Energy/100);
       if(sprinting)speed*=.97+physical/330;
