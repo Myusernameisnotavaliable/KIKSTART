@@ -378,12 +378,12 @@
   };
 
   // Final version markers override all historical appended version labels.
-  document.title='KIKSTART v40.5 — Mac Gameplay';
-  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content='40.5';
-  window.KIKSTART_GAME_VERSION='40.5';
-  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v40.5');
-  const footer=document.querySelector('.ks-boot-footer');if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v40.4';
-  console.info('KIKSTART v40.5 ready: fullscreen, clipboard shortcuts and hashed special reward codes.');
+  document.title='KIKSTART v40.6 — Mac Gameplay';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content='40.6';
+  window.KIKSTART_GAME_VERSION='40.6';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v40.6');
+  const footer=document.querySelector('.ks-boot-footer');if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v40.6';
+  console.info('KIKSTART v40.6 ready: fullscreen, clipboard shortcuts and hashed special reward codes.');
 })();
 </script>
 
