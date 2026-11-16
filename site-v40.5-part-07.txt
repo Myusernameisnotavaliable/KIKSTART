@@ -1,0 +1,1000 @@
+    if (!player) {
+      player = {
+        id: pool.length,
+        n: "Khizar",
+        pos: "FWD",
+        o: 100,
+        f: "✧",
+        look: "0100",
+        r: "diamond",
+        kind: "secret",
+        secret: true,
+        khizargive: true,
+        traits: ["Prism Finisher", "Pattern Master", "Unreal Flair", "Clutch Performer"]
+      };
+      pool.push(player);
+    }
+    secretPlayers[mode] = player;
+    if (S && S.stock && S.stock[mode]) S.stock[mode][player.id] = 0;
+  });
+
+  // Perfect 100-rated attributes and custom traits.
+  const previousStats = V27_stats;
+  V27_stats = function(player) {
+    if (player && player.khizargive) {
+      return { pace:100, shooting:100, passing:100, dribbling:100, defending:100, physical:100 };
+    }
+    return previousStats(player);
+  };
+
+  const previousTraits = V27_traits;
+  V27_traits = function(player) {
+    if (player && player.khizargive) return player.traits.slice();
+    return previousTraits(player);
+  };
+
+  // Apply the unique foil treatment anywhere the card is rendered, without listing it in the Index.
+  const previousCardHTML = cardHTML;
+  cardHTML = function(player, extra, id, pop) {
+    let safeExtra = extra;
+    if (player && player.khizargive) {
+      // Hide the ordinary Sell control on the card itself as well as protecting the action.
+      safeExtra = String(extra || "").replace(/<button\b[^>]*onclick=["']sell\(\d+\)["'][^>]*>[\s\S]*?<\/button>/gi, '<div class="khizargive-exclusive-note">✦ CODE EXCLUSIVE · CANNOT BE SOLD ✦</div>');
+    }
+    const markup = previousCardHTML(player, safeExtra, id, pop);
+    if (!player || !player.khizargive) return markup;
+    return markup.replace(/class="card ([^"]*)"/, (match, classes) => 'class="card ' + classes + ' khizargive-secret-card"');
+  };
+
+  // Protect this code-exclusive card from selling and direct market purchase.
+  const previousSell = sell;
+  const protectKhizargiveSell = function(id) {
+    const player = S && POOL[S.mode] && POOL[S.mode][id];
+    if (player && player.khizargive) {
+      ask("Khizar is a code-exclusive card and cannot be sold.");
+      return;
+    }
+    return previousSell(id);
+  };
+  sell = protectKhizargiveSell;
+  window.sell = protectKhizargiveSell;
+
+  const previousBuy = buy;
+  const protectKhizargiveBuy = function(id) {
+    const player = S && POOL[S.mode] && POOL[S.mode][id];
+    if (player && player.khizargive) {
+      ask("Khizar can only be unlocked with the secret code.");
+      return;
+    }
+    return previousBuy(id);
+  };
+  buy = protectKhizargiveBuy;
+  window.buy = protectKhizargiveBuy;
+
+  // Wrap the latest redemption handler so every older code keeps working.
+  const previousRedeem = window.redeemCode || redeemCode;
+  const redeemKhizargive = function() {
+    const input = $("v27CodeInput");
+    const msg = $("v27CodeMsg");
+    if (input && msg && S && input.value.trim().toLowerCase() === code) {
+      S.redeemed = S.redeemed || {};
+      if (S.redeemed[code] || S.khizargiveClaimed) {
+        msg.className = "v27-code-error";
+        msg.textContent = "Khizar has already been claimed on this save.";
+        sfx.err();
+        return;
+      }
+
+      S.owned = S.owned || {fb:{}, fs:{}};
+      modes.forEach(mode => {
+        S.owned[mode] = S.owned[mode] || {};
+        const player = secretPlayers[mode];
+        S.owned[mode][player.id] = Math.max(1, Number(S.owned[mode][player.id]) || 0);
+        if (S.stock && S.stock[mode]) S.stock[mode][player.id] = 0;
+      });
+      S.redeemed[code] = true;
+      S.khizargiveClaimed = true;
+      input.value = "";
+      save();
+      sfx.coin();
+      refresh();
+      const fresh = $("v27CodeMsg");
+      if (fresh) {
+        fresh.className = "v27-code-success";
+        fresh.textContent = "✦ KHIZAR · 100 OVR has joined both squads. The one-of-one card is yours!";
+      }
+      if (typeof fx === "function") {
+        try { fx(secretPlayers[S.mode] || secretPlayers.fb, innerWidth/2, innerHeight/2); } catch (_) {}
+      }
+      return;
+    }
+    return previousRedeem.apply(this, arguments);
+  };
+  window.redeemCode = redeemKhizargive;
+  redeemCode = redeemKhizargive;
+
+  // A custom patterned foil: brighter, more layered and more animated than Daniyal's finish.
+  const style = document.createElement("style");
+  style.id = "kikstartV20KhizarStyle";
+  style.textContent = `
+    .khizargive-secret-card{
+      position:relative;isolation:isolate;overflow:hidden!important;
+      color:#fff!important;
+      background:
+        radial-gradient(ellipse at 50% 8%,#ffffffee 0 1px,transparent 2px),
+        radial-gradient(circle at 14% 21%,#fffbdc 0 1px,transparent 2.5px),
+        radial-gradient(circle at 86% 24%,#8ffff5 0 2px,transparent 4px),
+        radial-gradient(circle at 18% 82%,#ffc8f4 0 2px,transparent 4px),
+        radial-gradient(circle at 84% 78%,#fff4a8 0 2px,transparent 4px),
+        repeating-conic-gradient(from 9deg at 50% 42%,#fff5b9 0deg 3deg,#c49aff 3deg 7deg,#43f4e2 7deg 11deg,#263b91 11deg 15deg,#ff9fdb 15deg 19deg,#fff5b9 19deg 22deg),
+        repeating-linear-gradient(45deg,#ffffff14 0 2px,transparent 2px 9px),
+        linear-gradient(145deg,#fffbd0 0%,#a17aff 24%,#133b81 52%,#081a43 74%,#f08bcf 100%)!important;
+      background-size:100% 100%,100% 100%,100% 100%,100% 100%,100% 100%,260% 260%,100% 100%,100% 100%!important;
+      background-blend-mode:screen,screen,screen,screen,screen,screen,overlay,normal!important;
+      border:1px solid #fffbdc!important;
+      outline:1px solid #82fff0aa;
+      outline-offset:-4px;
+      box-shadow:0 0 14px #ffffffcc,0 0 30px #a77aff,0 0 52px #37eddfbb,0 0 82px #fa82d5aa,inset 0 0 28px #fff9,inset 0 0 55px #7df9ff55!important;
+      transform-style:preserve-3d;
+      animation:khizargiveAura 2.4s ease-in-out infinite alternate,khizargiveBackground 8s linear infinite;
+    }
+    .khizargive-secret-card:before{
+      content:"";position:absolute;inset:-65%;z-index:1;pointer-events:none;
+      background:
+        repeating-conic-gradient(from 0deg at 50% 50%,transparent 0deg 8deg,#ffffff30 8.5deg 9.2deg,transparent 10deg 18deg),
+        repeating-linear-gradient(132deg,transparent 0 10px,#ffffff42 11px 12px,transparent 13px 24px),
+        repeating-linear-gradient(42deg,transparent 0 18px,#8efff333 19px 20px,transparent 21px 38px),
+        conic-gradient(from 45deg,transparent,#fffbdcaa,#8afff0aa,#b38affcc,#ffa5d9aa,transparent 72%);
+      background-size:100% 100%,100% 100%,100% 100%,100% 100%;
+      mix-blend-mode:screen;opacity:.95;
+      filter:drop-shadow(0 0 8px #fff);
+      animation:khizargivePrism 5.2s linear infinite;
+    }
+    .khizargive-secret-card:after{
+      content:"✦ KHIZAR · 100 OVR · ONE OF ONE ✦";
+      position:absolute;left:3px;right:3px;bottom:5px;top:auto;z-index:4;
+      text-align:center;color:#fffde9;font-size:7px;font-weight:1000;letter-spacing:.105em;
+      text-shadow:0 0 5px #fff,0 0 12px #ffe88a,0 0 20px #70fff3,0 0 28px #d89cff;
+      pointer-events:none;
+    }
+    .khizargive-secret-card>*{position:relative;z-index:2}
+    .khizargive-secret-card .nm{
+      color:#fff!important;font-size:14px!important;letter-spacing:.13em;
+      text-transform:uppercase;text-shadow:0 0 5px #fff,0 0 12px #65fff1,0 0 18px #d99aff!important;
+    }
+    .khizargive-exclusive-note{margin:7px 0 4px;padding:5px 3px;border:1px solid #fffbdc;border-radius:7px;background:linear-gradient(90deg,#18265ddd,#784bcddd,#087a7add);color:#fffde9;font-size:7px;font-weight:1000;letter-spacing:.06em;text-shadow:0 0 7px #fff,0 0 12px #ffe88a;box-shadow:0 0 12px #b8a0ff}
+    .khizargive-secret-card .ovr{color:#fffbd1!important;text-shadow:0 0 7px #fff,0 0 15px #ffe56e,0 0 24px #fff,0 2px 5px #261755!important}
+    .khizargive-secret-card .pos,.khizargive-secret-card .rar{color:#fff!important;text-shadow:0 1px 5px #090d2c,0 0 10px #8fffee,0 0 16px #d99aff}
+    .khizargive-secret-card:hover{transform:translateY(-8px) perspective(700px) rotateY(6deg) rotateX(4deg) scale(1.035);box-shadow:0 0 22px #fff,0 0 44px #b993ff,0 0 78px #38f6e4,0 0 105px #f18bd9aa,inset 0 0 32px #fff!important;filter:saturate(1.5) brightness(1.2)}
+    @keyframes khizargivePrism{0%{transform:translate(-8%,-5%) rotate(0deg) scale(.92)}50%{transform:translate(8%,5%) rotate(180deg) scale(1.08)}100%{transform:translate(-8%,-5%) rotate(360deg) scale(.92)}}
+    @keyframes khizargiveAura{from{filter:saturate(1.35) brightness(1.05)}to{filter:saturate(1.95) brightness(1.32)}}
+    @keyframes khizargiveBackground{0%{background-position:0 0,0 0,0 0,0 0,0 0,0% 50%,0 0,0 0}100%{background-position:0 0,0 0,0 0,0 0,0 0,100% 50%,0 0,0 0}}
+    @media(prefers-reduced-motion:reduce){.khizargive-secret-card,.khizargive-secret-card:before{animation:none!important}}
+  `;
+  document.head.appendChild(style);
+
+  window.KIKSTART_KHIZAR_CARD = secretPlayers;
+})();
+</script>
+
+
+<script>
+/* KIKSTART v22 FEATURE PACK
+   Safe, additive systems: match replays, substitutions/tactics, referee events,
+   enhanced match atmosphere, transfer negotiations, youth academy, career press/news,
+   player relationships, squad chemistry, stadium cosmetics, stats centre,
+   friend-cup brackets, save slots/backups, searchable index sorting, controls and graphics settings.
+   Existing gameplay/career/save functions are wrapped rather than replaced wholesale.
+*/
+(function KIKSTART_V22_FEATURE_PACK(){
+  if (window.__kikstartV22FeaturePack) return;
+  window.__kikstartV22FeaturePack = true;
+
+  const $ = id => document.getElementById(id);
+  const safe = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const clampV = (v,a,b) => Math.max(a,Math.min(b,Number(v)||0));
+  const moneyV = n => "🪙 " + Math.max(0,Math.round(Number(n)||0)).toLocaleString("en-AU");
+  const V22_storageGet = key => { try { return localStorage.getItem(key); } catch (_) { return null; } };
+  const V22_SETTINGS_KEY = "kikstartV22_settings";
+  const V22_SLOT_PREFIX = "kikstartV22_slot_";
+  const V22_BACKUP_PREFIX = "kikstartV22_backup_";
+  let V22_hubPage = "dashboard";
+  let V22_frames = [];
+  let V22_captureClock = 0;
+  let V22_replayState = null;
+  let V22_replayTimer = null;
+  let V22_negotiation = null;
+  let V22_keyCapture = null;
+  let V22_lastBackup = 0;
+  let V22_backupBusy = false;
+
+  const V22_defaultBindings = {up:"KeyW",down:"KeyS",left:"KeyA",right:"KeyD",pass:"Space",shoot:"KeyF",sprint:"ShiftLeft",switch:"KeyC"};
+  let V22_bindings = Object.assign({}, V22_defaultBindings);
+  try { const saved = JSON.parse(localStorage.getItem(V22_SETTINGS_KEY)||"{}"); if(saved.bindings)V22_bindings=Object.assign({},V22_defaultBindings,saved.bindings); } catch(_){}
+  let V22_settings = {quality:"high",reducedMotion:false,weather:"auto",crowd:"high"};
+  try { V22_settings = Object.assign(V22_settings,JSON.parse(localStorage.getItem(V22_SETTINGS_KEY)||"{}")); } catch(_){}
+  delete V22_settings.bindings;
+  // v33.5 bridge: later script blocks read these settings outside this closure.
+  window.V22_settings = V22_settings;
+
+  function V22_storeSettings(){
+    try { localStorage.setItem(V22_SETTINGS_KEY,JSON.stringify(Object.assign({},V22_settings,{bindings:V22_bindings}))); } catch(e){ console.warn("KIKSTART settings could not be saved",e); }
+    V22_applySettings();
+  }
+  function V22_applySettings(){
+    if(!document.body)return;
+    document.body.dataset.v22Quality=V22_settings.quality||"high";
+    document.body.classList.toggle("v22-reduced-motion",!!V22_settings.reducedMotion);
+    const ratio={low:0.75,medium:1,high:1.5,ultra:2}[V22_settings.quality]||1.5;
+    try { if(typeof renderer!=="undefined"&&renderer){renderer.setPixelRatio(Math.min(ratio,window.devicePixelRatio||1));const st=$("stage");if(st&&st.clientWidth&&st.clientHeight)renderer.setSize(st.clientWidth,st.clientHeight,false);} } catch(_){}
+    try { if(typeof sr!=="undefined"&&sr){sr.setPixelRatio(Math.min(ratio,window.devicePixelRatio||1));const el=$("stad3d");if(el&&el.clientWidth&&el.clientHeight)sr.setSize(el.clientWidth,el.clientHeight,false);} } catch(_){}
+  }
+  V22_applySettings();
+
+  const style = document.createElement("style");
+  style.id = "kikstartV22FeatureStyle";
+  style.textContent = `
+    #clubhub{max-width:1280px!important;padding-bottom:56px}
+    .v22-hero{position:relative;overflow:hidden;margin:6px 0 18px;padding:26px;border-radius:20px;border:1px solid #5a82b577;background:radial-gradient(circle at 88% 10%,#5de6ff33,transparent 35%),radial-gradient(circle at 12% 100%,#b785ff22,transparent 40%),linear-gradient(125deg,#0a1730,#17294b 58%,#111b38);box-shadow:0 18px 42px #0007,inset 0 1px #ffffff20}
+    .v22-hero h1{font-size:clamp(27px,4vw,44px);font-weight:1000;font-style:italic;margin:8px 0}.v22-eyebrow{font-size:10px;letter-spacing:.2em;color:#9ceee4;font-weight:1000;text-transform:uppercase}.v22-muted{color:#aab8d4;font-size:13px;line-height:1.55}
+    .v22-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0}.v22-card{position:relative;overflow:hidden;padding:17px;border-radius:16px;background:linear-gradient(140deg,#142541,#0d172c);border:1px solid #314b70;box-shadow:0 12px 26px #0004;min-width:0}.v22-card:before{content:"";position:absolute;inset:-80% 35% 30% -45%;background:linear-gradient(110deg,transparent,#ffffff14,transparent);transform:rotate(24deg);pointer-events:none}.v22-card h3{margin:5px 0 8px}.v22-card .v22-icon{font-size:29px;filter:drop-shadow(0 0 10px #91eaff66)}
+    .v22-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.v22-small{font-size:12px!important;padding:7px 11px!important}.v22-chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 9px;margin:3px;background:#213657;border:1px solid #6480a866;font-size:11px;font-weight:800;color:#dfeaff}.v22-metric{font-size:25px;font-weight:1000;color:#f4fbff}.v22-table{width:100%;border-collapse:collapse;font-size:13px}.v22-table th,.v22-table td{padding:9px 10px;border-bottom:1px solid #ffffff12;text-align:left}.v22-table th{color:#9ceee4;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+    .v22-field{display:flex;flex-direction:column;gap:5px;margin:8px 0;min-width:0}.v22-field label{font-size:11px;color:#b7c9e8;font-weight:800}.v22-field input,.v22-field select,.v22-field textarea,.v22-toolbar select{background:#09152a;color:#eaf3ff;border:1px solid #3a5579;border-radius:9px;padding:10px;font:600 13px system-ui;min-width:0}.v22-toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:12px 0}.v22-toolbar input{flex:1;min-width:180px}
+    .v22-replay-canvas{display:block;width:100%;max-width:850px;aspect-ratio:16/9;background:#092c1c;border:1px solid #5a8a72;border-radius:14px;box-shadow:0 14px 30px #0007}
+    #v22LiveMatchTools{display:none;align-items:center;gap:8px;flex-wrap:wrap;max-width:920px;margin:10px 0;padding:10px;border:1px solid #3b557a;border-radius:13px;background:linear-gradient(120deg,#0c1930,#142543);box-shadow:0 10px 24px #0005}
+    #v22LiveMatchTools.active{display:flex}
+    #v22LiveMatchTools select{max-width:190px;background:#07152a;color:#eef5ff;border:1px solid #385476;border-radius:8px;padding:8px;font-size:12px}
+    #v22RefHUD{position:absolute;right:12px;top:12px;z-index:5;pointer-events:none;padding:6px 10px;border-radius:9px;background:#071323d9;color:#e9f8ff;border:1px solid #9bdfff55;font-size:10px;font-weight:900;letter-spacing:.08em;opacity:.9}
+    #v22Tifo{position:absolute;top:54px;left:50%;z-index:5;display:flex;align-items:center;gap:10px;padding:9px 15px;border:1px solid #9be9ff88;border-radius:14px;background:linear-gradient(110deg,#071528ed,#173d63e8,#251b4be8);box-shadow:0 10px 28px #0009,0 0 28px #5fe6ff35;transform:translate(-50%,-18px) scale(.88);opacity:0;pointer-events:none;white-space:nowrap}
+    #v22Tifo.show{animation:v22TifoIn .75s cubic-bezier(.2,.8,.2,1) forwards}
+    #v22Tifo .v22-tifo-mark{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:linear-gradient(145deg,#fff,#9bdfff);color:#0a2440;font-weight:1000;font-size:11px}
+    #v22Tifo .v22-tifo-copy{display:grid;gap:2px;color:#fff}.v22-tifo-copy b{font-size:12px;letter-spacing:.09em}.v22-tifo-copy small{font-size:9px;letter-spacing:.18em;color:#9ceee4}.v22-tifo-stars{color:#ffe69a;letter-spacing:.2em}
+    @keyframes v22TifoIn{0%{opacity:0;transform:translate(-50%,-18px) scale(.88)}20%{opacity:1;transform:translate(-50%,0) scale(1.02)}78%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-8px) scale(.98)}}
+    #v22Weather{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden;opacity:.0}
+    #v22Weather.rain{opacity:.6;background:repeating-linear-gradient(105deg,transparent 0 16px,#bce7ff88 17px 18px,transparent 19px 29px);background-size:120px 120px;animation:v22Rain .55s linear infinite;mix-blend-mode:screen}
+    #v22Weather.snow{opacity:.65;background-image:radial-gradient(#ffffffcc 1px,transparent 2px),radial-gradient(#ffffff99 1px,transparent 2px);background-size:38px 38px,63px 63px;animation:v22Snow 5s linear infinite}
+    @keyframes v22Rain{to{background-position:-80px 120px}}@keyframes v22Snow{to{background-position:50px 80px,-30px 100px}}
+    #v22Modal{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;padding:18px;background:#030812eF;backdrop-filter:blur(9px)}#v22Modal.on{display:flex}.v22-modal-inner{width:min(590px,96vw);max-height:88vh;overflow:auto;padding:22px;border-radius:19px;background:linear-gradient(145deg,#172a49,#081326);border:1px solid #8bc9e877;box-shadow:0 25px 70px #000b}
+    .card.youth{--a:#9af2cf;--b:#176b57;color:#062d24!important;box-shadow:0 0 15px #61e9b755}
+    .v22-news{padding:11px 13px;margin:8px 0;border-radius:10px;background:#101f37;border:1px solid #ffffff12}.v22-news small{display:block;color:#8ea8ca;margin-top:5px}.v22-progress{height:9px;border-radius:99px;background:#050d1b;overflow:hidden}.v22-progress i{display:block;height:100%;background:linear-gradient(90deg,#20d6a2,#5cdbf7,#c19aff);box-shadow:0 0 12px #69e2d699}
+    .v22-award-pop{animation:v22Award .65s cubic-bezier(.2,.8,.2,1)}@keyframes v22Award{0%{opacity:0;transform:translateY(18px) scale(.88)}70%{transform:translateY(-3px) scale(1.025)}100%{opacity:1;transform:none}}
+    .v22-cup-bracket{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:10px;overflow:auto;padding:6px}.v22-cup-round{padding:12px;border-radius:12px;background:#0b1830;border:1px solid #3a5274}.v22-cup-match{padding:9px;margin:8px 0;border-radius:8px;background:#152642;font-size:12px}
+    body.v22-reduced-motion *,body.v22-reduced-motion *:before,body.v22-reduced-motion *:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+    body[data-v22-quality="low"] .v22-card{box-shadow:none}body[data-v22-quality="low"] .v22-hero{box-shadow:none}body[data-v22-quality="medium"] .v22-card{box-shadow:0 6px 14px #0004}
+    @media(max-width:700px){#v22LiveMatchTools{font-size:11px}#v22LiveMatchTools select{max-width:135px}.v22-grid{grid-template-columns:1fr}.v22-cup-bracket{grid-template-columns:repeat(3,180px)}}
+  `;
+  document.head.appendChild(style);
+
+  // ---------- App navigation ----------
+  function V22_installTabs(){
+    const main=$("main"),side=$("side"),sideItems=side&&side.querySelector(".sitems"),titleItems=document.querySelector("#start .sitems");
+    if(main&&!$("clubhub")){const page=document.createElement("section");page.id="clubhub";page.className="tab";main.appendChild(page);}
+    if(sideItems&&!$("nav-clubhub")){const b=document.createElement("button");b.id="nav-clubhub";b.type="button";b.innerHTML="🧩 Club Hub";b.onclick=()=>showTab("clubhub");sideItems.appendChild(b);}
+    if(titleItems&&!titleItems.querySelector('[data-t="clubhub"]')){const b=document.createElement("button");b.dataset.t="clubhub";b.type="button";b.textContent="CLUB HUB";b.onclick=()=>menuGo("clubhub");titleItems.appendChild(b);}
+    if(!$("v22Modal")){const m=document.createElement("div");m.id="v22Modal";m.innerHTML='<div class="v22-modal-inner" id="v22ModalContent"></div>';document.body.appendChild(m);m.addEventListener("click",e=>{if(e.target===m)V22_closeModal();});}
+  }
+  V22_installTabs();
+
+  const V22_originalShowTab = showTab;
+  showTab = function(name){
+    if(name==="clubhub"){
+      if(typeof M!=="undefined"&&M&&!M.over)return;
+      if(typeof music==="function"){};
+      tabOn="clubhub";
+      document.querySelectorAll("#main > .tab").forEach(el=>el.classList.toggle("on",el.id==="clubhub"));
+      document.querySelectorAll("#side .sitems button").forEach(el=>el.classList.toggle("on",el.id==="nav-clubhub"));
+      document.querySelectorAll("#start .sitems button").forEach(el=>el.classList.toggle("sel",el.dataset.t==="clubhub"));
+      V22_renderHub();return;
+    }
+    return V22_originalShowTab(name);
+  };
+  const V22_originalMenuGo = menuGo;
+  menuGo = function(name){
+    if(name==="clubhub"){
+      try{audio();music(true);}catch(_){}
+      $("start")?.classList.add("hide");
+      if(S){refresh();showTab("clubhub");}else{pending="clubhub";openPick();}
+      return;
+    }
+    return V22_originalMenuGo(name);
+  };
+  const V22_originalRefresh = refresh;
+  refresh = function(){V22_originalRefresh();if(tabOn==="clubhub")V22_renderHub();};
+  const V22_originalRenderHome = renderHome;
+  renderHome = function(){
+    V22_originalRenderHome();
+    const home=$("home");if(!home||$("v22HomeCard"))return;
+    const card=document.createElement("section");card.id="v22HomeCard";card.className="v22-card";card.style.margin="14px 0";
+    card.innerHTML='<div class="v22-eyebrow">KIKSTART FEATURES</div><h3>🧩 Club Hub</h3><p class="v22-muted">Match replays, youth academy, player chemistry, stadium customisation, online cups, statistics, settings and save backups.</p><button class="alt" onclick="showTab(\'clubhub\')">Open Club Hub →</button>';
+    home.appendChild(card);
+  };
+
+  // ---------- Safe backup + three save slots ----------
+  function V22_compactSaveForBackup(state){
+    const clone=JSON.parse(JSON.stringify(state));
+    // Match replays are convenience footage; excluding their large frame arrays keeps
+    // manual slots and automatic backups within typical browser storage limits.
+    clone.v22Replays=[];
+    return clone;
+  }
+  function V22_rotateBackups(raw){
+    if(!raw||V22_backupBusy)return;
+    V22_backupBusy=true;
+    try{
+      const parsed=JSON.parse(raw),compact=JSON.stringify(V22_compactSaveForBackup(parsed));
+      for(let i=3;i>=2;i--){const old=localStorage.getItem(V22_BACKUP_PREFIX+(i-1));if(old)localStorage.setItem(V22_BACKUP_PREFIX+i,old);}
+      localStorage.setItem(V22_BACKUP_PREFIX+1,compact);
+      localStorage.setItem(V22_BACKUP_PREFIX+"meta",JSON.stringify({date:new Date().toISOString(),label:"Automatic backup · replay footage excluded"}));
+    }catch(e){console.warn("KIKSTART backup storage full or invalid",e);}
+    V22_backupBusy=false;
+  }
+  const V22_originalSave = save;
+  save = function(){
+    try{
+      if(typeof liveMatch==="undefined"||!liveMatch){
+        const old=localStorage.getItem("kikstartV2");
+        if(old&&Date.now()-V22_lastBackup>180000&&S){V22_rotateBackups(old);V22_lastBackup=Date.now();}
+      }
+    }catch(_){}
+    return V22_originalSave.apply(this,arguments);
+  };
+  function V22_validState(raw){
+    try{const obj=typeof raw==="string"?JSON.parse(raw):raw;return !!obj&&Number.isInteger(Number(obj.club))&&Number(obj.club)>=0&&Number(obj.club)<CL.length&&obj.owned&&obj.coins!==undefined?obj:null;}catch(_){return null;}
+  }
+  window.V22_saveSlot=function(slot){
+    if(!S)return;const n=clampV(slot,1,3),raw=JSON.stringify(V22_compactSaveForBackup(S));
+    try{localStorage.setItem(V22_SLOT_PREFIX+n,raw);localStorage.setItem(V22_SLOT_PREFIX+n+"_meta",JSON.stringify({date:new Date().toISOString(),club:CL[S.club].n,coins:S.unlimited?"∞":S.coins}));V22_hubToast("💾","SAVE SLOT "+n+" UPDATED","Your current club and career progress are stored in this slot.");V22_renderHub();}
+    catch(e){ask("Could not save this slot. Browser storage may be full. Export a save code or delete an older slot.");}
+  };
+  window.V22_loadSlot=function(slot){
+    const n=clampV(slot,1,3);let raw=null;try{raw=localStorage.getItem(V22_SLOT_PREFIX+n);}catch(_){}
+    const obj=V22_validState(raw);if(!obj)return ask("Save slot "+n+" is empty or invalid.");
+    ask("Load save slot "+n+" for "+CL[obj.club].n+"? Your current browser save will be replaced. An automatic backup is made first.",()=>{
+      try{const current=localStorage.getItem("kikstartV2");if(current)V22_rotateBackups(current);localStorage.setItem("kikstartV2",JSON.stringify(obj));location.reload();}catch(e){ask("Could not load this save. Check available browser storage.");}
+    });
+  };
+  window.V22_deleteSlot=function(slot){const n=clampV(slot,1,3);ask("Delete save slot "+n+"? This does not affect your current game.",()=>{try{localStorage.removeItem(V22_SLOT_PREFIX+n);localStorage.removeItem(V22_SLOT_PREFIX+n+"_meta");}catch(_){}V22_renderHub();});};
+  window.V22_restoreBackup=function(slot){const n=clampV(slot,1,3);let raw=null;try{raw=localStorage.getItem(V22_BACKUP_PREFIX+n);}catch(_){}const obj=V22_validState(raw);if(!obj)return ask("Automatic backup "+n+" is not available.");ask("Restore automatic backup "+n+"? Your current game will first be copied into another backup slot.",()=>{try{const current=localStorage.getItem("kikstartV2");if(current)V22_rotateBackups(current);localStorage.setItem("kikstartV2",JSON.stringify(obj));location.reload();}catch(e){ask("Backup restore failed. Export a save code before trying again.");}});};
+
+  // ---------- Match replay recorder (compact top-down tactical frames) ----------
+  function V22_captureFrame(){
+    if(!M||!M.pl||!M.ball||!M.F)return;
+    const b=M.ball,frame=[Number(M.t)||0,Number(b.x)||0,Number(b.z)||0,Number(b.y)||0,Number(M.score?.[0])||0,Number(M.score?.[1])||0];
+    M.pl.forEach(p=>frame.push(p.t?1:0,Number(p.x)||0,Number(p.z)||0,p.gk?1:0));
+    V22_frames.push(frame);
+    if(V22_frames.length>720)V22_frames.shift();
+  }
+  const V22_originalStartMatch = startMatch;
+  startMatch = function(){V22_frames=[];V22_captureClock=0;return V22_originalStartMatch.apply(this,arguments);};
+  const V22_originalStepMatch = stepMatch;
+  stepMatch = function(dt){
+    const before=M;const result=V22_originalStepMatch.apply(this,arguments);
+    if(M&&M===before&&!M.over&&!M.wait){V22_captureClock+=Number(dt)||0;if(V22_captureClock>=.18){V22_captureClock=0;V22_captureFrame();}}
+    return result;
+  };
+  function V22_storeReplay(match,forfeit){
+    if(!match||!Array.isArray(V22_frames)||!V22_frames.length)return;
+    const replay={id:Date.now(),date:new Date().toISOString(),club:CL[S.club]?.n||"My Club",opponent:match.team?.n||"Opponent",mode:match.mo||S.mode||"fb",score:(match.score||[0,0]).slice(),pitch:{L:match.F?.L||100,W:match.F?.W||62},players:match.pl?.length||0,frames:V22_frames.slice(),forfeit:!!forfeit,competition:match.careerCompetition||"club"};
+    S.v22Replays=Array.isArray(S.v22Replays)?S.v22Replays:[];S.v22Replays.unshift(replay);S.v22Replays=S.v22Replays.slice(0,3);
+    S.v22Stats=S.v22Stats||{};S.v22Stats.matches=(Number(S.v22Stats.matches)||0)+1;
+    if(!forfeit){if(replay.score[0]>replay.score[1])S.v22Stats.wins=(Number(S.v22Stats.wins)||0)+1;else if(replay.score[0]===replay.score[1])S.v22Stats.draws=(Number(S.v22Stats.draws)||0)+1;else S.v22Stats.losses=(Number(S.v22Stats.losses)||0)+1;if(replay.score[1]===0)S.v22Stats.cleanSheets=(Number(S.v22Stats.cleanSheets)||0)+1;}
+    V22_pushNews("MATCH REPORT",replay.club+" "+replay.score[0]+"–"+replay.score[1]+" "+replay.opponent,"A match replay has been added to the Match Centre.");
+  }
+  const V22_originalFinishMatch = finishMatch;
+  finishMatch = function(forfeit){
+    const match=M;if(!match||match.over)return V22_originalFinishMatch.apply(this,arguments);
+    V22_captureFrame();
+    const result=V22_originalFinishMatch.apply(this,arguments);
+    if(S){try{V22_storeReplay(match,forfeit);save();}catch(e){console.warn("Replay save failed",e);}}
+    const tools=$("v22LiveMatchTools");if(tools)tools.classList.remove("active");
+    V22_frames=[];V22_captureClock=0;
+    return result;
+  };
+  function V22_drawReplay(replay,index){
+    const canvas=$("v22ReplayCanvas");if(!canvas||!replay||!replay.frames||!replay.frames.length)return;
+    const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height,frame=replay.frames[clampV(index,0,replay.frames.length-1)],L=replay.pitch.L,W=replay.pitch.W;
+    ctx.clearRect(0,0,w,h);ctx.fillStyle="#0b472b";ctx.fillRect(0,0,w,h);
+    for(let i=0;i<10;i++){ctx.fillStyle=i%2?"#0d512f":"#125d36";ctx.fillRect(i*w/10,0,w/10,h);}
+    const X=x=>24+(x+L/2)/(L||100)*(w-48),Y=z=>18+(z+W/2)/(W||62)*(h-36);
+    ctx.strokeStyle="#ffffffcc";ctx.lineWidth=2;ctx.strokeRect(24,18,w-48,h-36);ctx.beginPath();ctx.moveTo(w/2,18);ctx.lineTo(w/2,h-18);ctx.stroke();ctx.beginPath();ctx.arc(w/2,h/2,Math.min(w,h)*.105,0,Math.PI*2);ctx.stroke();
+    ctx.strokeRect(24, h*.30, w*.13,h*.40);ctx.strokeRect(w-24-w*.13,h*.30,w*.13,h*.40);
+    ctx.fillStyle="#081323dd";ctx.fillRect(w/2-68,4,136,25);ctx.fillStyle="#fff";ctx.font="bold 16px system-ui";ctx.textAlign="center";ctx.fillText(frame[4]+"  —  "+frame[5],w/2,22);
+    for(let i=0;i<replay.players;i++){const off=6+i*4;if(frame.length<off+4)break;const team=frame[off],x=X(frame[off+1]),y=Y(frame[off+2]),gk=frame[off+3];ctx.beginPath();ctx.fillStyle=team?"#ff6e8f":(gk?"#c6ff57":"#2af0c2");ctx.arc(x,y,gk?7:5.5,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#ffffff";ctx.lineWidth=1;ctx.stroke();}
+    const bx=X(frame[1]),by=Y(frame[2]);ctx.beginPath();ctx.fillStyle="#fff";ctx.shadowColor="#fff";ctx.shadowBlur=9;ctx.arc(bx,by,5.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+    const read=$("v22ReplayTime");if(read)read.textContent=""+Math.floor(frame[0]/60)+":"+String(Math.floor(frame[0]%60)).padStart(2,"0");
+    const slider=$("v22ReplayRange");if(slider)slider.value=index;
+  }
+  window.V22_viewReplay=function(id){
+    const list=S&&S.v22Replays||[],replay=list.find(r=>String(r.id)===String(id));if(!replay)return;
+    if(V22_replayTimer){clearInterval(V22_replayTimer);V22_replayTimer=null;}V22_replayState={replay,index:0,playing:false};
+    V22_hubPage="replay";V22_renderHub();
+  };
+  window.V22_replayPlay=function(){if(!V22_replayState)return;if(V22_replayTimer){clearInterval(V22_replayTimer);V22_replayTimer=null;V22_replayState.playing=false;const b=$("v22ReplayToggle");if(b)b.textContent="▶ Play";return;}V22_replayState.playing=true;const b=$("v22ReplayToggle");if(b)b.textContent="Ⅱ Pause";V22_replayTimer=setInterval(()=>{if(!V22_replayState)return;V22_replayState.index++;if(V22_replayState.index>=V22_replayState.replay.frames.length){clearInterval(V22_replayTimer);V22_replayTimer=null;V22_replayState.playing=false;if(b)b.textContent="↻ Replay";V22_replayState.index=0;}V22_drawReplay(V22_replayState.replay,V22_replayState.index);},180);};
+  window.V22_replaySeek=function(value){if(V22_replayState){V22_replayState.index=Number(value)||0;V22_drawReplay(V22_replayState.replay,V22_replayState.index);}};
+  window.V22_closeReplay=function(){if(V22_replayTimer)clearInterval(V22_replayTimer);V22_replayTimer=null;V22_replayState=null;V22_hubPage="replays";V22_renderHub();};
+
+  // ---------- Main-match substitutions, tactical switches and referee events ----------
+  function V22_ensureMatchTools(){
+    const stage=$("stage");if(!stage||$("v22LiveMatchTools"))return;
+    const tools=document.createElement("div");tools.id="v22LiveMatchTools";
+    tools.innerHTML='<b style="color:#9ceee4;font-size:11px;letter-spacing:.08em">MATCH CONTROL</b><select id="v22SubOut" aria-label="Player to substitute"><option value="">Player off…</option></select><select id="v22SubIn" aria-label="Substitute player"><option value="">Player on…</option></select><button class="alt sm" onclick="V22_substitute()">Make sub</button><select id="v22TacticSelect" aria-label="Team tactic" onchange="V22_setMatchTactic(this.value)"><option value="balanced">Balanced</option><option value="attack">Attacking</option><option value="defend">Defensive</option><option value="press">High press</option></select><span id="v22SubCount" class="v22-chip">Subs 0/5</span>';
+    stage.insertAdjacentElement("afterend",tools);
+    const hud=$("hud");if(hud&&!$("v22RefHUD")){const b=document.createElement("div");b.id="v22RefHUD";b.textContent="REFEREE · READY";stage.appendChild(b);}
+    if(!$("v22Weather")){const w=document.createElement("div");w.id="v22Weather";stage.appendChild(w);}
+  }
+  function V22_isCareerMatch(){return typeof liveMatch!=="undefined"&&!!liveMatch&&!!(S&&S.career);}
+  function V22_ensureCareerBench(c){
+    if(!c)return;ensureCareerShape(c);
+    const current=new Set([...(c.xiIds||[]),...(c.benchIds||[])]);
+    const base=(c.xiIds||[]).map(id=>POOL.fb[id]).filter(Boolean);
+    const average=base.length?base.reduce((n,p)=>n+(Number(p.o)||60),0)/base.length:65;
+    const target=Math.max(48,Math.min(88,Math.round(average-8)));
+    const candidates=POOL.fb.filter(p=>p&&!p.secret&&!p.academy&&!p.khizargive&&!p.removed&&!current.has(p.id)&&p.pos!=="MGR").sort((a,b)=>Math.abs(a.o-target)-Math.abs(b.o-target));
+    while((c.benchIds||[]).length<5&&candidates.length){const p=candidates.shift();if(p)c.benchIds.push(p.id);}
+  }
+  function V22_fillSubstitutions(){
+    if(!M||!S)return;V22_ensureMatchTools();const out=$("v22SubOut"),into=$("v22SubIn"),tools=$("v22LiveMatchTools");if(!out||!into)return;
+    if(tools)tools.classList.toggle("active",!M.over);
+    const career=V22_isCareerMatch(),c=career?S.career:null;
+    if(c)V22_ensureCareerBench(c);
+    const active=M.pl.filter(p=>p.t===0&&!p.gk),activeIds=new Set(active.map(p=>p.playerId).filter(id=>id!==undefined));
+    out.innerHTML='<option value="">Player off…</option>'+active.map(p=>'<option value="'+p.i+'" '+(p.isCareerAvatar||p.playerId==="career-avatar"?'disabled':'')+'>'+safe(p.playerName||p.dataName||( "Player "+(p.i+1)))+' · '+Math.round(p.o)+' OVR'+(p.isCareerAvatar?' · YOU':'')+'</option>').join("");
+    const mode=M.mo||S.mode;
+    const bench=career?(c.benchIds||[]).map(id=>POOL.fb[id]).filter(p=>p&&!activeIds.has(p.id)&&!p.secret&&!p.academy):POOL[mode].filter(p=>S.owned[mode]&&S.owned[mode][p.id]&&!activeIds.has(p.id)&&!p.academy&&!p.secret);
+    bench.sort((a,b)=>b.o-a.o);
+    into.innerHTML='<option value="">Player on…</option>'+bench.map(p=>'<option value="'+p.id+'">'+safe(p.n)+' · '+p.pos+' · '+p.o+' OVR</option>').join("");
+    const cap=mode==="fs"?3:5;if($("v22SubCount"))$("v22SubCount").textContent="Subs "+(M.v22SubsUsed||0)+"/"+cap;
+  }
+  window.V22_substitute=function(){
+    if(!M||M.over||!S)return ask("Substitutions are only available during a live match.");
+    if(M.onlineRole==="guest")return ask("The host controls substitutions in this online match.");
+    const career=V22_isCareerMatch(),c=career?S.career:null;
+    if(c)V22_ensureCareerBench(c);
+    const out=Number($("v22SubOut")?.value),id=Number($("v22SubIn")?.value);if(!Number.isInteger(out)||!Number.isInteger(id))return ask("Choose a player to bring off and a substitute to bring on.");
+    const cap=(M.mo||S.mode)==="fs"?3:5;if((M.v22SubsUsed||0)>=cap)return ask("You have used all available substitutions.");
+    const p=M.pl.find(x=>x.t===0&&x.i===out&&!x.gk),mode=M.mo||S.mode,incoming=career?POOL.fb[id]:POOL[mode][id];
+    if(!p||!incoming||p.isCareerAvatar||p.playerId==="career-avatar")return ask("Your created Player Career character cannot be substituted off. Choose a teammate instead.");
+    if(M.pl.some(x=>x.t===0&&x.playerId===id))return ask("That player is already on the pitch.");
+    if(career){if(!c.benchIds.includes(id))return ask("Choose a player from your career bench.");}
+    else if(!S.owned[mode]||!S.owned[mode][id])return ask("That player is not in your club collection.");
+    const oldId=Number(p.playerId);if(!Number.isInteger(oldId)||oldId<0)return ask("That player cannot be substituted in this match.");
+    const oldName=p.playerName||("Player "+(p.i+1));
+    if(career){
+      const slot=p.i;if(!Array.isArray(c.xiIds)||slot<0||slot>=c.xiIds.length)return ask("This career squad slot is unavailable.");
+      c.xiIds[slot]=incoming.id;c.benchIds=c.benchIds.filter(x=>Number(x)!==incoming.id);c.benchIds.push(oldId);
+      if(Array.isArray(liveXI))liveXI[slot]=incoming;
+    }
+    p.playerId=incoming.id;p.playerName=incoming.n;p.dataName=incoming.n;p.o=incoming.o;p.pos=incoming.pos;p.baseSpd=(6.2+(incoming.o-40)/60*3)*M.F.sp0*(1+.02*(S.st?.b||0));p.spd=p.baseSpd*(M.v22TacticMultiplier||1)*(M.v22ChemMultiplier||1);p.look=incoming.look;
+    M.v22SubsUsed=(M.v22SubsUsed||0)+1;M.v22SubLog=M.v22SubLog||[];M.v22SubLog.push({off:oldName,on:incoming.n,time:M.t});sfx.pop();banner("SUBSTITUTION · "+incoming.n.toUpperCase());V22_fillSubstitutions();
+    const stats=V22_ensureStats();if(stats)stats.substitutions=(Number(stats.substitutions)||0)+1;
+  };
+  window.V22_setMatchTactic=function(tactic){
+    if(!M||M.over)return;const values={balanced:1,attack:1.06,defend:.96,press:1.035};if(!values[tactic])return;
+    M.v22Tactic=tactic;M.v22TacticMultiplier=values[tactic];M.pl.filter(p=>p.t===0).forEach(p=>{p.baseSpd=p.baseSpd||p.spd;p.spd=p.baseSpd*values[tactic]*(M.v22ChemMultiplier||1);});
+    const label={balanced:"BALANCED",attack:"ATTACKING",defend:"DEFENSIVE",press:"HIGH PRESS"}[tactic];banner("TACTICS · "+label);if($("v22TacticSelect"))$("v22TacticSelect").value=tactic;
+  };
+  function V22_initMatch(){
+    if(!M||M.over||M.v22Initialized)return;M.v22Initialized=true;M.v22SubsUsed=0;M.v22Fouls=0;M.v22Cards={yellow:0,red:0};M.v22Tactic="balanced";M.v22TacticMultiplier=1;
+    if(V22_isCareerMatch())V22_ensureCareerBench(S.career);
+    V22_ensureMatchTools();if($("v22LiveMatchTools"))$("v22LiveMatchTools").classList.add("active");
+    const startingXI = ((V22_isCareerMatch()&&Array.isArray(liveXI))?liveXI:lineup(M.mo||S.mode)||[]).filter(Boolean);
+    M.pl.filter(p=>p.t===0).forEach(p=>{p.baseSpd=p.spd;const card=startingXI[p.i];if(card){p.playerId=card.careerAvatar?"career-avatar":card.id;p.playerName=card.n;p.dataName=card.n;if(card.careerAvatar)p.isCareerAvatar=true;}});
+    V22_fillSubstitutions();
+    const weather=V22_settings.weather||"auto",chosen=weather==="auto"?(Math.random()<.13?"rain":Math.random()<.16?"snow":"clear"):weather;
+    const overlay=$("v22Weather");if(overlay){overlay.className=chosen==="rain"?"rain":chosen==="snow"?"snow":"";}
+    M.v22Weather=chosen;
+    try{if(chosen==="rain")banner("MATCHDAY · LIGHT RAIN");else if(chosen==="snow")banner("MATCHDAY · SNOWFALL");}catch(_){}
+    const club=CL[S.club];if(club){M.v22Announced=true;try{cheer(2.8,V22_settings.crowd==="low"?.05:V22_settings.crowd==="medium"?.12:.2);}catch(_){}V22_showMatchdayTifo(club);}
+  }
+  function V22_showMatchdayTifo(club){
+    const stage=$("stage");if(!stage||!club)return;
+    let el=$("v22Tifo");if(!el){el=document.createElement("div");el.id="v22Tifo";stage.appendChild(el);}
+    el.innerHTML='<span class="v22-tifo-mark">'+safe(club.k||"CLB")+'</span><span class="v22-tifo-copy"><b>'+safe(club.n).toUpperCase()+'</b><small>MATCHDAY · WALKOUT</small></span><span class="v22-tifo-stars">✦ ✧ ✦</span>';
+    el.classList.remove("show");void el.offsetWidth;el.classList.add("show");clearTimeout(window.__v22TifoTimer);window.__v22TifoTimer=setTimeout(()=>el.classList.remove("show"),4300);
+  }
+  const V22_originalUserCtrl=userCtrl;
+  userCtrl=function(p,dt){
+    const m=M;V22_originalUserCtrl.apply(this,arguments);
+    if(!m||!m.t||p.t!==0)return;
+    const pressed=!!K.Space;
+    if(!pressed){m.v22SpaceWasDown=false;return;}
+    if(m.v22SpaceWasDown)return;m.v22SpaceWasDown=true;
+    const target=m.owner;if(!target||target.t!==1||hyp(p.x-target.x,p.z-target.z)>2.5)return;
+    const stats=V22_ensureStats();if(stats)stats.tackles=(Number(stats.tackles)||0)+1;
+    if(Math.random()<.105){
+      m.v22Fouls=(m.v22Fouls||0)+1;if(stats)stats.fouls=(Number(stats.fouls)||0)+1;
+      m.pause=Math.max(m.pause||0,.7);sfx.whistle();banner("FOUL · FREE KICK");
+      const severe=Math.random()<.13;
+      if(severe){m.v22Cards=m.v22Cards||{yellow:0,red:0};m.v22Cards.yellow++;if(stats)stats.yellowCards=(Number(stats.yellowCards)||0)+1;
+        if(m.v22Cards.yellow>=2&&Math.random()<.28){m.v22Cards.red++;if(stats)stats.redCards=(Number(stats.redCards)||0)+1;banner("RED CARD · SEND OFF");const defender=m.pl.find(x=>x.t===0&&x!==p&&!x.gk);if(defender){defender.spd*=.94;}}else banner("YELLOW CARD · CAUTION");
+      }
+      if(Math.abs(target.x)>m.F.L*.33&&Math.random()<.24){setTimeout(()=>{if(M===m&&!m.over){banner("VAR CHECK · REVIEWING THE INCIDENT");setTimeout(()=>{if(M===m&&!m.over)banner("VAR DECISION · REFEREE'S CALL STANDS");},900);}},350);}
+      const hud=$("v22RefHUD");if(hud)hud.textContent="REFEREE · "+(severe?"CARD SHOWN":"FOUL GIVEN");
+    }
+  };
+  const V22_originalStepForInit=stepMatch;
+  stepMatch=function(dt){
+    if(M&&!M.v22Initialized)V22_initMatch();
+    const m=M,oldT=m?m.t:0;const result=V22_originalStepForInit.apply(this,arguments);
+    if(m&&M===m&&!m.over){
+      if(!m.v22HalfTime&&oldT<m.total/2&&m.t>=m.total/2){
+        m.v22HalfTime=true;m.half=1;
+        // Host/offline simulation performs the actual end switch and gives the
+        // second-half kick-off to team 1 (the side that did not start). Guests
+        // follow the host's authoritative snapshots instead of running a local kickoff.
+        if(m.onlineRole!=="guest"){
+          m.pause=Math.max(m.pause||0,4.2);
+          m.after=()=>{kickoff(1);banner("SECOND HALF · KICK OFF");sfx.whistle();};
+        }
+        sfx.whistle();banner("HALF-TIME · "+m.score[0]+"–"+m.score[1]);try{cheer(2,.16);}catch(_){}
+      }
+      const hud=$("v22RefHUD");if(hud)hud.textContent="REFEREE · "+(m.v22Fouls||0)+" FOULS · "+(m.v22Cards?.yellow||0)+" YC";
+    }
+    return result;
+  };
+
+  // ---------- Shooting, passing and all-time match statistics ----------
+  function V22_ensureStats(){
+    if(!S)return null;S.v22Stats=Object.assign({matches:0,wins:0,draws:0,losses:0,shots:0,passes:0,successfulPasses:0,tackles:0,fouls:0,yellowCards:0,redCards:0,substitutions:0,cleanSheets:0},S.v22Stats||{});return S.v22Stats;
+  }
+  const V22_originalShoot=shoot;
+  shoot=function(p){const stats=V22_ensureStats();if(M&&p&&p.t===0&&stats)stats.shots++;return V22_originalShoot.apply(this,arguments);};
+  const V22_originalPassTo=passTo;
+  passTo=function(p,q){const stats=V22_ensureStats();if(M&&p&&p.t===0&&stats)stats.passes++;return V22_originalPassTo.apply(this,arguments);};
+
+  // ---------- Squad chemistry ----------
+  function V22_chemistry(){
+    if(!S)return 0;const players=(lineup(S.mode)||[]).filter(Boolean),count={};players.forEach(p=>{const key=p.f||"unknown";count[key]=(count[key]||0)+1;});
+    const links=Object.values(count).reduce((n,v)=>n+(v*(v-1))/2,0);return Math.min(100,Math.round(46+links*3.6+Math.max(0,players.length-5)*1.1));
+  }
+  window.V22_chemistry=V22_chemistry;
+  const V22_originalRenderSquad=renderSquad;
+  renderSquad=function(){V22_originalRenderSquad();const root=$("squad");if(!root||$("v22ChemCard"))return;const el=document.createElement("section");el.id="v22ChemCard";el.className="v22-card";el.style.margin="16px 0";const value=V22_chemistry();el.innerHTML='<div class="v22-eyebrow">SQUAD SYNERGY</div><h3>🔗 Player chemistry · '+value+'/100</h3><div class="v22-progress"><i style="width:'+value+'%"></i></div><p class="v22-muted">Shared nationality flags and a balanced squad build chemistry. Higher chemistry adds a small pace bonus for your players in the next match.</p>';root.insertBefore(el,root.children[1]||null);};
+  function V22_applyChemistry(match){
+    if(!match||match.v22ChemApplied)return;match.v22ChemApplied=true;
+    let value=V22_chemistry();if(typeof liveMatch!=="undefined"&&liveMatch&&S.career&&S.career.management)value=Number(S.career.management.chemistry)||value;
+    const multiplier=1+clampV((value-45)/55,0,1)*.035;match.v22ChemMultiplier=multiplier;
+    match.pl.filter(p=>p.t===0).forEach(p=>{p.baseSpd=p.baseSpd||p.spd;p.spd=p.baseSpd*(match.v22TacticMultiplier||1)*multiplier;});
+  }
+  const V22_stepWithChem=stepMatch;
+  stepMatch=function(dt){const before=M;const result=V22_stepWithChem.apply(this,arguments);if(M&&M===before&&!M.over)V22_applyChemistry(M);return result;};
+
+  // ---------- Stadium customisation ----------
+  function V22_stadiumConfig(){if(!S)return {};S.stadiumCustom=Object.assign({seats:"club",pitch:"classic",nets:"white",boards:"club"},S.stadiumCustom||{});return S.stadiumCustom;}
+  const V22_stadiumPalettes={classic:["#f0f4fa","#a8c5df","#233f62"],gold:["#f9d86b","#fff0ad","#906321"],neon:["#38f7d4","#b88bff","#153b65"],monochrome:["#f2f4f6","#8e9aaa","#273244"]};
+  function V22_applyStadiumTheme(){
+    if(typeof THREE==="undefined"||typeof ss==="undefined"||!ss)return;
+    const cfg=V22_stadiumConfig(),group=ss.children.find(x=>x&&x.name&&x.name.indexOf("KIKSTART_ClubStadium_")===0);if(!group)return;
+    const colors=V22_stadiumPalettes[cfg.seats]||V22_stadiumPalettes.classic;
+    group.traverse(obj=>{
+      if(obj.isInstancedMesh&&obj.count>220&&cfg.seats!=="club"){
+        for(let i=0;i<obj.count;i++)obj.setColorAt(i,new THREE.Color(colors[(i%17===0)?2:(i%7===0)?1:0]));
+        if(obj.instanceColor)obj.instanceColor.needsUpdate=true;
+      }
+      if(obj.material&&obj.material.wireframe&&cfg.nets!=="white")obj.material.color.set(cfg.nets==="gold"?"#f5d477":"#4be8ff");
+    });
+    // The first twelve pitch meshes follow the turf base in the procedural stadium group.
+    if(cfg.pitch!=="classic"){
+      const pitch=cfg.pitch==="dark"?["#0b3d2c","#14553a"]:["#1c7f43","#0d542f"];
+      for(let i=1;i<=12;i++){const obj=group.children[i];if(obj&&obj.material&&obj.material.color)obj.material.color.set(pitch[i%2]);}
+    }
+    // Install a visible LED ribbon that updates with the selected board theme.
+    const oldRibbon=group.getObjectByName("V22_Stadium_LED_Ribbon");if(oldRibbon)group.remove(oldRibbon);
+    if(cfg.boards!=="club"){
+      const glow=cfg.boards==="neon"?0x50f3ed:0xdfe8f0;
+      const ribbon=new THREE.Group();ribbon.name="V22_Stadium_LED_Ribbon";
+      [-1,1].forEach(side=>{const mesh=new THREE.Mesh(new THREE.BoxGeometry(126,.5,.28),new THREE.MeshStandardMaterial({color:glow,emissive:glow,emissiveIntensity:cfg.boards==="neon"?1.1:.22,metalness:.35,roughness:.4}));mesh.position.set(0,1.9,side*38);ribbon.add(mesh);});
+      group.add(ribbon);
+    }
+  }
+  const V22_originalRenderStadium=renderStadium;
+  renderStadium=function(){const r=V22_originalRenderStadium.apply(this,arguments);setTimeout(()=>{V22_applyStadiumTheme();V22_applySettings();},40);return r;};
+  const V22_originalInit3D=init3D;
+  init3D=function(){const ok=V22_originalInit3D.apply(this,arguments);if(ok)setTimeout(V22_applySettings,0);return ok;};
+  window.V22_setStadiumCustom=function(kind,value){
+    const cfg=V22_stadiumConfig(),valid={seats:["club","classic","gold","neon","monochrome"],pitch:["classic","checkered","dark"],nets:["white","cyan","gold"],boards:["club","neon","minimal"]};
+    if(!valid[kind]||!valid[kind].includes(value))return;
+    cfg[kind]=value;if(S.st){S.st.v22AppearanceRevision=Date.now();}save();
+    if(kind==="pitch")V22_applyPitchToLiveBuild();
+    try{renderStadium();}catch(e){console.warn("Stadium customisation render failed",e);}V22_renderHub();
+  };
+  function V22_applyPitchToLiveBuild(){
+    if(typeof world==="undefined"||!world)return;
+    const cfg=V22_stadiumConfig(),greens=cfg.pitch==="dark"?[0x0d3d2c,0x14523a]:cfg.pitch==="checkered"?[0x1b7541,0x0f4d30]:[0x2fbf4a,0x27a842];
+    for(let i=0;i<8;i++){const obj=world.children[i+1];if(obj&&obj.material&&obj.material.color)obj.material.color.setHex(greens[i%2]);}
+  }
+  const V22_originalBuildWorld=buildWorld;
+  buildWorld=function(){const result=V22_originalBuildWorld.apply(this,arguments);V22_applyPitchToLiveBuild();return result;};
+
+  // ---------- Youth academy for Manager Career ----------
+  const V22_youthFirst=["Alex","Charlie","Noah","Leo","Ethan","Mason","Kai","Luca","Oscar","Jude","Milan","Theo","Ryan","Ari","Sam","Rory"];
+  const V22_youthLast=["Bennett","Clarke","Foster","Hayes","Morgan","Parker","Reid","Silva","Turner","Walker","Young","Costa","Miller","Brown","Ward","Evans"];
+  function V22_ensureYouth(c){c.youthAcademy=Array.isArray(c.youthAcademy)?c.youthAcademy:[];c.youthPromoted=Array.isArray(c.youthPromoted)?c.youthPromoted:[];}
+  window.V22_scoutYouth=function(){
+    const c=S&&S.career;if(!c||c.mode!=="manager")return ask("Youth Academy is available in Manager Career.");V22_ensureYouth(c);
+    if(c.budget<65000)return ask("You need 65,000 in your transfer budget for a youth scouting trip.");
+    if(c.youthAcademy.length>=8)return ask("Your academy is full. Promote or release a prospect before scouting again.");
+    c.budget-=65000;
+    const first=V22_youthFirst[Math.floor(Math.random()*V22_youthFirst.length)],last=V22_youthLast[Math.floor(Math.random()*V22_youthLast.length)],pos=["FWD","MID","DEF","GK"][Math.floor(Math.random()*4)],ovr=46+Math.floor(Math.random()*16),potential=Math.min(94,ovr+18+Math.floor(Math.random()*21));
+    const id="y"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    c.youthAcademy.push({id,name:first+" "+last,pos,ovr,potential,age:16+Math.floor(Math.random()*3),morale:70,training:0,scouted:true});
+    c.history.push({event:"Youth scouting",player:first+" "+last,season:c.season});save();V22_pushNews("ACADEMY REPORT",first+" "+last+" has joined the youth setup.","A new prospect has been identified by the club's academy scouts.");V22_hubToast("🌱","YOUTH PROSPECT DISCOVERED",first+" "+last+" · "+pos+" · "+ovr+" OVR · "+potential+" POT");V22_renderHub();if(typeof KC_render==="function")KC_render();
+  };
+  window.V22_trainYouth=function(id){const c=S&&S.career;if(!c||c.mode!=="manager")return;V22_ensureYouth(c);const p=c.youthAcademy.find(x=>x.id===id);if(!p)return;if((p.training||0)>=4)return ask("This prospect has reached the weekly training limit.");p.training=(p.training||0)+1;p.ovr=Math.min(p.potential,p.ovr+1);p.morale=clampV(p.morale+3,0,100);save();V22_hubToast("🏋️","YOUTH TRAINING COMPLETE",p.name+" improved to "+p.ovr+" OVR.");V22_renderHub();};
+  window.V22_promoteYouth=function(id){
+    const c=S&&S.career;if(!c||c.mode!=="manager")return;V22_ensureYouth(c);const p=c.youthAcademy.find(x=>x.id===id);if(!p)return;
+    if(!Array.isArray(POOL.fb))return;
+    const player={id:POOL.fb.length,n:p.name,pos:p.pos,o:p.ovr,f:"🏴",look:"0100",r:"youth",kind:"youth",youthGenerated:true,potential:p.potential,v22YouthKey:p.id};POOL.fb.push(player);
+    S.v22GeneratedPlayers=Array.isArray(S.v22GeneratedPlayers)?S.v22GeneratedPlayers:[];
+    S.v22GeneratedPlayers.push({mode:"fb",id:player.id,key:p.id,player:{n:player.n,pos:player.pos,o:player.o,f:player.f,look:player.look,r:player.r,kind:player.kind,youthGenerated:true,potential:player.potential,v22YouthKey:player.v22YouthKey}});
+    const slot=c.xiIds.map((pid,index)=>({p:POOL.fb[pid],index})).filter(x=>x.p&&x.p.pos===p.pos).sort((a,b)=>a.p.o-b.p.o)[0];
+    if(slot&&p.ovr>slot.p.o){c.benchIds.push(c.xiIds[slot.index]);c.xiIds[slot.index]=player.id;}else c.benchIds.push(player.id);
+    c.youthPromoted.push({name:p.name,id:player.id,season:c.season,potential:p.potential});c.youthAcademy=c.youthAcademy.filter(x=>x.id!==id);
+    RAR.youth=RAR.youth||{n:"Academy",i:"🌱",pr:1};ST.youth=[0,0];if(S.stock&&S.stock.fb)S.stock.fb[player.id]=0;save();V22_pushNews("YOUTH PROMOTION",p.name+" has signed a first-team contract.","The academy graduate is now part of your first-team squad.");V22_hubToast("⭐","PROMOTED TO THE FIRST TEAM",p.name+" has joined your senior squad.");V22_renderHub();if(typeof KC_render==="function")KC_render();
+  };
+  window.V22_releaseYouth=function(id){const c=S&&S.career;if(!c)return;V22_ensureYouth(c);const p=c.youthAcademy.find(x=>x.id===id);if(!p)return;c.youthAcademy=c.youthAcademy.filter(x=>x.id!==id);save();V22_renderHub();};
+  if(typeof RAR!=="undefined")RAR.academy=RAR.academy||RAR.silver;
+  if(typeof RAR!=="undefined")RAR.youth=RAR.youth||{n:"Academy",i:"🌱",pr:1};
+  if(typeof ST!=="undefined")ST.youth=[0,0];
+
+  // ---------- Career press conferences, dynamic news and relationships ----------
+  function V22_pushNews(category,title,detail){
+    if(!S)return;S.v22News=Array.isArray(S.v22News)?S.v22News:[];S.v22News.unshift({id:Date.now()+Math.random(),category,title,detail,date:new Date().toISOString()});S.v22News=S.v22News.slice(0,18);
+  }
+  window.V22_pressChoice=function(choice){
+    const c=S&&S.career;if(!c)return ask("Start a career to attend a press conference.");c.management=c.management||{};const m=c.management;
+    if(choice==="humble"){m.morale=clampV((m.morale||70)+3,0,100);m.fanTrust=clampV((m.fanTrust||55)+3,0,100);}
+    else if(choice==="ambitious"){m.morale=clampV((m.morale||70)+1,0,100);c.boardConfidence=clampV((c.boardConfidence||70)+(c.record.wins>=c.record.losses?2:-2),0,100);}
+    else if(choice==="team"){m.chemistry=clampV((m.chemistry||65)+4,0,100);m.morale=clampV((m.morale||70)+2,0,100);}
+    else if(choice==="pressure"){m.morale=clampV((m.morale||70)-2,0,100);c.boardConfidence=clampV((c.boardConfidence||70)+3,0,100);}
+    V22_pushNews("PRESS CONFERENCE",c.name+" spoke to the media.",({humble:"You praised the team's effort and kept expectations measured.",ambitious:"You made it clear that the club is targeting silverware.",team:"You highlighted togetherness and squad spirit.",pressure:"You challenged the squad to deliver results."})[choice]||"The media conference has concluded.");save();V22_hubToast("🎙️","PRESS CONFERENCE COMPLETE","Your answers have affected morale, chemistry and supporter confidence.");V22_renderHub();if(typeof KC_render==="function")KC_render();
+  };
+  window.V22_buildRelationship=function(playerId){
+    const c=S&&S.career;if(!c||c.mode!=="player")return ask("Player relationships are available in Player Career.");const id=Number(playerId),p=POOL.fb[id];if(!p||!c.xiIds.includes(id))return;
+    c.relationships=Object.assign({},c.relationships||{});c.relationships[id]=clampV((c.relationships[id]||20)+12,0,100);c.management.chemistry=clampV((c.management.chemistry||65)+2,0,100);save();
+    V22_pushNews("TEAMMATE BOND",c.name+" trained with "+p.n+".","Your connection with the teammate improved. Team chemistry has increased.");V22_hubToast("🤝","TEAMMATE BOND IMPROVED",p.n+" · Relationship "+c.relationships[id]+"/100");V22_renderHub();
+  };
+
+  // ---------- Transfer negotiations ----------
+  const V22_baseCareerSign=window.KC_signPlayer;
+  function V22_closeModal(){const m=$("v22Modal");if(m)m.classList.remove("on");V22_negotiation=null;}
+  window.V22_closeModal=V22_closeModal;
+  window.V22_openNegotiation=function(id){
+    const c=S&&S.career;if(!c||c.mode!=="manager"||typeof V22_baseCareerSign!=="function")return;
+    const p=POOL.fb[Number(id)];if(!p||p.secret||p.academy||p.khizargive||p.youthGenerated)return ask("Secret and academy-exclusive cards cannot be bought in the transfer market.");const fee=Math.round(200000+p.o*p.o*650);
+    V22_negotiation={id:p.id,fee,offer:fee,wage:Math.round(700+p.o*85),contract:3};
+    const modal=$("v22Modal"),content=$("v22ModalContent");if(!modal||!content)return;
+    content.innerHTML='<div class="v22-eyebrow">TRANSFER NEGOTIATION · '+safe(CL[c.club].n)+'</div><h2 style="margin:8px 0">Approach '+safe(p.n)+'</h2><p class="v22-muted">The club is open to discussing a deal. Submit a transfer fee and weekly wage; a fair offer improves the chance of acceptance.</p><div class="v22-grid"><div class="v22-card"><small>PLAYER RATING</small><div class="v22-metric">'+p.o+' OVR</div><span class="v22-chip">'+p.pos+'</span></div><div class="v22-card"><small>ESTIMATED VALUE</small><div class="v22-metric">'+moneyV(fee)+'</div><span class="v22-chip">'+p.r.toUpperCase()+'</span></div></div><div class="v22-field"><label>Transfer offer · coins</label><input id="v22OfferFee" type="number" min="'+Math.round(fee*.75)+'" step="10000" value="'+fee+'"></div><div class="v22-field"><label>Weekly wage · coins</label><input id="v22OfferWage" type="number" min="300" step="50" value="'+V22_negotiation.wage+'"></div><div class="v22-field"><label>Contract length</label><select id="v22OfferYears"><option value="2">2 years</option><option value="3" selected>3 years</option><option value="4">4 years</option><option value="5">5 years</option></select></div><div class="v22-actions"><button onclick="V22_submitNegotiation()">Submit offer</button><button class="alt" onclick="V22_closeModal()">Cancel</button></div><p class="v22-muted">The transfer fee is deducted from your Career Mode budget only. Main club coins are untouched.</p>';
+    modal.classList.add("on");
+  };
+  window.V22_submitNegotiation=function(){
+    const c=S&&S.career,p=V22_negotiation&&POOL.fb[V22_negotiation.id];if(!c||!p)return V22_closeModal();
+    const fee=Math.max(0,Math.round(Number($("v22OfferFee")?.value)||0)),wage=Math.max(0,Math.round(Number($("v22OfferWage")?.value)||0)),years=clampV($("v22OfferYears")?.value||3,2,5),value=V22_negotiation.fee;
+    if(fee>c.budget)return ask("Your transfer budget is not high enough for that fee.");if(wage<250)return ask("The weekly wage offer is too low. Offer at least 250.");
+    const chance=clampV(.38+(fee/value-1)*.78+(wage/(700+p.o*85)-1)*.22+(Number(c.boardConfidence||70)-70)*.002,.08,.96);
+    if(Math.random()>chance){V22_pushNews("TRANSFER UPDATE",p.n+" rejected the initial offer.","The player's representatives want improved terms. You can reopen negotiations from the transfer market.");save();V22_closeModal();V22_hubToast("📄","OFFER REJECTED","Try a higher fee or weekly wage.");return;}
+    const oldBudget=Number(c.budget)||0;V22_closeModal();
+    // The legacy signer deducts its fixed reference fee; temporarily ensure it can complete,
+    // then settle the negotiated fee exactly from the original budget.
+    if(c.budget<value)c.budget=value;
+    V22_baseCareerSign(p.id);
+    const updated=S&&S.career;if(updated){updated.budget=Math.max(0,oldBudget-fee);updated.management=updated.management||{};updated.management.contracts=updated.management.contracts||{};updated.management.contracts[p.id]={wage,years,fee,season:updated.season};updated.management.wagesWeekly=(Number(updated.management.wagesWeekly)||0)+wage;save();}
+    V22_pushNews("TRANSFER CONFIRMED",p.n+" has joined "+CL[c.club].n+".","A "+years+"-year deal was agreed at "+moneyV(wage)+" per week.");V22_hubToast("📝","TRANSFER COMPLETED",p.n+" signed for "+moneyV(fee)+".");if(typeof KC_render==="function")KC_render();
+  };
+  const V22_originalShowCareerTransfers=window.KC_showTransfers;
+  if(typeof V22_originalShowCareerTransfers==="function")window.KC_showTransfers=function(){const result=V22_originalShowCareerTransfers.apply(this,arguments);const root=$("career");if(root)root.querySelectorAll('.kc-roster-item button[onclick*="KC_signPlayer"]').forEach(btn=>{const match=btn.getAttribute("onclick")?.match(/KC_signPlayer\((\d+)\)/),p=match&&POOL.fb[Number(match[1])];if(p&&(p.secret||p.academy||p.khizargive||p.youthGenerated))btn.closest(".kc-roster-item")?.remove();});return result;};
+  if(typeof V22_baseCareerSign==="function")window.KC_signPlayer=function(id){return V22_openNegotiation(id);};
+
+  // ---------- Online cup brackets using the existing private 1v1 lobby ----------
+  window.V22_createOnlineCup=function(size){
+    if(!S)return;const n=Number(size)===8?8:4;const names=[CL[S.club].n,"Friend 1","Friend 2","Friend 3","Friend 4","Friend 5","Friend 6","Friend 7"].slice(0,n);
+    S.onlineCup={active:true,size:n,round:1,roundName:n===4?"Semi-finals":"Quarter-finals",localName:CL[S.club].n,participants:names,results:[],waiting:true,eliminated:false,wins:0,losses:0,created:new Date().toISOString()};
+    save();V22_hubToast("🏆","ONLINE CUP CREATED",n+"-team private knockout cup. Play each friend tie through the existing Online lobby.");V22_renderHub();
+  };
+  window.V22_onlineCupNext=function(){if(!S||!S.onlineCup||!S.onlineCup.active)return;showTab("online");if(typeof NET_render==="function")NET_render();};
+  window.V22_setOnlineCupOpponent=function(name){const cup=S&&S.onlineCup;if(!cup||!cup.active)return;cup.currentOpponent=String(name||"").trim().slice(0,36);save();V22_renderHub();};
+  function V22_recordOnlineCup(match,forfeit){
+    const cup=S&&S.onlineCup;if(!cup||!cup.active||cup.eliminated||!match||!match.onlineRole)return;
+    // The local side is indexed as team 0 on both host and guest screens.
+    const score=Array.isArray(match.score)?match.score:[0,0];
+    const localGoals=Number(score[0])||0,oppGoals=Number(score[1])||0,won=!forfeit&&localGoals>oppGoals;
+    cup.results=Array.isArray(cup.results)?cup.results:[];
+    const fallbackParticipant=cup.participants&&cup.participants.length?cup.participants[Math.min(cup.results.length+1,cup.participants.length-1)]:"Friend";
+    const opponent=(match.team&&match.team.n)||cup.currentOpponent||fallbackParticipant||"Friend";
+    cup.results.push({round:Number(cup.round)||1,score:[localGoals,oppGoals],won,opponent,date:new Date().toISOString(),forfeit:!!forfeit});
+    cup.size=Number(cup.size)===8?8:4;cup.wins=Number(cup.wins)||0;cup.losses=Number(cup.losses)||0;cup.round=Number(cup.round)||1;
+    if(won){
+      cup.wins++;cup.round++;
+      if(cup.round>Math.log2(cup.size)){
+        cup.active=false;cup.waiting=false;cup.champion=true;
+        V22_pushNews("ONLINE CUP CHAMPIONS",cup.localName+" won the KIKSTART Online Cup.","You completed the private knockout tournament with a perfect run.");
+        V22_hubToast("🏆","ONLINE CUP CHAMPIONS","Your club has won the private tournament.");
+      }else{
+        cup.roundName=cup.round===Math.log2(cup.size)?"Final":cup.round===Math.log2(cup.size)-1?"Semi-finals":"Round "+cup.round;
+        cup.waiting=true;cup.currentOpponent="";
+        V22_hubToast("⚔️","YOU ADVANCED TO THE NEXT ROUND","Open Online and invite the next friend to your room.");
+      }
+    }else{
+      cup.losses++;cup.active=false;cup.waiting=false;cup.eliminated=true;
+      V22_hubToast("🏁","ONLINE CUP FINISHED","Your team has been eliminated. You can create another cup anytime.");
+    }
+    save();
+  }
+
+  // ---------- Render Club Hub ----------
+  window.V22_openHub=function(page){V22_hubPage=page||"dashboard";V22_renderHub();};
+  function V22_hubHeader(title,sub){return '<div class="v22-hero"><div class="v22-eyebrow">KIKSTART · CLUB HUB</div><h1>'+safe(title)+'</h1><p class="v22-muted">'+safe(sub)+'</p></div><div class="v22-toolbar"><button class="alt v22-small" onclick="V22_openHub(\'dashboard\')">← Hub home</button><button class="alt v22-small" onclick="showTab(\'home\')">Main home</button></div>';}
+  function V22_renderNewsFeed(){
+    const items=(S&&Array.isArray(S.v22News)?S.v22News:[]).slice(0,6);
+    return '<div class="v22-card"><div class="v22-eyebrow">CLUB NEWS</div><h3>📰 Latest headlines</h3>'+(items.length?items.map(n=>'<div class="v22-news"><b>'+safe(n.title||n.category||"Club update")+'</b><small>'+safe(n.detail||"")+' · '+safe(n.date?new Date(n.date).toLocaleDateString():"New")+'</small></div>').join(""):'<p class="v22-muted">Your latest match reports, transfers, press updates and academy news will appear here.</p>')+'</div>';
+  }
+  function V22_renderDashboard(){
+    const c=S&&S.career,stats=V22_ensureStats()||{};
+    return '<div class="v22-hero"><div class="v22-eyebrow">THE FOOTBALL EXPERIENCE UPDATE</div><h1>CLUB HUB</h1><p class="v22-muted">A single home for match-day tools, career management, stadium customisation, statistics, online cups and game settings.</p><div class="v22-actions"><button onclick="showTab(\'play\')">▶ Play match</button><button class="alt" onclick="showTab(\'career\')">Career Mode</button><button class="alt" onclick="showTab(\'stadium\')">Stadium</button></div></div><div class="v22-grid">'+[
+      ["🎬","Match Centre","Watch saved tactical replays, use substitutions and change tactics during a match.","match"],
+      ["🌱","Youth Academy","Scout, train and promote young prospects in Manager Career.","youth"],
+      ["🤝","Transfers & Press","Negotiate fees and wages, answer media questions and manage teammate bonds.","transfers"],
+      ["🏟️","Stadium Lab","Choose seating palettes, pitch patterns, goal nets and advertising styles.","stadium"],
+      ["📊","Statistics Centre","Advanced club totals, match stats, shooting, passing and results.","stats"],
+      ["🏆","Online Tournaments","Create a private knockout cup and play friend ties using the Online lobby.","online"],
+      ["💾","Saves & Backups","Use three save slots and restore automatic backups.","saves"],
+      ["⚙️","Settings & Controls","Graphics quality, reduced motion, weather and custom keyboard controls.","settings"]
+    ].map(x=>'<article class="v22-card"><div class="v22-icon">'+x[0]+'</div><h3>'+x[1]+'</h3><p class="v22-muted">'+x[2]+'</p><button class="alt v22-small" onclick="V22_openHub(\''+x[3]+'\')">Open →</button></article>').join("")+'</div><div class="v22-card"><div class="v22-eyebrow">QUICK SNAPSHOT</div><div class="v22-grid"><div><small class="v22-muted">Matches</small><div class="v22-metric">'+(stats.matches||0)+'</div></div><div><small class="v22-muted">Shots</small><div class="v22-metric">'+(stats.shots||0)+'</div></div><div><small class="v22-muted">Passes</small><div class="v22-metric">'+(stats.passes||0)+'</div></div><div><small class="v22-muted">Career</small><div class="v22-metric">'+(c?safe(c.name):"Not started")+'</div></div></div></div>'+V22_renderNewsFeed();
+  }
+  function V22_renderReplays(){
+    const list=S&&S.v22Replays||[];
+    if(V22_replayState){const r=V22_replayState.replay;return V22_hubHeader("Match Replay","Review a saved top-down tactical replay frame by frame.")+'<div class="v22-card"><h3>'+safe(r.club)+' '+r.score[0]+'–'+r.score[1]+' '+safe(r.opponent)+'</h3><p class="v22-muted">'+new Date(r.date).toLocaleString()+" · "+(r.mode==="fs"?"Futsal":"Football")+" · "+r.frames.length+" frames"+'</p><canvas id="v22ReplayCanvas" class="v22-replay-canvas" width="900" height="506"></canvas><div class="v22-toolbar"><button id="v22ReplayToggle" onclick="V22_replayPlay()">▶ Play</button><input id="v22ReplayRange" type="range" min="0" max="'+(r.frames.length-1)+'" value="'+V22_replayState.index+'" oninput="V22_replaySeek(this.value)" style="flex:1;min-width:160px"><b id="v22ReplayTime">0:00</b></div><p class="v22-muted">This is a tactical replay recorded from player and ball positions. It does not change the saved match result.</p><button class="alt" onclick="V22_closeReplay()">Back to replays</button></div>';
+    }
+    return V22_hubHeader("Match Centre","Your latest matches are saved as compact tactical replays.")+(list.length?list.map(r=>'<div class="v22-card"><div class="v22-eyebrow">'+(r.mode==="fs"?"FUTSAL":"FOOTBALL")+' · '+safe(r.competition||"CLUB MATCH")+'</div><h3>'+safe(r.club)+' <span style="color:#9ceee4">'+r.score[0]+'–'+r.score[1]+'</span> '+safe(r.opponent)+'</h3><p class="v22-muted">'+new Date(r.date).toLocaleString()+" · "+r.frames.length+" recorded frames"+'</p><button onclick="V22_viewReplay(\''+r.id+'\')">▶ Watch replay</button></div>').join(""):'<div class="v22-card"><h3>No saved replays yet</h3><p class="v22-muted">Complete a match to save a tactical replay automatically. Your last three matches are kept.</p></div>')+'<div class="v22-card"><h3>Live match tools</h3><p class="v22-muted">During your next match, use the controls under the pitch to make up to five substitutions in Football, three in Futsal, and switch tactics.</p><span class="v22-chip">Balanced</span><span class="v22-chip">Attacking</span><span class="v22-chip">Defensive</span><span class="v22-chip">High press</span></div>';
+  }
+  function V22_renderYouth(){
+    const c=S&&S.career;if(!c||c.mode!=="manager")return V22_hubHeader("Youth Academy","Start a Manager Career to build a youth system.")+'<div class="v22-card"><p class="v22-muted">The Youth Academy is available inside Manager Career. Create or load a manager save first.</p><button onclick="showTab(\'career\')">Open Career Mode</button></div>';
+    V22_ensureYouth(c);return V22_hubHeader("Youth Academy","Scout young prospects, develop their attributes and promote them to your senior squad.")+'<div class="v22-card"><div class="v22-grid"><div><small class="v22-muted">TRANSFER BUDGET</small><div class="v22-metric">'+moneyV(c.budget)+'</div></div><div><small class="v22-muted">ACADEMY PLAYERS</small><div class="v22-metric">'+c.youthAcademy.length+'/8</div></div><div><small class="v22-muted">PROMOTED</small><div class="v22-metric">'+c.youthPromoted.length+'</div></div></div><button onclick="V22_scoutYouth()" '+(c.budget<65000||c.youthAcademy.length>=8?'disabled':'')+'>🔎 Scout youth prospect · 65,000</button></div><div class="v22-grid">'+(c.youthAcademy.length?c.youthAcademy.map(p=>'<div class="v22-card"><div class="v22-eyebrow">AGE '+p.age+' · '+p.pos+'</div><h3>'+safe(p.name)+'</h3><div class="v22-metric">'+p.ovr+' OVR</div><div class="v22-chip">Potential '+p.potential+'</div><div class="v22-chip">Training '+(p.training||0)+'/4</div><div class="v22-actions"><button class="alt v22-small" onclick="V22_trainYouth(\''+p.id+'\')" '+((p.training||0)>=4?'disabled':'')+'>Train +1</button><button class="v22-small" onclick="V22_promoteYouth(\''+p.id+'\')">Promote</button><button class="alt v22-small" onclick="V22_releaseYouth(\''+p.id+'\')">Release</button></div></div>').join(""):'<div class="v22-card"><h3>Your academy is waiting</h3><p class="v22-muted">Send a scout to discover your first prospect.</p></div>')+'</div><div class="v22-card"><h3>First-team graduates</h3>'+ (c.youthPromoted.length?'<ul>'+c.youthPromoted.map(p=>'<li>'+safe(p.name)+' · joined in Season '+p.season+'</li>').join("")+'</ul>':'<p class="v22-muted">No academy graduates yet.</p>')+'</div>';
+  }
+  function V22_renderTransfers(){
+    const c=S&&S.career;let h=V22_hubHeader("Transfers & Press","Negotiations, media duties and teammate relationships.");
+    if(c&&c.mode==="manager")h+='<div class="v22-card"><h3>Transfer negotiations</h3><p class="v22-muted">Open your Career transfer market and select a player. You can propose a transfer fee, weekly wage and contract length before the club responds.</p><button onclick="KC_showTransfers()">Open transfer market</button></div>';
+    if(c&&c.mode==="player")h+='<div class="v22-card"><h3>Player transfer requests</h3><p class="v22-muted">Request to move clubs from your player career. Club identity and career records remain attached to your player.</p><button onclick="KC_showTransfers()">Open transfer hub</button></div>';
+    h+='<div class="v22-grid"><div class="v22-card"><h3>🎙️ Press conference</h3><p class="v22-muted">Choose how you handle the media. Your answers influence morale, board confidence, fan trust and chemistry.</p><div class="v22-actions"><button class="alt v22-small" onclick="V22_pressChoice(\'humble\')">Stay humble</button><button class="alt v22-small" onclick="V22_pressChoice(\'ambitious\')">Show ambition</button><button class="alt v22-small" onclick="V22_pressChoice(\'team\')">Praise the team</button><button class="alt v22-small" onclick="V22_pressChoice(\'pressure\')">Demand results</button></div></div>';
+    if(c&&c.mode==="player"){
+      const ids=(c.xiIds||[]).slice(0,10),bonds=c.relationships||{};
+      h+='<div class="v22-card"><h3>🤝 Teammate relationships</h3><p class="v22-muted">Build chemistry with a teammate through extra training sessions.</p>'+ids.map(id=>{const p=POOL.fb[id];return p?'<div class="v22-news"><b>'+safe(p.n)+'</b><small>Bond '+(bonds[id]||20)+'/100 · '+p.pos+'</small><button class="alt v22-small" onclick="V22_buildRelationship('+id+')">Train together</button></div>':"";}).join("")+'</div>';
+    } else h+='<div class="v22-card"><h3>🤝 Squad relationships</h3><p class="v22-muted">Team meetings and successful training sessions improve squad chemistry. Player-specific bonds are tracked in Player Career.</p><button class="alt" onclick="showTab(\'career\')">Open Manager Career</button></div>';
+    h+='</div>';
+    return h;
+  }
+  function V22_renderStadiumLab(){const cfg=V22_stadiumConfig();return V22_hubHeader("Stadium Lab","Personalise your home ground. These settings change the 3D stadium and match pitch where supported.")+'<div class="v22-grid"><div class="v22-card"><h3>🪑 Seating palette</h3><div class="v22-field"><label>Stand colours</label><select onchange="V22_setStadiumCustom(\'seats\',this.value)">'+[["club","Club colours"],["classic","Classic white / blue"],["gold","Gold edition"],["neon","Neon prism"],["monochrome","Monochrome" ]].map(x=>'<option value="'+x[0]+'" '+(cfg.seats===x[0]?'selected':'')+'>'+x[1]+'</option>').join("")+'</select></div></div><div class="v22-card"><h3>🌱 Pitch pattern</h3><div class="v22-field"><label>Playing surface</label><select onchange="V22_setStadiumCustom(\'pitch\',this.value)">'+[["classic","Classic stripes"],["checkered","Checkered"],["dark","Deep green" ]].map(x=>'<option value="'+x[0]+'" '+(cfg.pitch===x[0]?'selected':'')+'>'+x[1]+'</option>').join("")+'</select></div></div><div class="v22-card"><h3>🥅 Goal nets</h3><div class="v22-field"><label>Net colour</label><select onchange="V22_setStadiumCustom(\'nets\',this.value)">'+[["white","White"],["cyan","Electric cyan"],["gold","Gold" ]].map(x=>'<option value="'+x[0]+'" '+(cfg.nets===x[0]?'selected':'')+'>'+x[1]+'</option>').join("")+'</select></div></div><div class="v22-card"><h3>📺 Advertising</h3><div class="v22-field"><label>LED style</label><select onchange="V22_setStadiumCustom(\'boards\',this.value)">'+[["club","Club branded"],["neon","Neon"],["minimal","Minimal" ]].map(x=>'<option value="'+x[0]+'" '+(cfg.boards===x[0]?'selected':'')+'>'+x[1]+'</option>').join("")+'</select></div></div></div><div class="v22-card"><p class="v22-muted">Open the Stadium tab after changing a style to inspect the result. A stadium refresh is triggered automatically. Match pitch stripe colours update when the next match loads.</p><button onclick="showTab(\'stadium\')">Inspect 3D stadium →</button></div>';
+  }
+  function V22_renderStats(){
+    const stats=V22_ensureStats()||{},p=S&&S.profile||{};const c=S&&S.career;
+    const rows=[["All-time matches",p.played||stats.matches||0],["Wins",p.wins||stats.wins||0],["Draws",p.draws||stats.draws||0],["Losses",p.losses||stats.losses||0],["Goals",p.goals||0],["Assists",p.assists||0],["Shots",stats.shots||0],["Pass attempts",stats.passes||0],["Tackles / fouls",stats.tackles||0,"/ "+(stats.fouls||0)],["Substitutions",stats.substitutions||0],["Yellow cards",stats.yellowCards||0],["Red cards",stats.redCards||0],["Trophies",p.trophies||0]];
+    return V22_hubHeader("Statistics Centre","Review your club-wide record and the extra match metrics tracked from this update.")+'<div class="v22-grid">'+rows.map(r=>'<div class="v22-card"><small class="v22-muted">'+r[0]+'</small><div class="v22-metric">'+(Number(r[1])||0)+(r[2]||"")+'</div></div>').join("")+'</div><div class="v22-card"><h3>Career snapshot</h3>'+(c?'<p>'+safe(c.name)+' · '+(c.mode==="player"?c.overall+" OVR · "+c.position:"Manager")+' · Season '+c.season+'</p><p class="v22-muted">Career matches: '+c.record.played+' · Goals: '+c.record.goals+' · Assists: '+c.record.assists+' · Trophies: '+c.trophies.length+'</p>':'<p class="v22-muted">Start Career Mode to build a separate player or manager record.</p>')+'</div><div class="v22-card"><h3>Player database</h3><p class="v22-muted">Use the Player Index search and sort controls to find players by name, position and rating.</p><button onclick="showTab(\'index\')">Open Player Index →</button></div>';
+  }
+  function V22_renderOnlineCup(){
+    const cup=S&&S.onlineCup;let h=V22_hubHeader("Online Tournaments","Create a knockout bracket and play each friend tie through the private 1v1 lobby.");
+    if(!cup||(!cup.active&&!cup.champion&&!cup.eliminated))return h+'<div class="v22-grid"><div class="v22-card"><div class="v22-icon">🏆</div><h3>Four-team cup</h3><p class="v22-muted">Semi-finals followed by a final. Invite a friend for each live tie.</p><button onclick="V22_createOnlineCup(4)">Create 4-team cup</button></div><div class="v22-card"><div class="v22-icon">🌍</div><h3>Eight-team cup</h3><p class="v22-muted">Quarter-finals, semi-finals and final. Track your progress across multiple friend matches.</p><button onclick="V22_createOnlineCup(8)">Create 8-team cup</button></div></div>';
+    const results=Array.isArray(cup.results)?cup.results:[],size=Number(cup.size)===8?8:4;
+    h+='<div class="v22-card"><div class="v22-eyebrow">'+(cup.champion?"CHAMPIONS":cup.eliminated?"ELIMINATED":"ROUND "+(Number(cup.round)||1))+'</div><h2>'+(cup.champion?"🏆 Tournament won":cup.eliminated?"Tournament finished":safe(cup.roundName||"Next round"))+'</h2><p class="v22-muted">'+safe(cup.localName||CL[S.club].n)+' · '+(Number(cup.wins)||0)+' wins · '+(Number(cup.losses)||0)+' losses · '+results.length+' matches completed</p>';
+    if(cup.active)h+='<div class="v22-field"><label>Next friend / opponent label</label><input id="v22CupOpponentName" maxlength="36" placeholder="Enter the friend you are playing" value="'+safe(cup.currentOpponent||"")+'"><button class="alt v22-small" onclick="V22_setOnlineCupOpponent(document.getElementById(&quot;v22CupOpponentName&quot;).value)">Save opponent name</button></div>';
+    h+='<div class="v22-cup-bracket"><div class="v22-cup-round"><b>YOUR RUN</b><div class="v22-cup-match">'+safe(cup.localName||CL[S.club].n)+'<br><small>Current participant</small></div></div><div class="v22-cup-round"><b>ROUND</b><div class="v22-cup-match">'+(cup.active?"Friend tie · "+safe(cup.currentOpponent||"Friend to be confirmed"):cup.champion?"Champion":"Eliminated")+'</div></div><div class="v22-cup-round"><b>RESULTS</b>'+results.map(r=>'<div class="v22-cup-match">'+(r.won?"W":"L")+' · '+(Number(r.score&&r.score[0])||0)+'–'+(Number(r.score&&r.score[1])||0)+'<br><small>'+safe(r.opponent||"Friend")+'</small></div>').join("")+'</div></div>'+(cup.active?'<button onclick="V22_onlineCupNext()">Open Online lobby for next friend tie →</button>':'<button onclick="V22_createOnlineCup('+size+')">Create another cup</button>')+'</div><div class="v22-card"><p class="v22-muted">This is a locally saved tournament tracker. Each tie uses a separate private 1v1 room; friends join through the Online lobby. It is not a public matchmaking server.</p></div>';
+    return h;
+  }
+  function V22_renderSaves(){
+    let h=V22_hubHeader("Saves & Backups","Three manual save slots plus automatic snapshots of your browser save. Replays are omitted from backup copies to protect browser storage.");
+    for(let i=1;i<=3;i++){let meta={};try{meta=JSON.parse(V22_storageGet(V22_SLOT_PREFIX+i+"_meta")||"{}");}catch(_){}const filled=!!V22_storageGet(V22_SLOT_PREFIX+i);h+='<div class="v22-card"><h3>Save slot '+i+'</h3><p class="v22-muted">'+(filled?(safe(meta.club||"Saved club")+' · '+safe(meta.date?new Date(meta.date).toLocaleString():"Saved")+' · Balance '+safe(meta.coins??"unknown")):"Empty slot")+'</p><div class="v22-actions"><button onclick="V22_saveSlot('+i+')">Save current here</button><button class="alt" '+(!filled?'disabled':'')+' onclick="V22_loadSlot('+i+')">Load slot</button><button class="alt v22-small" '+(!filled?'disabled':'')+' onclick="V22_deleteSlot('+i+')">Delete</button></div></div>';}
+    h+='<h2 style="margin-top:20px">Automatic backups</h2>';
+    for(let i=1;i<=3;i++){const filled=!!V22_storageGet(V22_BACKUP_PREFIX+i);h+='<div class="v22-card"><b>Backup '+i+'</b><p class="v22-muted">'+(filled?"A previous saved state is available.":"No backup yet.")+'</p><button class="alt" '+(!filled?'disabled':'')+' onclick="V22_restoreBackup('+i+')">Restore backup</button></div>';}
+    h+='<div class="v22-card"><p class="v22-muted">Automatic backups are captured from the previous saved state at most once every three minutes. Squads, club progress and careers are preserved; replay footage is excluded from backup copies to avoid filling browser storage. Also export a save code on Home before moving devices.</p><button onclick="showTab(\'home\')">Open Home save export</button></div>';
+    return h;
+  }
+  function V22_renderSettings(){
+    const controls=[ ["up","Move up"],["down","Move down"],["left","Move left"],["right","Move right"],["pass","Pass / tackle"],["shoot","Shoot"],["sprint","Sprint"],["switch","Switch player"] ];
+    return V22_hubHeader("Settings & Controls","Tune performance and controls for your computer. Settings are saved separately from your main club save.")+'<div class="v22-grid"><div class="v22-card"><h3>🎮 Graphics quality</h3><div class="v22-field"><label>Quality preset</label><select onchange="V22_setSetting(\'quality\',this.value)">'+[["low","Low · best performance"],["medium","Medium"],["high","High · recommended"],["ultra","Ultra · maximum clarity"]].map(x=>'<option value="'+x[0]+'" '+(V22_settings.quality===x[0]?'selected':'')+'>'+x[1]+'</option>').join("")+'</select></div><div class="v22-field"><label>Weather</label><select onchange="V22_setSetting(\'weather\',this.value)">'+[["auto","Auto"],["clear","Clear"],["rain","Rain"],["snow","Snow"]].map(x=>'<option value="'+x[0]+'" '+(V22_settings.weather===x[0]?'selected':'')+'>'+x[1]+'</option>').join("")+'</select></div><div class="v22-field"><label>Crowd atmosphere</label><select onchange="V22_setSetting(\'crowd\',this.value)">'+[["low","Low"],["medium","Medium"],["high","High"]].map(x=>'<option value="'+x[0]+'" '+(V22_settings.crowd===x[0]?'selected':'')+'>'+x[1]+'</option>').join("")+'</select></div><label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" '+(V22_settings.reducedMotion?'checked':'')+' onchange="V22_setSetting(\'reducedMotion\',this.checked)"> Reduce animations</label></div><div class="v22-card"><h3>⌨️ Custom keyboard controls</h3><p class="v22-muted">Select a control, then press the key you want to assign. Default controls remain in place until changed.</p>'+controls.map(x=>'<div class="v22-toolbar" style="justify-content:space-between"><span>'+x[1]+'</span><button class="alt v22-small" onclick="V22_captureKey(\''+x[0]+'\')">'+safe(V22_bindings[x[0]])+' · Change</button></div>').join("")+'<p class="v22-muted">Clicking Change waits for one keyboard key. Escape cancels.</p><button class="alt v22-small" onclick="V22_resetKeys()">Reset default controls</button></div></div>';
+  }
+  window.V22_setSetting=function(key,value){if(!(key in V22_settings))return;V22_settings[key]=value;V22_storeSettings();V22_renderHub();};
+  window.V22_captureKey=function(action){V22_keyCapture=action;V22_renderHub();const b=$("clubhub");if(b){const p=document.createElement("div");p.className="v22-chip";p.id="v22KeyCaptureHint";p.textContent="Press a key for "+action+" · Esc to cancel";b.prepend(p);}};
+  window.V22_resetKeys=function(){V22_bindings=Object.assign({},V22_defaultBindings);V22_keyCapture=null;V22_storeSettings();V22_renderHub();};
+  const V22_remapCodes={up:"KeyW",down:"KeyS",left:"KeyA",right:"KeyD",pass:"Space",shoot:"KeyF",sprint:"ShiftLeft",switch:"KeyC"};
+  const V22_defaultAliases={up:["ArrowUp"],down:["ArrowDown"],left:["ArrowLeft"],right:["ArrowRight"]};
+  function V22_routeGameKey(e,isDown){
+    if(V22_keyCapture&&isDown){
+      e.preventDefault();e.stopImmediatePropagation();
+      if(e.code==="Escape"){V22_keyCapture=null;V22_renderHub();return;}
+      const skillKeys=(window.KIKSTART_V32_SETTINGS&&window.KIKSTART_V32_SETTINGS.skillKeys)||{};
+      if(Object.values(skillKeys).includes(e.code)){V22_keyCapture=null;V22_renderHub();V22_hubToast("⌨️","KEY USED BY A SKILL","Choose a key that is not assigned to a skill move.");return;}
+      const taken=Object.keys(V22_bindings).find(k=>k!==V22_keyCapture&&V22_bindings[k]===e.code);
+      if(taken){V22_keyCapture=null;V22_renderHub();V22_hubToast("⌨️","KEY ALREADY IN USE","Choose a different key for this control.");return;}
+      V22_bindings[V22_keyCapture]=e.code;V22_keyCapture=null;V22_storeSettings();V22_renderHub();return;
+    }
+    const mapped=Object.keys(V22_bindings).find(k=>V22_bindings[k]===e.code);
+    const oldDefault=Object.keys(V22_defaultBindings).find(k=>V22_defaultBindings[k]===e.code)||Object.keys(V22_defaultAliases).find(k=>(V22_defaultAliases[k]||[]).includes(e.code));
+    if(mapped&&V22_bindings[mapped]!==V22_defaultBindings[mapped]){
+      e.preventDefault();e.stopImmediatePropagation();K[V22_remapCodes[mapped]]=isDown?1:0;return;
+    }
+    if(oldDefault&&V22_bindings[oldDefault]!==V22_defaultBindings[oldDefault]){e.preventDefault();e.stopImmediatePropagation();return;}
+  }
+  window.addEventListener("keydown",e=>V22_routeGameKey(e,true),true);
+  window.addEventListener("keyup",e=>V22_routeGameKey(e,false),true);
+
+  window.V22_renderHub=function(){
+    const root=$("clubhub");if(!root)return;
+    V22_installTabs();
+    if(V22_hubPage==="dashboard")root.innerHTML=V22_renderDashboard();
+    else if(V22_hubPage==="match")root.innerHTML=V22_renderReplays();
+    else if(V22_hubPage==="replays")root.innerHTML=V22_renderReplays();
+    else if(V22_hubPage==="replay"){root.innerHTML=V22_renderReplays();if(V22_replayState){V22_drawReplay(V22_replayState.replay,V22_replayState.index);}}
+    else if(V22_hubPage==="youth")root.innerHTML=V22_renderYouth();
+    else if(V22_hubPage==="transfers")root.innerHTML=V22_renderTransfers();
+    else if(V22_hubPage==="stadium")root.innerHTML=V22_renderStadiumLab();
+    else if(V22_hubPage==="stats")root.innerHTML=V22_renderStats();
+    else if(V22_hubPage==="online")root.innerHTML=V22_renderOnlineCup();
+    else if(V22_hubPage==="saves")root.innerHTML=V22_renderSaves();
+    else if(V22_hubPage==="settings")root.innerHTML=V22_renderSettings();
+    else root.innerHTML=V22_renderDashboard();
+  };
+  function V22_hubToast(icon,title,detail){
+    let el=$("v22Toast");if(!el){el=document.createElement("div");el.id="v22Toast";el.style.cssText="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:150;padding:13px 18px;border-radius:13px;background:linear-gradient(130deg,#18395a,#172143);border:1px solid #89d9ed77;box-shadow:0 16px 35px #0009;color:#fff;max-width:min(560px,92vw);text-align:center;pointer-events:none;opacity:0;transition:opacity .22s;";document.body.appendChild(el);}
+    el.innerHTML='<b>'+icon+' '+safe(title)+'</b><div style="font-size:12px;color:#c7dcf1;margin-top:4px">'+safe(detail)+'</div>';el.style.opacity="1";clearTimeout(el._hide);el._hide=setTimeout(()=>el.style.opacity="0",2800);
+  }
+  window.V22_hubToast=V22_hubToast;
+
+  // ---------- Player database search & sorting ----------
+  const V22_originalRenderIndex=renderIndex;
+  renderIndex=function(q){
+    V22_originalRenderIndex.apply(this,arguments);
+    const root=$("index");if(!root)return;root.dataset.v22Sorted="";
+    const toolbar=root.querySelector(".v27-toolbar");if(!toolbar)return;
+    const sort=document.createElement("select");sort.id="v22IndexSort";sort.className="v22-toolbar-select";sort.innerHTML='<option value="rating">Highest rated</option><option value="name">Name A–Z</option><option value="position">Position</option>';
+    sort.addEventListener("change",()=>V22_sortIndex(sort.value));toolbar.appendChild(sort);
+    const positions=document.createElement("select");positions.id="v22IndexPosition";positions.className="v22-toolbar-select";positions.innerHTML='<option value="all">All positions</option><option value="FWD">Forwards</option><option value="MID">Midfielders</option><option value="DEF">Defenders</option><option value="GK">Goalkeepers</option>';positions.addEventListener("change",()=>V22_filterIndexPosition(positions.value));toolbar.appendChild(positions);
+    root.dataset.v22Sorted="1";V22_sortIndex("rating");
+  };
+  window.V22_sortIndex=function(sort){
+    const root=$("index"),grid=root&&root.querySelector(".grid");if(!grid)return;const cards=Array.from(grid.children);
+    cards.sort((a,b)=>{const an=a.querySelector(".nm")?.textContent||"",bn=b.querySelector(".nm")?.textContent||"",ao=Number(a.querySelector(".ovr")?.textContent)||0,bo=Number(b.querySelector(".ovr")?.textContent)||0;if(sort==="name")return an.localeCompare(bn);if(sort==="position")return (a.querySelector(".pos")?.textContent||"").localeCompare(b.querySelector(".pos")?.textContent||"");return bo-ao;});cards.forEach(x=>grid.appendChild(x));
+  };
+  window.V22_filterIndexPosition=function(position){const root=$("index"),grid=root&&root.querySelector(".grid");if(!grid)return;Array.from(grid.children).forEach(card=>{const p=card.querySelector(".pos")?.textContent||"";card.style.display=position==="all"||p===position?"":"none";});};
+
+  // ---------- Career dashboard integrations ----------
+  function V22_injectCareerTools(){
+    const page=$("career"),c=S&&S.career;if(!page||!c||$("v22CareerTools"))return;
+    const panel=document.createElement("section");panel.id="v22CareerTools";panel.className="v22-card";panel.style.margin="14px 0";
+    panel.innerHTML='<div class="v22-eyebrow">CAREER EXPANSION</div><h3>More tools for your journey</h3><div class="v22-actions"><button class="alt v22-small" onclick="showTab(\'clubhub\');V22_openHub(\'transfers\')">🎙️ Press & relationships</button>'+(c.mode==="manager"?'<button class="alt v22-small" onclick="showTab(\'clubhub\');V22_openHub(\'youth\')">🌱 Youth Academy</button>':'')+'<button class="alt v22-small" onclick="showTab(\'clubhub\');V22_openHub(\'stats\')">📊 Career stats</button><button class="alt v22-small" onclick="showTab(\'clubhub\');V22_openHub(\'saves\')">💾 Back up career</button></div>';
+    page.appendChild(panel);
+  }
+  const V22_originalCareerRender=window.KC_render;
+  if(typeof V22_originalCareerRender==="function")window.KC_render=function(){const r=V22_originalCareerRender.apply(this,arguments);V22_injectCareerTools();return r;};
+  const V22_originalShowTabAfterCareer=showTab;
+  showTab=function(name){const r=V22_originalShowTabAfterCareer.apply(this,arguments);if(name==="career")setTimeout(V22_injectCareerTools,0);return r;};
+
+  // ---------- Online tournament result capture ----------
+  const V22_finishForCup=finishMatch;
+  finishMatch=function(forfeit){
+    const match=M,wasForfeit=!!arguments[0];const isOnline=!!(match&&match.onlineRole);const result=V22_finishForCup.apply(this,arguments);
+    if(isOnline&&S){try{V22_recordOnlineCup(match,wasForfeit);}catch(e){console.warn("Online cup result tracking failed",e);}if(tabOn==="clubhub")V22_renderHub();}
+    return result;
+  };
+
+  // Add dynamic post-match stats and an optional match-news item from the final result.
+  const V22_originalGoal=goal;
+  goal=function(team){if(M&&team===0){const s=V22_ensureStats();if(s)s.goals=(Number(s.goals)||0)+1;}return V22_originalGoal.apply(this,arguments);};
+
+  // ---------- Boot and expose diagnostics ----------
+  if(S){V22_ensureStats();V22_stadiumConfig();if(!Array.isArray(S.v22Replays))S.v22Replays=[];if(!Array.isArray(S.v22News))S.v22News=[];save();}
+  V22_ensureMatchTools();
+  if(window.__kikThreePromise&&typeof window.__kikThreePromise.then==="function")window.__kikThreePromise.then(()=>setTimeout(()=>{try{V22_applyStadiumTheme();}catch(_){}},250)).catch(()=>{});
+  window.KIKSTART_V22_FEATURES_READY=true;
+  window.KIKSTART_V22_DIAGNOSTICS={
+    features:["match-replays","career-substitutions","substitutions","tactics","referee-var-events","match-atmosphere","transfer-negotiations","youth-academy","career-press","player-relationships","squad-chemistry","stadium-customisation","statistics-centre","online-cups","save-slots","automatic-backups","player-index-sort","custom-controls","graphics-settings","persistent-youth-graduates","storage-safe-backups"],
+    getSaveVersion:()=>"v22",
+    getReplayCount:()=>S&&S.v22Replays?S.v22Replays.length:0
+  };
+  if(tabOn==="clubhub")V22_renderHub();
+})();
+
+</script>
+<script>
+/* KIKSTART v22.1 HARDENING PATCH
+   Small compatibility and usability fixes layered after the feature pack.
+*/
+(function KIKSTART_V22_HARDENING(){
+  if(window.__kikstartV22Hardening)return;
+  window.__kikstartV22Hardening=true;
+  const $=id=>document.getElementById(id);
+
+  // Keep older career saves safe for every new management panel.
+  function normalizeCareer(){
+    if(!S||!S.career)return;
+    const c=S.career;
+    c.record=Object.assign({played:0,wins:0,draws:0,losses:0,goals:0,assists:0},c.record||{});
+    c.trophies=Array.isArray(c.trophies)?c.trophies:[];
+    c.history=Array.isArray(c.history)?c.history:[];
+    c.xiIds=Array.isArray(c.xiIds)?c.xiIds:[];
+    c.benchIds=Array.isArray(c.benchIds)?c.benchIds:[];
+    c.relationships=Object.assign({},c.relationships||{});
+    c.management=Object.assign({chemistry:65,morale:70,fanTrust:55,wagesWeekly:0,contracts:{}},c.management||{});
+    c.management.contracts=Object.assign({},c.management.contracts||{});
+    c.youthAcademy=Array.isArray(c.youthAcademy)?c.youthAcademy:[];
+    c.youthPromoted=Array.isArray(c.youthPromoted)?c.youthPromoted:[];
+    c.season=Math.max(1,Math.floor(Number(c.season)||1));
+    if(c.mode==="manager"&&!Number.isFinite(Number(c.budget)))c.budget=25000000;
+  }
+  normalizeCareer();
+
+  // Reject empty substitution selections before parsing them as player ID zero.
+  const oldSubstitute=window.V22_substitute;
+  if(typeof oldSubstitute==="function")window.V22_substitute=function(){
+    const out=$("v22SubOut"),into=$("v22SubIn");
+    if(!out||!out.value||!into||!into.value)return ask("Choose both a player to bring off and a substitute to bring on.");
+    normalizeCareer();
+    return oldSubstitute.apply(this,arguments);
+  };
+
+  // Normalise career state before opening hub pages or invoking management actions.
+  const oldOpenHub=window.V22_openHub;
+  if(typeof oldOpenHub==="function")window.V22_openHub=function(){normalizeCareer();return oldOpenHub.apply(this,arguments);};
+  ["V22_pressChoice","V22_buildRelationship","V22_scoutYouth","V22_trainYouth","V22_promoteYouth","V22_releaseYouth","V22_submitNegotiation"].forEach(name=>{
+    const original=window[name];
+    if(typeof original==="function")window[name]=function(){normalizeCareer();return original.apply(this,arguments);};
+  });
+
+  // Keep Player Index search focus, selection range, sorting and position filter while typing.
+  let indexSort="rating",indexPosition="all";
+  const oldSort=window.V22_sortIndex;
+  const oldFilter=window.V22_filterIndexPosition;
+  if(typeof oldSort==="function")window.V22_sortIndex=function(value){indexSort=value||"rating";return oldSort.apply(this,arguments);};
+  if(typeof oldFilter==="function")window.V22_filterIndexPosition=function(value){indexPosition=value||"all";return oldFilter.apply(this,arguments);};
+  const oldRenderIndex=renderIndex;
+  renderIndex=function(query){
+    const active=$("v27IndexSearch"),wasFocused=!!(active&&document.activeElement===active);
+    const selection=wasFocused?{start:active.selectionStart,end:active.selectionEnd}:null;
+    const nextQuery=query===undefined?(active?active.value:""):String(query);
+    const sortValue=$("v22IndexSort")?.value||indexSort;
+    const positionValue=$("v22IndexPosition")?.value||indexPosition;
+    const result=oldRenderIndex.apply(this,arguments);
+    const sort=$("v22IndexSort"),position=$("v22IndexPosition");
+    if(sort){sort.value=sortValue;indexSort=sortValue;window.V22_sortIndex(sortValue);}
+    if(position){position.value=positionValue;indexPosition=positionValue;window.V22_filterIndexPosition(positionValue);}
+    if(wasFocused){
+      const replacement=$("v27IndexSearch");
+      if(replacement){replacement.focus();try{replacement.setSelectionRange(selection.start,selection.end);}catch(_){}}
+    }
+    return result;
+  };
+
+  // Preserve the descriptive document title even if a legacy fragment changes it.
+  document.title="KIKSTART Enhanced v23 — Full Team Career Control";
+  window.KIKSTART_V22_HARDENING_READY=true;
+})();
+</script>
+
+<script>
+/* KIKSTART v23 — Full-team control for Player Career
+   Add immediately after the existing v22 hardening script. */
+(function KIKSTART_V23_CAREER_TEAM_CONTROL(){
+  if (window.__kikstartV23CareerTeamControl) return;
+  window.__kikstartV23CareerTeamControl = true;
+
+  const $ = id => document.getElementById(id);
+  const previousPickCtrl = pickCtrl;
+  const previousPassTo = passTo;
+
+  function isPlayerCareerMatch(m){
+    return !!(m && m.careerAttached && m.careerModeType === "player" && Array.isArray(m.pl));
+  }
+
+  function activeHomePlayers(m){
+    return m.pl.filter(p => p && p.t === 0);
+  }
+
+  function playerLabel(p){
+    if (!p) return "No player selected";
+    if (p.isCareerAvatar || p.playerId === "career-avatar") {
+      return (S && S.career && S.career.person && S.career.person.name) || p.playerName || p.dataName || "Your Player";
+    }
+    return p.playerName || p.dataName || p.n || p.name || ("Player " + (Number(p.i) + 1));
+  }
+
+  function paintSwitchPanel(m){
+    const stage = $("stage");
+    if (!stage) return;

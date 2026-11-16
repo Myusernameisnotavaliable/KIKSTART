@@ -1,0 +1,1000 @@
+        for(let y=7;y<=26;y+=4){const ring=[];for(let i=0;i<=144;i++)ring.push(shellPoint(i/144*Math.PI*2,95,84,y));tube(ring,.22,meshSteel,260);}
+        for(let i=0;i<72;i++){
+          const a=i/72*Math.PI*2,b=(i+1)/72*Math.PI*2;
+          between(shellPoint(a,94,83,6),shellPoint(b,94,83,26),.13,steel);
+          between(shellPoint(b,94,83,6),shellPoint(a,94,83,26),.13,steel);
+        }
+        break;
+      }
+      case "innerBowl": { // Inner seating bowl framed by a larger outer ring.
+        const ring=[];for(let i=0;i<=144;i++)ring.push(shellPoint(i/144*Math.PI*2,101,91,8));tube(ring,1.15,darkSteel,260);
+        for(let y=11;y<=26;y+=5){const upper=[];for(let i=0;i<=144;i++)upper.push(shellPoint(i/144*Math.PI*2,102,92,y));tube(upper,.35,clubA,260);}
+        for(let i=0;i<8;i++){const a=i/8*Math.PI*2,x=Math.cos(a)*106,z=Math.sin(a)*96;box(8,18,7,x,9,z,concrete);}
+        break;
+      }
+      case "redWhiteFacade": { // Vertical red-and-white external fins.
+        for(let i=0;i<72;i++){
+          const a=i/72*Math.PI*2,pt=shellPoint(a,94,83,13);
+          const fin=box(.9,19,.8,pt[0],13,pt[2],i%2?clubA:white);fin.rotation.y=-a;
+        }
+        for(let y=8;y<=25;y+=5){const ring=[];for(let i=0;i<=120;i++)ring.push(shellPoint(i/120*Math.PI*2,95,84,y));tube(ring,.28,clubA,240);}
+        break;
+      }
+      case "retractableCanopy": case "slidingRoof": { // Split roof leaves on visible guide rails.
+        const roofPanel=mat(0xdbe8f0,.22,.25,0x163450,.72);
+        box(59,.55,17,-29.5,31.5,-8.5,roofPanel);box(59,.55,17,29.5,31.5,8.5,roofPanel);
+        for(let side of [-1,1]){box(1.3,1,100,side*42,29.4,0,darkSteel);between([side*39,29,-44],[side*39,30,44],.22,steel);}
+        break;
+      }
+      case "roundArena": { // Rounded arena with a continuous roof ring.
+        const ring=[];for(let i=0;i<=144;i++)ring.push(shellPoint(i/144*Math.PI*2,92,82,29));tube(ring,1.1,steel,260);
+        for(let i=0;i<32;i++){const a=i/32*Math.PI*2;between([Math.cos(a)*91,25,Math.sin(a)*81],[Math.cos(a)*78,31,Math.sin(a)*68],.24,white);}
+        break;
+      }
+      case "tensionCanopy": { // Tall masts and tension cables carry the roof membrane.
+        for(let i=0;i<8;i++){
+          const a=i/8*Math.PI*2,x=Math.cos(a)*94,z=Math.sin(a)*82;
+          between([x,3,z],[x*1.06,43,z*1.06],.7,white);
+          for(let j=-1;j<=1;j++)between([x*1.06,43,z*1.06],[Math.cos(a+j*.18)*45,31,Math.sin(a+j*.18)*39],.18,steel);
+        }
+        break;
+      }
+      case "vArena": { // Repeating V-shaped exterior supports.
+        for(let side of [-1,1])for(let x=-60;x<=60;x+=24){
+          between([x-8,1,side*74],[x,26,side*81],.62,steel);
+          between([x+8,1,side*74],[x,26,side*81],.62,clubA);
+          between([x,26,side*81],[x+12,31,side*81],.28,white);
+        }
+        break;
+      }
+      default: {
+        // Club-coloured external ribs and covered concourse entries for the remaining grounds.
+        for(const side of [-1,1])for(let x=-60;x<=60;x+=20)between([x,8,side*69],[x,25,side*74],.32,accent);
+      }
+    }
+
+    // Scoreboard, corner floodlights, pitch LEDs and a recognisable main-stand entrance.
+    K16_board(sw,(club.k==="MCI"?"ETIHAD STADIUM":(profile.venue||club.n+" MATCHDAY")),club,0,24,-42,25,6,0);
+    for(const sx of [-1,1])for(const sz of [-1,1]){
+      const x=sx*91,z=sz*82;cylinder(.65,.95,26,x,13,z,steel,12);box(9,1.1,2.2,x,26.4,z,darkSteel);
+      for(let i=0;i<8;i++)box(.72,.28,.38,x-2.8+i*.8,27,z,new THREE.MeshBasicMaterial({color:0xfff4d2}));
+      const glow=new THREE.PointLight(0xffefd1,.28,85);glow.position.set(x,27,z);sw.add(glow);
+    }
+    for(const side of [-1,1]){
+      box(132,.3,.5,0,1.1,side*38,new THREE.MeshBasicMaterial({color:club.a}));
+      for(let x=-62;x<=62;x+=8)box(5,.55,.22,x,1.45,side*38,clubB);
+    }
+    box(20,6,10,0,3.2,-84,darkSteel);box(21,.55,10,0,6.4,-84,accent);
+    for(let x=-8;x<=8;x+=4){box(.28,2.6,.25,x,1.55,-78,glass);}
+    K16_board(sw,profile.venue||club.n,club,0,8.5,-90,28,3.8,0);
+
+    K16_stadiumKey = key;
+    return true;
+  }
+  buildStad = K16_buildStadium;
+
+  function K16_setStadiumView(mode) {
+    if (!K16_views[mode]) return;
+    K16_viewMode = mode;
+    sauto = mode === "aerial";
+    const pos = K16_views[mode].pos;
+    sang = Math.atan2(pos[2],pos[0]);
+    document.querySelectorAll("[data-k16-stadium-view]").forEach(button => button.classList.toggle("active",button.dataset.k16StadiumView===mode));
+  }
+  window.KIKSTART_setStadiumView = K16_setStadiumView;
+  stadLoop = function(time) {
+    requestAnimationFrame(stadLoop);
+    if (tabOn !== "stadium" || !sw || !sr || !sc) return;
+    const view = K16_views[K16_viewMode] || K16_views.aerial;
+    if (K16_viewMode === "aerial" && sauto) sang += .0011;
+    const radius = Math.hypot(view.pos[0],view.pos[2]);
+    const px = Math.cos(sang)*radius, pz = Math.sin(sang)*radius;
+    sc.position.lerp(new THREE.Vector3(px,view.pos[1],pz),.065);
+    sc.lookAt(new THREE.Vector3(...view.look));
+    sr.render(ss,sc);
+  };
+
+  renderStadium = function() {
+    if (!S) return;
+    const club=CL[S.club], profile=K16_profile() || {venue:club.n+" Stadium",label:"Club ground",note:"A stadium with the club's colours and architectural profile."};
+    const cards=[];
+    UP.forEach(upgrade=>{
+      const level=Number(S.st[upgrade[0]])||0, max=upgrade[0]==="a"?10:5;
+      const cost=upgrade[0]==="a"?V27_STAND_COSTS[level]:COSTS[Math.min(level,COSTS.length-1)];
+      const detail=upgrade[0]==="a"?"Expand the lower and upper decks. Full supported roof canopy unlocks at level 8.":upgrade[2];
+      cards.push('<article class="panel"><h3>'+K16_ESC(upgrade[1])+' · level '+level+'/'+max+'</h3><p class="v27-muted">'+K16_ESC(detail)+'</p><button '+(level>=max||!V27_canAfford(cost)?'disabled':'')+' onclick="upg(\''+upgrade[0]+'\')">'+(level>=max?'Maxed out':'Upgrade · 🪙 '+Number(cost).toLocaleString('en-AU'))+'</button></article>');
+    });
+    $("stadH").innerHTML=hero(club.n+" · "+profile.venue,profile.label+" · custom stadium architecture",badge(club,76));
+    $("stadP").innerHTML='<section class="panel k16-stadium-intro"><div class="k16-stadium-eyebrow">HOME GROUND · '+K16_ESC(club.k)+'</div><b>'+K16_ESC(profile.venue)+'</b><p class="v27-muted">'+K16_ESC(profile.note)+'</p><div class="k16-camera-row">'+Object.entries(K16_views).map(([key,view])=>'<button type="button" data-k16-stadium-view="'+key+'" class="'+(key===K16_viewMode?'active':'')+'">'+view.label+'</button>').join('')+'</div><small id="k16StadiumStatus" class="v27-muted">Drag the stadium to rotate. Use the camera views to inspect the roof, stands, pitch and outside architecture.</small></section><div class="k16-upgrade-grid">'+cards.join('')+'</div>';
+    $("stadP").querySelectorAll("[data-k16-stadium-view]").forEach(button=>button.addEventListener("click",()=>K16_setStadiumView(button.dataset.k16StadiumView)));
+    buildStad();
+    if (!sr) K16_initStadiumWhenReady();
+  };
+
+  // A previous version of the 3D upgrade installs asynchronously when Three.js is
+  // downloaded. Re-apply our builders afterwards; otherwise its older builder can win
+  // the race and replace the detailed v16 model with the older scene.
+  const K16_finalRenderStadium = renderStadium;
+  const K16_finalStadLoop = stadLoop;
+  let K16_stadiumOverridesApplied = false;
+  function K16_installStadiumOverrides() {
+    if (typeof THREE === "undefined") return false;
+    if (K16_stadiumOverridesApplied) return true;
+    buildStad = K16_buildStadium;
+    stadLoop = K16_finalStadLoop;
+    renderStadium = K16_finalRenderStadium;
+    K16_stadiumKey = "";
+    K16_stadiumOverridesApplied = true;
+    if (S) {
+      try { renderStadium(); } catch (error) { console.warn("KIKSTART v16 stadium UI:",error); }
+    }
+    return true;
+  }
+  // Promise callbacks run in registration order: the v14 profile setup is registered
+  // earlier in the document, then this callback restores the final v16 model.
+  if (typeof THREE !== "undefined") {
+    setTimeout(K16_installStadiumOverrides,0);
+  } else if (window.__kikThreePromise && typeof window.__kikThreePromise.then === "function") {
+    window.__kikThreePromise.then(() => setTimeout(K16_installStadiumOverrides,0)).catch(() => {});
+  }
+
+  // Refresh the panel after installing the new stadium builder; do not recreate the renderer.
+  if (S) {
+    try { renderStadium(); } catch (error) { console.warn("KIKSTART v16 stadium UI:",error); }
+  }
+
+  window.KIKSTART_DANIYAL_CARD = K16_DANIYAL;
+  window.KIKSTART_v16Ready = true;
+})();
+
+</script>
+<script>
+/* KIKSTART v17 — standalone Player & Manager Career Mode
+   Uses the existing KIKSTART 3D match engine and save. */
+(function KIKSTART_CAREER_V17(){
+  if (window.__kikstartCareerV17) return;
+  window.__kikstartCareerV17 = true;
+
+  const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  const money = value => "🪙 " + Math.max(0,Math.round(Number(value)||0)).toLocaleString("en-AU");
+  const NATIONAL_TEAMS = [
+    {name:"Australia",code:"AUS",flag:"🇦🇺",a:"#f5bd24",b:"#173b86"},
+    {name:"Argentina",code:"ARG",flag:"🇦🇷",a:"#75c9ef",b:"#ffffff"},
+    {name:"Brazil",code:"BRA",flag:"🇧🇷",a:"#f6df36",b:"#178a50"},
+    {name:"England",code:"ENG",flag:"🏴",a:"#ffffff",b:"#d51f35"},
+    {name:"France",code:"FRA",flag:"🇫🇷",a:"#173a85",b:"#ffffff"},
+    {name:"Germany",code:"GER",flag:"🇩🇪",a:"#171717",b:"#d82935"},
+    {name:"Spain",code:"ESP",flag:"🇪🇸",a:"#d92332",b:"#f4c52b"},
+    {name:"Portugal",code:"POR",flag:"🇵🇹",a:"#08794b",b:"#d92c3b"},
+    {name:"Netherlands",code:"NED",flag:"🇳🇱",a:"#f07824",b:"#ffffff"},
+    {name:"Italy",code:"ITA",flag:"🇮🇹",a:"#16865c",b:"#ffffff"},
+    {name:"Japan",code:"JPN",flag:"🇯🇵",a:"#ffffff",b:"#d92342"},
+    {name:"Nigeria",code:"NGA",flag:"🇳🇬",a:"#168b5b",b:"#ffffff"},
+    {name:"New Zealand",code:"NZL",flag:"🇳🇿",a:"#101b33",b:"#ffffff"},
+    {name:"United States",code:"USA",flag:"🇺🇸",a:"#ffffff",b:"#24509a"}
+  ];
+  const nationalityFor = name => NATIONAL_TEAMS.find(n=>n.name===name) || NATIONAL_TEAMS[0];
+  const careerClub = () => S && S.career ? S.career : null;
+  const main = $("main");
+  if (!main) return;
+
+  // Separate page and navigation items; existing tabs and menu logic stay intact.
+  if (!$("career")) {
+    const page = document.createElement("div");
+    page.id = "career";
+    page.className = "tab";
+    main.appendChild(page);
+  }
+  const sideItems = document.querySelector("#side .sitems");
+  if (sideItems && !$("nav-career")) {
+    const button = document.createElement("button");
+    button.id = "nav-career";
+    button.innerHTML = "🏅 Career";
+    button.onclick = () => showTab("career");
+    sideItems.appendChild(button);
+  }
+  const titleItems = document.querySelector("#start .sitems");
+  if (titleItems && !titleItems.querySelector('[data-t="career"]')) {
+    const button = document.createElement("button");
+    button.dataset.t = "career";
+    button.textContent = "CAREER MODE";
+    button.onclick = () => menuGo("career");
+    titleItems.appendChild(button);
+  }
+
+  const style = document.createElement("style");
+  style.id = "kikstartCareerV17Style";
+  style.textContent = `
+    /* Career tab */
+    #career{max-width:1240px!important;padding-bottom:55px}
+    .kc-hero{position:relative;overflow:hidden;min-height:210px;padding:28px;border-radius:20px;margin:6px 0 22px;background:radial-gradient(circle at 85% 15%,#d7b65a44,transparent 34%),radial-gradient(circle at 18% 100%,#26b8a344,transparent 42%),linear-gradient(120deg,#081326,#172d52 58%,#19254c);border:1px solid #8a7b4a88;box-shadow:0 20px 45px #0008,inset 0 1px #ffffff2b}
+    .kc-hero:after{content:"✦";position:absolute;right:8%;top:-40px;font-size:220px;color:#fff1;transform:rotate(15deg);pointer-events:none}
+    .kc-eyebrow{font-size:10px;letter-spacing:.22em;color:#e8d18b;font-weight:1000;text-transform:uppercase}
+    .kc-hero h1{font-size:clamp(30px,5vw,54px);line-height:1;margin:12px 0 10px;font-weight:1000;font-style:italic;text-transform:uppercase;text-shadow:0 5px 20px #0009}
+    .kc-hero p{max-width:650px;line-height:1.6;color:#d2deef;margin:0}
+    .kc-mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px;margin:18px 0}
+    .kc-mode-card{position:relative;isolation:isolate;overflow:hidden;min-height:220px;text-align:left;padding:22px;border-radius:18px;border:1px solid #526c91;background:linear-gradient(140deg,#1a3156,#0a1428);color:#f5f8ff;box-shadow:0 15px 32px #0007;transition:transform .18s,border-color .18s,box-shadow .18s}
+    .kc-mode-card:hover{transform:translateY(-4px);border-color:#e4c777;box-shadow:0 20px 38px #0009,0 0 22px #e5cb6a22}
+    .kc-mode-card:before{content:"";position:absolute;z-index:-1;inset:-80% -60%;background:linear-gradient(110deg,transparent 44%,#ffffff20 50%,transparent 56%);transform:translateX(-55%) rotate(12deg);transition:transform .7s}
+    .kc-mode-card:hover:before{transform:translateX(55%) rotate(12deg)}
+    .kc-mode-icon{font-size:42px;display:block;margin-bottom:18px;filter:drop-shadow(0 8px 12px #0008)}
+    .kc-mode-card h2{margin:0 0 8px;font-size:23px}.kc-mode-card p{color:#acbdd4;line-height:1.5;font-size:13px;min-height:40px}
+    .kc-mode-card strong{display:inline-block;margin-top:8px;color:#f0d88b;font-size:11px;letter-spacing:.14em}
+    .kc-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(250px,.85fr);gap:14px;align-items:start}
+    .kc-panel{background:linear-gradient(145deg,#152847,#0a1428);border:1px solid #30496d;border-radius:16px;padding:16px;box-shadow:0 12px 26px #0005,inset 0 1px #ffffff0b}
+    .kc-panel h2,.kc-panel h3{margin:0 0 10px}.kc-muted{color:#9eafc8;font-size:12px;line-height:1.55}
+    .kc-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+    .kc-field{display:flex;flex-direction:column;gap:6px;min-width:0}.kc-field label{font-size:10px;letter-spacing:.1em;color:#aabbd2;font-weight:900;text-transform:uppercase}
+    .kc-field input,.kc-field select{width:100%;min-width:0;background:#071326;color:#f3f7ff;border:1px solid #3b5579;border-radius:9px;padding:11px 12px;font:600 13px system-ui;outline:none}
+    .kc-field input:focus,.kc-field select:focus{border-color:#d7bd72;box-shadow:0 0 0 3px #dfc67522}
+    .kc-face-preview{display:flex;align-items:center;justify-content:center;gap:14px;min-height:160px;border-radius:15px;padding:14px;background:radial-gradient(circle at 50% 0,#d7bd7230,transparent 65%),linear-gradient(145deg,#091426,#162a48);border:1px solid #435c7c}
+    .kc-face-preview svg{width:125px;height:125px;filter:drop-shadow(0 12px 12px #0009)}
+    .kc-face-copy{font-size:11px;color:#aebfd4;line-height:1.5}.kc-face-copy b{display:block;color:#fff;font-size:15px;margin-bottom:3px}
+    .kc-primary{background:linear-gradient(105deg,#c8a653,#f2dc9a);color:#1c1a13;border:1px solid #ffedb5;box-shadow:0 8px 20px #c4a44c33;font-weight:1000}
+    .kc-secondary{background:linear-gradient(145deg,#1e3a62,#10203a);border:1px solid #536d91;color:#f1f6ff}
+    .kc-dash-head{display:flex;align-items:center;gap:16px;padding:16px;border-radius:18px;background:radial-gradient(circle at 95% 0,#dfc06a33,transparent 38%),linear-gradient(120deg,#1b3152,#0a1427);border:1px solid #6e694c;box-shadow:0 15px 32px #0007;margin:8px 0 15px}
+    .kc-dash-head svg{width:96px;height:96px;flex:none;filter:drop-shadow(0 8px 10px #0008)}
+    .kc-dash-name{font-size:clamp(24px,4vw,36px);font-weight:1000;letter-spacing:-.04em}.kc-dash-sub{color:#b6c6dc;font-size:11px;margin-top:4px}
+    .kc-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin:12px 0}
+    .kc-kpi{padding:12px;border-radius:12px;background:linear-gradient(145deg,#1b3151,#0b172c);border:1px solid #2d4569}.kc-kpi small{display:block;color:#91a6c2;font-size:9px;font-weight:900;letter-spacing:.1em}.kc-kpi b{display:block;font-size:23px;margin-top:4px;color:#f0d88b}
+    .kc-fixture{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px;border:1px solid #2b4160;border-radius:12px;background:#0c1930;margin:8px 0}.kc-fixture small{display:block;color:#90a4bf;font-size:10px;margin-top:3px}
+    .kc-stat-row{display:grid;grid-template-columns:90px 1fr 27px;gap:8px;align-items:center;margin:9px 0;font-size:11px}.kc-stat-track{height:8px;border-radius:20px;background:#050c17;overflow:hidden}.kc-stat-track i{height:100%;display:block;border-radius:20px;background:linear-gradient(90deg,#0ab88d,#e5d080);box-shadow:0 0 10px #46dfb566}
+    .kc-chip{display:inline-block;border:1px solid #3d5576;background:#10213a;border-radius:999px;padding:5px 9px;color:#c5d6ed;font-size:10px;margin:2px}
+    .kc-roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}.kc-roster-item{padding:10px;border:1px solid #314967;background:linear-gradient(145deg,#142743,#0a1427);border-radius:11px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px}.kc-roster-item b{display:block}.kc-roster-item small{color:#91a7c1}
+    .kc-trophy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:9px}.kc-trophy{min-height:125px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:7px;border-radius:13px;padding:12px;background:radial-gradient(circle at 50% 0,#f5d97b22,transparent 60%),linear-gradient(145deg,#1d2d49,#0b1426);border:1px solid #6a603e}.kc-trophy span{font-size:38px;filter:drop-shadow(0 5px 8px #0008)}.kc-trophy b{font-size:11px}.kc-trophy small{color:#93a6bf;font-size:9px}
+    #kc-ceremony{position:fixed;inset:0;z-index:150;display:none;align-items:center;justify-content:center;padding:18px;background:radial-gradient(circle at 50% 35%,#273858f5,#030712fa 75%);overflow:hidden}
+    #kc-ceremony.on{display:flex;animation:kcFadeIn .45s ease both}@keyframes kcFadeIn{from{opacity:0}to{opacity:1}}
+    .kc-ceremony-inner{position:relative;width:min(92vw,620px);text-align:center;padding:30px 20px;border:1px solid #f2d98788;border-radius:22px;background:linear-gradient(145deg,#1b2b49eF,#080f20f5);box-shadow:0 0 65px #e4c46a33,0 25px 80px #000c;overflow:hidden}
+    .kc-ceremony-inner:before{content:"";position:absolute;inset:-60% -100%;background:linear-gradient(110deg,transparent 44%,#fff3 50%,transparent 56%);animation:kcFoil 3s ease-in-out infinite;pointer-events:none}@keyframes kcFoil{0%,100%{transform:translateX(-35%)}50%{transform:translateX(35%)}}
+    .kc-trophy-model{position:relative;font-size:clamp(90px,18vw,150px);line-height:1.3;filter:drop-shadow(0 12px 14px #0009);animation:kcTrophyRise 1.5s cubic-bezier(.2,.8,.2,1) both,kcTrophyFloat 2.8s ease-in-out 1.5s infinite;transform-origin:50% 85%}@keyframes kcTrophyRise{0%{opacity:0;transform:translateY(90px) scale(.45) rotateY(110deg)}65%{opacity:1;transform:translateY(-12px) scale(1.12) rotateY(-8deg)}100%{transform:translateY(0) scale(1) rotateY(0)}}@keyframes kcTrophyFloat{0%,100%{transform:translateY(0) rotateY(-5deg)}50%{transform:translateY(-9px) rotateY(5deg)}}
+    .kc-ceremony-title{font-size:clamp(23px,5vw,38px);font-weight:1000;color:#f4dc97;text-shadow:0 0 22px #f1cf6b55;margin:5px 0}.kc-ceremony-sub{color:#c2cee0;font-size:13px;margin:0 0 20px}
+    .kc-confetti{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(circle,#ffe89a 0 2px,transparent 3px),radial-gradient(circle,#65e6d0 0 2px,transparent 3px),radial-gradient(circle,#fff 0 1px,transparent 2px);background-size:92px 120px,130px 160px,55px 80px;animation:kcConfetti 6s linear infinite;opacity:.7}@keyframes kcConfetti{from{background-position:0 -300px,40px -500px,20px -100px}to{background-position:40px 900px,-60px 1000px,80px 850px}}
+    .kc-section-title{margin:21px 0 10px!important;font-size:17px!important;letter-spacing:.04em}
+    .kc-ops-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:12px 0 16px}
+    .kc-ops-meter{padding:12px;border:1px solid #344e70;border-radius:13px;background:linear-gradient(145deg,#162d4c,#081426);box-shadow:inset 0 1px #ffffff12}
+    .kc-ops-meter b{display:block;font-size:20px;color:#f3dc96;margin-bottom:7px}
+    .kc-ops-meter small{display:block;font-size:9px;letter-spacing:.12em;color:#95adc9;font-weight:900}
+    .kc-ops-meter .kc-stat-track{margin-top:8px}
+    .kc-management-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}
+    .kc-management-card{position:relative;overflow:hidden;padding:15px;border-radius:15px;background:radial-gradient(circle at 90% 0,#58d9cc22,transparent 42%),linear-gradient(145deg,#172d4c,#081426);border:1px solid #385474;box-shadow:0 12px 25px #0005;animation:kcPanelRise .42s ease both}
+    .kc-management-card h3{font-size:14px;margin:0 0 7px;color:#f2d991}
+    .kc-management-card p{font-size:11px;color:#a8bad1;line-height:1.5;margin:5px 0 11px}
+    .kc-management-card button{margin:3px 3px 3px 0;font-size:11px;padding:8px 10px}
+    .kc-management-card select{max-width:100%;background:#071326;color:#f4f7ff;border:1px solid #415b7c;border-radius:9px;padding:9px;width:100%;margin:5px 0 8px}
+    .kc-action-toast{position:fixed;z-index:180;left:50%;bottom:26px;transform:translate(-50%,22px) scale(.96);opacity:0;pointer-events:none;display:flex;align-items:center;gap:12px;min-width:min(340px,90vw);padding:14px 17px;border:1px solid #e5d18a;border-radius:15px;background:linear-gradient(120deg,#203957f5,#0b172bf5);box-shadow:0 16px 45px #000b,0 0 28px #e8cf7133;color:#fff;transition:opacity .25s,transform .25s}
+    .kc-action-toast.on{opacity:1;transform:translate(-50%,0) scale(1)}
+    .kc-action-toast .ico{font-size:27px;filter:drop-shadow(0 0 9px #f5df9a88)}
+    .kc-action-toast b{display:block;font-size:12px;color:#f2dc99;letter-spacing:.08em}.kc-action-toast small{display:block;font-size:11px;color:#cad6e6;margin-top:3px}
+    .kc-panel{animation:kcPanelRise .38s ease both}@keyframes kcPanelRise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+    .kc-hero{background-size:140% 140%;animation:kcHeroGlow 10s ease-in-out infinite alternate}@keyframes kcHeroGlow{from{background-position:0% 50%}to{background-position:100% 50%}}
+    .kc-management-card .kc-roster-item{margin:6px 0}
+    .kc-presentation-scene{position:relative;min-height:205px;margin:6px auto 16px;display:flex;align-items:center;justify-content:center;gap:clamp(16px,5vw,46px);isolation:isolate;overflow:hidden;border-radius:18px;background:radial-gradient(ellipse at 48% 72%,#e9c66b24,transparent 52%),linear-gradient(180deg,#12274455,#050b17aa)}
+    .kc-presentation-scene:before{content:"";position:absolute;left:10%;right:10%;bottom:18px;height:30px;border-radius:50%;background:#0009;filter:blur(13px);z-index:-1}
+    .kc-award-player{position:relative;width:116px;height:178px;flex:none;transform:translateY(80px);opacity:0;animation:kcPlayerWalkIn 1.05s cubic-bezier(.2,.8,.2,1) .18s forwards}
+    .kc-award-head{position:absolute;top:0;left:25px;width:66px;height:66px;border-radius:50%;overflow:hidden;border:2px solid #e7d18b;box-shadow:0 0 19px #e9d17b88;background:#162844}
+    .kc-award-head svg{width:100%!important;height:100%!important}
+    .kc-award-shirt{position:absolute;left:21px;top:65px;width:76px;height:98px;border-radius:26px 26px 12px 12px;background:linear-gradient(110deg,#f7f2e3,#d7b85d 45%,#8e6a26);border:2px solid #fff0c1;box-shadow:inset 0 0 18px #fff7,0 9px 16px #0008;display:flex;align-items:center;justify-content:center;color:#1b2740;font-weight:1000;font-size:22px}
+    .kc-award-shirt:after{content:"";position:absolute;inset:8px;border:1px solid #ffffff77;border-radius:18px}
+    .kc-award-arm{position:absolute;top:76px;width:22px;height:76px;border-radius:20px;background:linear-gradient(90deg,#d4a66f,#f2d2a0);transform-origin:50% 8px;box-shadow:0 5px 10px #0006}
+    .kc-award-arm.left{left:9px;transform:rotate(22deg);animation:kcRaiseLeft 1.15s ease-out 1.15s forwards}
+    .kc-award-arm.right{right:9px;transform:rotate(-22deg);animation:kcRaiseRight 1.15s ease-out 1.15s forwards}
+    .kc-award-legs{position:absolute;left:32px;top:151px;width:24px;height:34px;border-radius:6px;background:#182b4c;box-shadow:29px 0 0 #182b4c}
+    .kc-award-trophy-wrap{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:112px;transform:translateY(55px) scale(.7);opacity:0;animation:kcAwardRise 1.1s cubic-bezier(.2,.8,.2,1) .8s forwards}
+    .kc-award-trophy-wrap .kc-trophy-model{font-size:clamp(82px,15vw,126px);margin:0;line-height:1.18}
+    .kc-award-plinth{width:112px;height:16px;border-radius:6px;background:linear-gradient(90deg,#6a4618,#f4d47d,#8e6426);box-shadow:0 0 23px #e7c56c66,0 8px 10px #0008}
+    .kc-ballon-ball{width:112px;height:112px;border-radius:50%;display:grid;place-items:center;font-size:42px;color:#fff4bb;background:radial-gradient(circle at 32% 24%,#fffde2 0 3%,#fff0a1 8%,#e8bd49 28%,#9a671b 64%,#e9c969 80%,#5e3d13 100%);border:4px solid #ffe9a4;box-shadow:0 0 18px #ffe28c,0 0 38px #e4ad3a99,inset -10px -12px 18px #4a2e1266;animation:kcBallonFloat 2.6s ease-in-out infinite}
+    .kc-ballondor-scene .kc-award-arm.left{animation:kcHoldBallLeft 1s ease-out 1.1s forwards}
+    .kc-ballondor-scene .kc-award-arm.right{animation:kcHoldBallRight 1s ease-out 1.1s forwards}
+    .kc-ballondor-scene .kc-award-player{animation:kcPlayerWalkIn 1s cubic-bezier(.2,.8,.2,1) .12s forwards,kcPlayerCelebrate 2.8s ease-in-out 1.4s infinite}
+    .kc-presentation-caption{position:absolute;left:0;right:0;bottom:6px;color:#f5df9d;font-size:9px;font-weight:1000;letter-spacing:.2em;text-align:center;text-shadow:0 0 10px #f5d77a88}
+    @keyframes kcPlayerWalkIn{0%{opacity:0;transform:translate(-85px,50px) scale(.82)}65%{opacity:1;transform:translate(8px,-5px) scale(1.04)}100%{opacity:1;transform:translate(0,0) scale(1)}}
+    @keyframes kcAwardRise{0%{opacity:0;transform:translateY(65px) scale(.55) rotateY(80deg)}65%{opacity:1;transform:translateY(-10px) scale(1.12) rotateY(-8deg)}100%{opacity:1;transform:translateY(0) scale(1) rotateY(0)}}
+    @keyframes kcRaiseLeft{to{transform:rotate(-58deg) translateY(-10px)}}@keyframes kcRaiseRight{to{transform:rotate(58deg) translateY(-10px)}}
+    @keyframes kcHoldBallLeft{to{transform:rotate(-112deg) translateY(-14px)}}@keyframes kcHoldBallRight{to{transform:rotate(112deg) translateY(-14px)}}
+    @keyframes kcBallonFloat{0%,100%{transform:translateY(0) rotateY(-8deg)}50%{transform:translateY(-8px) rotateY(8deg)}}
+    @keyframes kcPlayerCelebrate{0%,100%{filter:drop-shadow(0 0 0 #f5d77a00)}50%{filter:drop-shadow(0 0 18px #f5d77a88)}}
+    .kc-international-card{position:relative;overflow:hidden;background:radial-gradient(circle at 92% 0,#4b9ce944,transparent 42%),linear-gradient(130deg,#122a4a,#091326);border:1px solid #4c83b6}
+    .kc-international-card:after{content:"✦";position:absolute;right:15px;top:-22px;font-size:100px;color:#ffffff0b;pointer-events:none}
+    .kc-inbox-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-top:1px solid #ffffff12}.kc-inbox-item .ico{font-size:20px}.kc-inbox-item b{display:block;font-size:11px}.kc-inbox-item small{display:block;color:#9eb0c9;font-size:10px;line-height:1.5;margin-top:3px}
+    .kc-calendar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}.kc-calendar-item{padding:10px;border-radius:11px;border:1px solid #30496d;background:#0b172a}.kc-calendar-item b{display:block;font-size:10px;color:#e8d18b}.kc-calendar-item small{color:#a2b3cb;font-size:10px}
+    .kc-contract-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #ffffff12;color:#c0cee0;font-size:11px}
+    .kc-two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    @media(max-width:760px){.kc-layout,.kc-two-col{grid-template-columns:1fr}.kc-form-grid{grid-template-columns:1fr 1fr}.kc-dash-head{align-items:flex-start}.kc-face-preview{justify-content:flex-start}.kc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:440px){.kc-form-grid{grid-template-columns:1fr}.kc-dash-head svg{width:76px;height:76px}}
+    /* Remove the decorative box around Stadium; retain a clear keyboard focus ring only. */
+    #nav-stadium{border:0!important;box-shadow:none!important;outline:none!important}
+    #nav-stadium:focus,#nav-stadium:focus-visible{outline:0!important;outline-offset:0!important;border:0!important;box-shadow:none!important}
+  `;
+  document.head.appendChild(style);
+
+  let liveMatch = false;
+  let liveSnapshot = null;
+  let liveClubIdentitySnapshot = null;
+  let liveXI = null;
+  let lastMatchRef = null;
+  let pollTimer = null;
+  let careerDraftRole = "player";
+  let currentCeremonyTimer = null;
+  let careerCeremonyQueue = [];
+  const baseSave = save;
+  const baseLineup = lineup;
+  const baseStartMatch = startMatch;
+  const baseInit3D = init3D;
+  const baseFinishMatch = finishMatch;
+
+  // Career starts from a different tab. If Three.js was first initialised while the
+  // match tab was hidden, its canvas can remain 0x0; always repair it when visible.
+  function KC_resizeCareerRenderer(){
+    const st=$("stage");
+    if(!st||!renderer||!camera)return false;
+    const rect=st.getBoundingClientRect();
+    const width=Math.max(320,Math.round(rect.width||st.clientWidth||920));
+    const height=Math.max(240,Math.round(rect.height||st.clientHeight||520));
+    if(renderer.domElement.parentElement!==st)st.insertBefore(renderer.domElement,st.firstChild);
+    renderer.setSize(width,height,false);
+    renderer.domElement.style.width="100%";
+    renderer.domElement.style.height="100%";
+    camera.aspect=width/height;
+    camera.updateProjectionMatrix();
+    return true;
+  }
+  init3D=function(){const ok=baseInit3D();if(ok)KC_resizeCareerRenderer();return ok;};
+  const baseGoal = goal;
+  const basePickCtrl = pickCtrl;
+  const baseShowTab = showTab;
+  const baseRefresh = refresh;
+
+  // Suppress writes while the existing match engine temporarily borrows the chosen career club.
+  save = function(){ if (liveMatch) return; return baseSave(); };
+
+  function clampStat(v){return Math.max(1,Math.min(99,Math.round(Number(v)||1)));}
+  function overall(stats){const keys=["pace","shooting","passing","dribbling","defending","physical"];return clampStat(keys.reduce((sum,key)=>sum+(Number(stats[key])||1),0)/keys.length);}
+  function makeLook(skinIndex,hairIndex,hairColourIndex,beard){return String(skinIndex)+String(hairIndex)+String(hairColourIndex)+String(beard?1:0);}
+  function rosterForCareer(){
+    const pool=POOL.fb;const result=[];const used=new Set();
+    function take(pos,count){
+      const candidates=pool.filter(p=>p.pos===pos&&!used.has(p.id)).slice().sort((a,b)=>b.o-a.o);
+      for(let i=0;i<count;i++){const p=candidates[i]||pool.find(x=>x.pos===pos&&!used.has(x.id));if(p){used.add(p.id);result.push(p.id);} }
+    }
+    take("GK",1);take("DEF",4);take("MID",4);take("FWD",2);
+    return result;
+  }
+  function clubOptions(selected){return CL.map((club,index)=>'<option value="'+index+'" '+(Number(selected)===index?'selected':'')+'>'+esc(club.n)+' · '+esc(LEAGUES[club.li].n)+'</option>').join("");}
+  function careerAvatar(c,size){const p=c&&c.person?c.person:null;if(!p)return face("1110",size||110);return face(p.look||"1110",size||110);}
+  function careerRecord(){return {played:0,wins:0,draws:0,losses:0,goals:0,assists:0,cleanSheets:0,gf:0,ga:0};}
+  function ensureCareerShape(c){
+    c.record=Object.assign(careerRecord(),c.record||{});
+    c.xiIds=Array.isArray(c.xiIds)?c.xiIds.filter(id=>Number.isInteger(Number(id))&&POOL.fb[Number(id)]):rosterForCareer();
+    if(c.xiIds.length<11){const extra=rosterForCareer();extra.forEach(id=>{if(c.xiIds.length<11&&!c.xiIds.includes(id))c.xiIds.push(id);});}
+    c.xiIds=c.xiIds.slice(0,11);
+    c.benchIds=Array.isArray(c.benchIds)?c.benchIds.filter(id=>Number.isInteger(Number(id))&&POOL.fb[Number(id)]):[];
+    c.trophies=Array.isArray(c.trophies)?c.trophies:[];
+    c.history=Array.isArray(c.history)?c.history:[];
+    c.season=Number(c.season)||1;c.round=Number(c.round)||0;
+    c.budget=Number(c.budget)||(c.mode==="manager"?25000000:0);
+    c.skillPoints=Number(c.skillPoints)||0;c.xp=Number(c.xp)||0;
+    c.trainingRound=Number.isFinite(c.trainingRound)?c.trainingRound:-1;
+    c.management=Object.assign({morale:74,fitness:92,chemistry:66,trainingUsedRound:-1,teamTalkRound:-1,lastBoardReviewRound:-1,formation:"4-3-3",trainingFocus:"balanced",sponsorTier:1,staff:{coach:1,scout:1,fitness:1},scoutedProspects:[],seasonIncome:0,scoutingSpend:0,staffSpend:0,fanTrust:55},c.management||{});
+    c.management.staff=Object.assign({coach:1,scout:1,fitness:1},c.management.staff||{});
+    c.management.scoutedProspects=Array.isArray(c.management.scoutedProspects)?c.management.scoutedProspects:[];
+    ["morale","fitness","chemistry","fanTrust"].forEach(k=>c.management[k]=cl(Number(c.management[k])||0,0,100));
+    c.management.sponsorTier=cl(Number(c.management.sponsorTier)||1,1,3);
+    c.contractYears=Number(c.contractYears)||3;
+    c.nationality = nationalityFor(c.nationality || "Australia").name;
+    c.international = Object.assign({
+      callupOffered:false, accepted:false, caps:0, goals:0, assists:0,
+      wins:0, draws:0, losses:0, played:0, fixturesRemaining:0,
+      fixtureIndex:0, lastOpponent:"", nextMatchAvailable:false
+    }, c.international || {});
+    c.inbox = Array.isArray(c.inbox) ? c.inbox : [];
+    c.international.caps=Number(c.international.caps)||0;
+    c.international.goals=Number(c.international.goals)||0;
+    c.international.assists=Number(c.international.assists)||0;
+    c.international.fixturesRemaining=Math.max(0,Number(c.international.fixturesRemaining)||0);
+    c.stats=Object.assign({pace:65,shooting:65,passing:65,dribbling:65,defending:40,physical:62},c.stats||{});
+    c.overall=overall(c.stats);
+    c.club=Number.isInteger(Number(c.club))?Number(c.club):S.club;
+    c.position=["FWD","MID","DEF"].includes(c.position)?c.position:"FWD";
+    c.tactic=c.tactic||"balanced";
+    return c;
+  }
+  function currentXI(){
+    const c=careerClub();if(!c)return [];
+    ensureCareerShape(c);
+    const xi=c.xiIds.map(id=>POOL.fb[Number(id)]).filter(Boolean);
+    while(xi.length<11){const fallback=POOL.fb.find(p=>!xi.includes(p));if(!fallback)break;xi.push(fallback);}
+    if(c.mode==="player"&&c.person){
+      const slot=c.position==="FWD"?9:c.position==="MID"?6:2;
+      xi[slot]={id:"career-avatar",n:c.person.name,pos:c.position,o:c.overall,r:"diamond",f:"⭐",look:c.person.look||"1110",careerAvatar:true};
+    }
+    return xi.slice(0,11);
+  }
+  lineup=function(mode){if(liveMatch&&mode==="fb"&&liveXI)return liveXI.slice();return baseLineup(mode);};
+  pickCtrl=function(){if(liveMatch&&M&&M.careerModeType==="player"&&M.careerActor){M.ctrl=M.careerActor;return;}return basePickCtrl();};
+
+  function trophyInfo(name){
+    const map={
+      "UEFA Champions League":{icon:"🏆",sub:"EUROPEAN CHAMPIONS · THE BIG EARS"},
+      "Ballon d'Or":{icon:"🌟",sub:"THE WORLD'S OUTSTANDING PLAYER"},
+      "Golden Boot":{icon:"👟",sub:"THE SEASON'S TOP SCORER"},
+      "Domestic League":{icon:"🏆",sub:"LEAGUE CHAMPIONS"},
+      "Manager of the Season":{icon:"🥇",sub:"THE BOARD'S MANAGER OF THE YEAR"},
+      "Player of the Season":{icon:"⭐",sub:"THE FANS' PLAYER OF THE YEAR"}
+    };
+    return map[name]||{icon:"🏅",sub:"CAREER MODE HONOURS"};
+  }
+  function showTrophy(name,season){
+    const info=trophyInfo(name),c=careerClub();let overlay=$("kc-ceremony");
+    if(!overlay){overlay=document.createElement("div");overlay.id="kc-ceremony";document.body.appendChild(overlay);}
+    const isBallon=name==="Ballon d'Or"&&c&&c.mode==="player";
+    const person=c?careerAvatar(c,88):face("1110",88);
+    const playerScene=c?'<div class="kc-presentation-scene '+(isBallon?'kc-ballondor-scene':'')+'"><div class="kc-award-player"><div class="kc-award-head">'+person+'</div><div class="kc-award-shirt">'+(c.person&&c.person.number?c.person.number:'10')+'</div><div class="kc-award-arm left"></div><div class="kc-award-arm right"></div><div class="kc-award-legs"></div></div><div class="kc-award-trophy-wrap">'+(isBallon?'<div class="kc-ballon-ball"><span>★</span></div>':'<div class="kc-trophy-model">'+info.icon+'</div>')+'<div class="kc-award-plinth"></div></div><div class="kc-presentation-caption">'+(isBallon?'THE BALLON D\'OR · THE WORLD’S BEST':'CAREER TROPHY PRESENTATION')+'</div></div>':'';
+    const displayName=c&&c.mode==="player"?c.name:(c&&c.mode==="manager"?c.name:"KIKSTART CAREER");
+    overlay.innerHTML='<div class="kc-confetti"></div><div class="kc-ceremony-inner"><div class="kc-eyebrow">KIKSTART CAREER · SEASON '+season+'</div>'+playerScene+'<div class="kc-eyebrow">OFFICIAL PRESENTATION · '+esc(displayName)+'</div><h1 class="kc-ceremony-title">'+esc(name)+'</h1><p class="kc-ceremony-sub">'+esc(info.sub)+'</p><button class="kc-primary" onclick="KC_closeCeremony()">Continue</button></div>';
+    overlay.classList.add("on");
+    try{cheer(isBallon?7:4,isBallon?.42:.28);chime(isBallon?[392,494,587,784,988,1175]:[523,659,784,1047],.12);burst(innerWidth/2,innerHeight*.24,isBallon?COL.diamond:COL.gold,isBallon?180:90,isBallon?14:10);}catch(e){}
+    clearTimeout(currentCeremonyTimer);
+    currentCeremonyTimer=setTimeout(()=>closeCeremony(),16000);
+  }
+  function closeCeremony(){const overlay=$("kc-ceremony");if(overlay)overlay.classList.remove("on");clearTimeout(currentCeremonyTimer);if(careerCeremonyQueue.length){const next=careerCeremonyQueue.shift();setTimeout(()=>showTrophy(next.name,next.season),420);}}
+  window.KC_closeCeremony=closeCeremony;
+
+  function addTrophy(name){
+    const c=careerClub();if(!c)return false;
+    if(c.trophies.some(t=>t.name===name&&t.season===c.season))return false;
+    c.trophies.push({name,season:c.season,date:new Date().toISOString()});
+    pushCareerInbox(c,"award","TROPHY WON · "+name,"Your season award has been added to the honours cabinet. Open the trophy cabinet to replay its presentation.");
+    return true;
+  }
+  function updateSeason(){
+    const c=careerClub();if(!c)return;
+    const r=c.record, newAwards=[];
+    if(r.wins>=7){newAwards.push(c.mode==="manager"?"Manager of the Season":"Domestic League");}
+    if(c.mode==="player"){
+      if(r.goals>=5)newAwards.push("Golden Boot");
+      if(c.overall>=82&&r.goals>=7)newAwards.push("Ballon d'Or");
+      else if(c.overall>=78&&r.goals>=8)newAwards.push("Player of the Season");
+    }
+    if(r.wins>=8)newAwards.push("UEFA Champions League");
+    const earned=newAwards.filter(addTrophy);
+    c.history.push({season:c.season,club:CL[c.club].n,record:Object.assign({},r),awards:earned.slice()});
+    c.season++;c.round=0;c.record=careerRecord();c.trainingRound=-1;
+    if(c.mode==="player"&&c.international&&c.international.accepted){c.international.fixturesRemaining=3;c.international.nextMatchAvailable=true;pushCareerInbox(c,"international","NEW INTERNATIONAL WINDOW","The national team has selected you for another three-match international window.");}
+    c.management.trainingUsedRound=-1;c.management.teamTalkRound=-1;c.management.lastBoardReviewRound=-1;c.management.seasonIncome=0;c.management.scoutingSpend=0;c.management.staffSpend=0;
+    c.management.fitness=cl(c.management.fitness+18,0,100);c.management.morale=cl(c.management.morale+4,0,100);
+    c.contractYears=Math.max(0,(Number(c.contractYears)||3)-1);
+    if(c.mode==="manager")c.budget+=r.wins*250000+500000;
+    else c.salary=Number(c.salary||0)+r.played*3500+r.wins*2500;
+    save();
+    if(earned.length){careerCeremonyQueue=earned.slice(1).map(name=>({name,season:c.season-1}));showTrophy(earned[0],c.season-1);}
+    else careerRender();
+  }
+  function statsHtml(c){
+    const rows=Object.entries(c.stats).map(([key,value])=>'<div class="kc-stat-row"><b>'+key.toUpperCase()+'</b><div class="kc-stat-track"><i style="width:'+clampStat(value)+'%"></i></div><strong>'+clampStat(value)+'</strong></div>').join("");
+    return '<div>'+rows+'</div>';
+  }
+  function fixtureFor(c){
+    return window.V25_fixtureFor ? window.V25_fixtureFor(c) : (function(){
+      const candidates=CL.map((club,index)=>({club,index})).filter(x=>x.club.li===CL[c.club].li&&x.index!==c.club);
+      return candidates.length?candidates[c.round%candidates.length]:{club:CL[(c.club+1)%CL.length],index:(c.club+1)%CL.length};
+    })();
+  }
+  function renderCreator(role){
+    careerDraftRole=role;
+    const page=$("career");
+    const positions='<option value="FWD">Striker / Forward</option><option value="MID">Midfielder</option><option value="DEF">Defender</option>';
+    page.innerHTML='<div class="kc-hero"><div class="kc-eyebrow">KIKSTART ORIGINAL CAREER EXPERIENCE</div><h1>CREATE YOUR '+(role==="player"?"PLAYER":"MANAGER")+'</h1><p>Build your identity, choose your club, and start a new football story. Your Ultimate Club save remains separate and untouched.</p></div>'+
+      '<div class="kc-layout"><section class="kc-panel"><h2>Identity & appearance</h2><p class="kc-muted">Choose a name, appearance and starting club. Your face appears on your career profile and your player appears on the pitch.</p>'+
+      '<div class="kc-form-grid"><div class="kc-field"><label>Name</label><input id="kcCreateName" maxlength="22" placeholder="Enter your name" value="'+(role==="player"?"My Player":"My Manager")+'"></div><div class="kc-field"><label>Age</label><select id="kcCreateAge">'+Array.from({length:20},(_,i)=>'<option value="'+(16+i)+'" '+(i===2?'selected':'')+'>'+(16+i)+'</option>').join("")+'</select></div>'+
+      '<div class="kc-field"><label>Club</label><select id="kcCreateClub">'+clubOptions(S.club)+'</select></div>'+(role==="player"?'<div class="kc-field"><label>Position</label><select id="kcCreatePosition">'+positions+'</select></div><div class="kc-field"><label>Squad number</label><input id="kcCreateNumber" type="number" min="1" max="99" value="10"></div>':'<div class="kc-field"><label>Manager style</label><select id="kcCreateTactic"><option value="balanced">Balanced</option><option value="possession">Possession football</option><option value="pressing">High pressing</option><option value="counter">Counter attack</option></select></div>')+
+      '<div class="kc-field"><label>Skin tone</label><select id="kcSkin" onchange="KC_previewFace()"><option value="0">Light</option><option value="1" selected>Medium-light</option><option value="2">Medium</option><option value="3">Medium-dark</option><option value="4">Dark</option></select></div>'+
+      '<div class="kc-field"><label>Hair colour</label><select id="kcHairColour" onchange="KC_previewFace()"><option value="0">Black</option><option value="1" selected>Dark brown</option><option value="2">Blonde</option><option value="3">Auburn</option><option value="4">Grey</option></select></div>'+
+      '<div class="kc-field"><label>Hair style</label><select id="kcHairStyle" onchange="KC_previewFace()"><option value="0">Short</option><option value="1">Side part</option><option value="2">Curly</option><option value="3">Long</option><option value="4">Wavy</option></select></div>'+
+      '<div class="kc-field"><label>Facial hair</label><select id="kcBeard" onchange="KC_previewFace()"><option value="0">Clean shaven</option><option value="1">Beard</option></select></div></div>'+
+      '<div class="kc-face-preview"><div id="kcFacePreview">'+face("1110",125)+'</div><div class="kc-face-copy"><b id="kcPreviewName">'+(role==="player"?"My Player":"My Manager")+'</b>Custom 3D-match face portrait<br>Appearance updates as you edit.</div></div>'+
+      '<button class="kc-primary" style="margin-top:15px;width:100%" onclick="KC_createCareer()">CREATE CAREER →</button><button class="kc-secondary" style="margin-top:9px;width:100%" onclick="showTab(\'career\')">Back</button></section>'+
+      '<aside class="kc-panel"><div class="kc-eyebrow">'+(role==="player"?"PLAYER CAREER":"MANAGER CAREER")+'</div><h2>'+(role==="player"?"Become the star":"Build a dynasty")+'</h2><p class="kc-muted">'+(role==="player"?"Begin as a young professional. Train your attributes, earn a starting place, score goals, attract transfer offers and move to bigger clubs.":"Take control of a club. Manage tactics, sign and sell players, grow your transfer budget, meet the board’s expectations and win trophies.")+'</p><div class="kc-trophy-grid"><div class="kc-trophy"><span>🏆</span><b>League title</b><small>Win your domestic league</small></div><div class="kc-trophy"><span>⭐</span><b>Champions League</b><small>Conquer Europe</small></div><div class="kc-trophy"><span>🌟</span><b>Ballon d’Or</b><small>Individual excellence</small></div></div></aside></div>';
+    if(role==="player"){
+      const grid=page.querySelector(".kc-form-grid");
+      if(grid && !$("kcCreateNationality")){
+        const field=document.createElement("div");field.className="kc-field";
+        field.innerHTML='<label>International team</label><select id="kcCreateNationality">'+NATIONAL_TEAMS.map(n=>'<option value="'+esc(n.name)+'" '+(n.name==="Australia"?'selected':'')+'>'+n.flag+' '+esc(n.name)+'</option>').join("")+'</select>';
+        grid.insertBefore(field,grid.children[3]||null);
+      }
+    }
+    previewFace();
+  }
+  function previewFace(){
+    const el=$("kcFacePreview");if(!el)return;
+    const look=makeLook(Number($("kcSkin").value),Number($("kcHairStyle").value),Number($("kcHairColour").value),Number($("kcBeard").value));
+    el.innerHTML=face(look,125);
+    const name=$("kcCreateName");const label=$("kcPreviewName");if(label)label.textContent=(name&&name.value.trim())||"Your character";
+  }
+  window.KC_previewFace=previewFace;
+  function createCareer(){
+    if(!S)return;
+    const name=(($ ("kcCreateName")||{}).value||"").trim().slice(0,22);
+    if(!name){ask("Enter a name for your career character.");return;}
+    const skin=Number($("kcSkin").value)||0,hairStyle=Number($("kcHairStyle").value)||0,hairColour=Number($("kcHairColour").value)||0,beard=Number($("kcBeard").value)||0;
+    const club=cl(Number($("kcCreateClub").value)||0,0,CL.length-1);
+    const look=makeLook(skin,hairStyle,hairColour,beard);
+    const mode=careerDraftRole;
+    const stats=mode==="player"?{pace:68,shooting:64,passing:62,dribbling:68,defending:42,physical:62}:{pace:60,shooting:60,passing:60,dribbling:60,defending:60,physical:60};
+    const xi=rosterForCareer();
+    const nationality=mode==="player"?($("kcCreateNationality")?.value||"Australia"):"Australia";
+    const career={version:18,mode,name,age:Number($("kcCreateAge").value)||18,club,nationality,international:{callupOffered:false,accepted:false,caps:0,goals:0,assists:0,wins:0,draws:0,losses:0,played:0,fixturesRemaining:0,fixtureIndex:0,lastOpponent:"",nextMatchAvailable:false},inbox:[{type:"welcome",title:"Welcome to your career",body:"Your career journey begins today. Check your objectives and upcoming fixtures.",date:new Date().toISOString(),read:false}],person:{name,look,number:cl(Number($("kcCreateNumber")?.value||10),1,99)},position:$("kcCreatePosition")?.value||"FWD",tactic:$("kcCreateTactic")?.value||"balanced",stats,overall:overall(stats),xp:0,level:1,skillPoints:0,round:0,season:1,record:careerRecord(),xiIds:xi,benchIds:[],budget:mode==="manager"?25000000:0,salary:0,trainingRound:-1,trophies:[],history:[],lastPlayed:null,transferCooldown:0,boardConfidence:70};
+    S.career=career;save();careerRender();
+  }
+  window.KC_createCareer=createCareer;
+  window.KC_beginCareer=renderCreator;
+
+  function careerToast(icon,title,detail){
+    let el=$("kc-action-toast");
+    if(!el){el=document.createElement("div");el.id="kc-action-toast";el.className="kc-action-toast";document.body.appendChild(el);}
+    el.innerHTML='<span class="ico">'+icon+'</span><span><b>'+esc(title)+'</b><small>'+esc(detail)+'</small></span>';
+    el.classList.remove("on");void el.offsetWidth;el.classList.add("on");
+    clearTimeout(window.__kcToastTimer);window.__kcToastTimer=setTimeout(()=>el.classList.remove("on"),2600);
+  }
+  function careerOpsStrip(c){
+    const m=c.management;
+    const rows=c.mode==="manager"?[["TEAM MORALE",m.morale,"%"],["FITNESS",m.fitness,"%"],["SQUAD CHEMISTRY",m.chemistry,"%"],["FAN TRUST",m.fanTrust,"%"]]:[["PLAYER MORALE",m.morale,"%"],["MATCH FITNESS",m.fitness,"%"],["FAN REPUTATION",m.fanTrust,"%"],["CONTRACT",c.contractYears," yrs"]];
+    return '<div class="kc-ops-strip">'+rows.map(r=>'<div class="kc-ops-meter"><small>'+r[0]+'</small><b>'+r[1]+r[2]+'</b>'+(r[2]==="%"?'<div class="kc-stat-track"><i style="width:'+cl(r[1],0,100)+'%"></i></div>':'')+'</div>').join("")+'</div>';
+  }
+  function internationalCareerHtml(c){
+    if(c.mode!=="player")return "";
+    const intl=c.international,n=nationalityFor(c.nationality);
+    let body="";
+    if(intl.accepted&&intl.fixturesRemaining>0){
+      body='<p class="kc-muted">Your country has selected you. You have '+intl.fixturesRemaining+' international fixture'+(intl.fixturesRemaining===1?'':'s')+' remaining in this window.</p><button class="kc-primary" onclick="KC_playInternationalMatch()">🌍 PLAY INTERNATIONAL FIXTURE</button>';
+    }else if(intl.callupOffered&&!intl.accepted){
+      body='<p class="kc-muted">The national team manager wants you in the squad. Accept your first call-up and represent '+esc(n.name)+'.</p><button class="kc-primary" onclick="KC_acceptInternationalCallup()">ACCEPT INTERNATIONAL CALL-UP</button>';
+    }else if(intl.accepted){
+      body='<p class="kc-muted">You have completed this international window. Your next selection can arrive in a future season.</p><span class="kc-chip">Next window pending</span>';
+    }else{
+      const target=68,apps=Math.min(3,c.record.played),rate=Math.min(100,Math.round(c.overall/target*100));
+      body='<p class="kc-muted">Perform for your club to earn selection. The national team currently wants a player rated 68 OVR with three club appearances, or an exceptional player rated 75 OVR.</p><div class="kc-contract-line"><span>International selection target</span><b>'+c.overall+'/68 OVR · '+apps+'/3 appearances</b></div><div class="kc-stat-track"><i style="width:'+Math.min(100,(apps/3)*70+Math.max(0,rate-100)*.3)+'%"></i></div>';
+    }
+    return '<section class="kc-panel kc-international-card" style="margin:13px 0"><div class="kc-eyebrow">INTERNATIONAL FOOTBALL</div><h2 class="kc-section-title">'+n.flag+' '+esc(n.name)+' NATIONAL TEAM</h2><div class="kc-kpis"><div class="kc-kpi"><small>CAPS</small><b>'+intl.caps+'</b></div><div class="kc-kpi"><small>INTERNATIONAL GOALS</small><b>'+intl.goals+'</b></div><div class="kc-kpi"><small>ASSISTS</small><b>'+intl.assists+'</b></div><div class="kc-kpi"><small>RECORD</small><b style="font-size:16px">'+intl.wins+'–'+intl.draws+'–'+intl.losses+'</b></div></div>'+body+'</section>';
+  }
+  function careerInboxHtml(c){
+    const items=(c.inbox||[]).slice(0,3);
+    return '<section class="kc-panel" style="margin:13px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 class="kc-section-title" style="margin:0!important">📨 Career inbox</h2><div><span class="kc-chip">'+(c.inbox||[]).filter(x=>!x.read).length+' unread</span><button class="kc-secondary" style="padding:5px 9px;font-size:10px" onclick="KC_markCareerInboxRead()">Mark read</button></div></div>'+(items.length?items.map(item=>'<div class="kc-inbox-item"><span class="ico">'+(item.type==="international"?'🌍':item.type==="award"?'🏆':'✉️')+'</span><span><b>'+esc(item.title)+'</b><small>'+esc(item.body)+'</small></span></div>').join(""):'<p class="kc-muted">No new messages. Club and national-team updates will appear here.</p>')+'</section>';
+  }
+  function careerCalendarHtml(c){
+    const events=[{title:'NEXT CLUB FIXTURE',detail:'Matchday '+(c.round+1)+' · '+fixtureFor(c).club.n},{title:'TRAINING WINDOW',detail:c.mode==="player"?(c.skillPoints>0?'Development points available':'Play another match to earn XP'):(c.management.trainingUsedRound===c.round?'Training completed':'Squad training available')}];
+    if(c.mode==="player"&&c.international.accepted&&c.international.fixturesRemaining>0)events.push({title:'INTERNATIONAL WINDOW',detail:c.international.fixturesRemaining+' national-team fixtures remaining'});
+    if(c.mode==="manager")events.push({title:'BOARD REVIEW',detail:c.round>=3&&c.round-c.management.lastBoardReviewRound>=3?'Review available':'Next review after three fixtures'});
+    return '<section class="kc-panel" style="margin:13px 0"><div class="kc-eyebrow">SEASON PLANNER</div><h2 class="kc-section-title">📅 Career calendar</h2><div class="kc-calendar-grid">'+events.map(e=>'<div class="kc-calendar-item"><b>'+esc(e.title)+'</b><small>'+esc(e.detail)+'</small></div>').join("")+'</div></section>';
+  }
+  function pushCareerInbox(c,type,title,body){c.inbox=Array.isArray(c.inbox)?c.inbox:[];c.inbox.unshift({type,title,body,date:new Date().toISOString(),read:false});c.inbox=c.inbox.slice(0,30);}
+  function maybeOfferInternationalCallup(c){
+    if(!c||c.mode!=="player"||c.international.callupOffered||c.international.accepted)return false;
+    const eligible=(c.overall>=68&&c.record.played>=3)||(c.overall>=75&&c.record.played>=1);
+    if(!eligible)return false;
+    const nation=nationalityFor(c.nationality);c.international.callupOffered=true;
+    pushCareerInbox(c,"international","FIRST INTERNATIONAL CALL-UP",nation.flag+" You've been selected for the "+nation.name+" national team. Accept your invitation in Career Mode.");
+    careerToast("🌍","INTERNATIONAL CALL-UP",c.name+" has been selected for "+nation.name+".");
+    return true;
+  }
+  function acceptInternationalCallup(){
+    const c=careerClub();if(!c||c.mode!=="player"||!c.international.callupOffered||c.international.accepted)return;
+    c.international.accepted=true;c.international.fixturesRemaining=3;c.international.nextMatchAvailable=true;
+    pushCareerInbox(c,"international","CALL-UP ACCEPTED","You have joined the "+c.nationality+" squad. Three international fixtures are ready.");
+    save();careerRender();careerToast("🇺🇳","WELCOME TO THE NATIONAL TEAM","Your first international window is ready.");
+  }
+  window.KC_acceptInternationalCallup=acceptInternationalCallup;
+  function playInternationalMatch(){const c=careerClub();if(!c||c.mode!=="player"||!c.international.accepted||c.international.fixturesRemaining<1)return ask("There are no available international fixtures.");careerStartMatch("international");}
+  window.KC_playInternationalMatch=playInternationalMatch;
+  function markCareerInboxRead(){const c=careerClub();if(!c)return;c.inbox.forEach(item=>item.read=true);save();careerRender();}
+  window.KC_markCareerInboxRead=markCareerInboxRead;
+  function managerOperationsHtml(c){
+    const m=c.management,scouts=m.scoutedProspects||[];
+    const prospectHtml=scouts.length?scouts.map(id=>{const p=POOL.fb[id];if(!p)return "";const fee=Math.round(200000+p.o*p.o*650);return '<div class="kc-roster-item"><span><b>'+esc(p.n)+'</b><small>'+p.pos+' · '+p.o+' OVR · scouted</small></span><button class="kc-secondary" '+(c.budget<fee?'disabled':'')+' onclick="KC_signPlayer('+p.id+')">Sign '+money(fee)+'</button></div>';}).join(""):'<p>No active scouting reports. Send your scout to find transfer targets.</p>';
+    return '<h2 class="kc-section-title">Club operations</h2><div class="kc-management-grid">'+
+      '<section class="kc-management-card"><h3>🧠 Tactics & formation</h3><p>Choose your tactical identity and starting formation. Your formation is applied when the next match loads.</p><select onchange="KC_setFormation(this.value)">'+[["4-3-3","4-3-3 Attacking"],["4-2-3-1","4-2-3-1 Balanced"],["4-4-2","4-4-2 Classic"],["3-5-2","3-5-2 Midfield"],["3-4-3","3-4-3 Press" ]].map(x=>'<option value="'+x[0]+'" '+(m.formation===x[0]?'selected':'')+'>'+x[1]+'</option>').join("")+'</select><div class="kc-chip">Style: '+esc(c.tactic)+'</div></section>'+
+      '<section class="kc-management-card"><h3>🏋️ Training ground</h3><p>Run one team session between fixtures. Intensity trades fitness for morale and chemistry.</p><button class="kc-secondary" onclick="KC_managerTraining(&quot;attack&quot;)" '+(m.trainingUsedRound===c.round?'disabled':'')+'>Attacking drills</button><button class="kc-secondary" onclick="KC_managerTraining(&quot;defence&quot;)" '+(m.trainingUsedRound===c.round?'disabled':'')+'>Defensive shape</button><button class="kc-secondary" onclick="KC_managerTraining(&quot;fitness&quot;)" '+(m.trainingUsedRound===c.round?'disabled':'')+'>Fitness session</button></section>'+
+      '<section class="kc-management-card"><h3>🗣️ Team talk</h3><p>Set the mood before the next match. You can address the squad once per matchday.</p><button class="kc-secondary" onclick="KC_teamTalk(&quot;back&quot;)" '+(m.teamTalkRound===c.round?'disabled':'')+'>Back the players</button><button class="kc-secondary" onclick="KC_teamTalk(&quot;demand&quot;)" '+(m.teamTalkRound===c.round?'disabled':'')+'>Demand more</button><button class="kc-secondary" onclick="KC_teamTalk(&quot;calm&quot;)" '+(m.teamTalkRound===c.round?'disabled':'')+'>Keep calm</button></section>'+
+      '<section class="kc-management-card"><h3>🔎 Scouting network</h3><p>Scout costs 85,000 coins. Your scout level adds extra prospects to each report.</p><button class="kc-primary" onclick="KC_scoutProspects()" '+(c.budget<85000?'disabled':'')+'>Send scout · 85,000</button><div style="margin-top:8px">'+prospectHtml+'</div><div class="kc-chip">Scout level '+m.staff.scout+'/3</div><button class="kc-secondary" onclick="KC_hireStaff(&quot;scout&quot;)" '+(m.staff.scout>=3||c.budget<450000?'disabled':'')+'>Upgrade scout · 450k</button></section>'+
+      '<section class="kc-management-card"><h3>💼 Club finances</h3><p>Win bonuses, sponsor income and staff costs are tracked separately from your main club coins.</p><div class="kc-contract-line"><span>Transfer budget</span><b>'+money(c.budget)+'</b></div><div class="kc-contract-line"><span>Sponsor tier</span><b>'+m.sponsorTier+'/3</b></div><div class="kc-contract-line"><span>Season sponsor earnings</span><b>'+money(m.seasonIncome)+'</b></div><div class="kc-contract-line"><span>Scouting & staff spend</span><b>'+money((m.scoutingSpend||0)+(m.staffSpend||0))+'</b></div><button class="kc-secondary" onclick="KC_upgradeSponsor()" '+(m.sponsorTier>=3||c.budget<650000?'disabled':'')+'>Upgrade sponsor · 650k</button></section>'+
+      '<section class="kc-management-card"><h3>🧑‍💼 Coaching staff</h3><p>Specialists improve squad preparation and reduce the cost of a difficult season.</p><div class="kc-contract-line"><span>Assistant coach</span><b>Lv '+m.staff.coach+'</b></div><div class="kc-contract-line"><span>Fitness coach</span><b>Lv '+m.staff.fitness+'</b></div><button class="kc-secondary" onclick="KC_hireStaff(&quot;coach&quot;)" '+(m.staff.coach>=3||c.budget<550000?'disabled':'')+'>Hire assistant · 550k</button><button class="kc-secondary" onclick="KC_hireStaff(&quot;fitness&quot;)" '+(m.staff.fitness>=3||c.budget<500000?'disabled':'')+'>Hire fitness coach · 500k</button></section>'+
+      '<section class="kc-management-card"><h3>📋 Boardroom</h3><p>Board target: finish the ten-match season with at least six wins. Review your progress after every three fixtures.</p><div class="kc-contract-line"><span>Target progress</span><b>'+c.record.wins+'/6 wins</b></div><div class="kc-contract-line"><span>Board confidence</span><b>'+m.morale+'% team mood · '+c.boardConfidence+'% board</b></div><button class="kc-primary" onclick="KC_boardMeeting()" '+(c.round<3||c.round-m.lastBoardReviewRound<3?'disabled':'')+'>Hold board meeting</button></section></div>';
+  }
+  function playerLifeHtml(c){
+    const m=c.management;
+    return '<h2 class="kc-section-title">Professional development & lifestyle</h2><div class="kc-management-grid">'+
+      '<section class="kc-management-card"><h3>🏋️ Training centre</h3><p>Focused sessions improve an attribute by two points. Training uses one development point and slightly reduces match fitness.</p><div class="kc-chip">Development points: '+c.skillPoints+'</div><div class="kc-toolbar">'+["pace","shooting","passing","dribbling","defending","physical"].map(k=>'<button class="kc-secondary" onclick="KC_playerTraining(&quot;'+k+'&quot;)" '+(c.skillPoints<1||m.trainingUsedRound===c.round||c.stats[k]>=99?'disabled':'')+'>Train '+k+'</button>').join("")+'</div></section>'+
+      '<section class="kc-management-card"><h3>🧘 Recovery & wellbeing</h3><p>Recovery restores fitness and morale after a demanding match. It uses your one between-match activity.</p><button class="kc-primary" onclick="KC_playerRecovery()" '+(m.trainingUsedRound===c.round?'disabled':'')+'>Recovery day</button><div class="kc-contract-line"><span>Weekly salary</span><b>'+money(c.salary||0)+'</b></div><div class="kc-contract-line"><span>Contract remaining</span><b>'+c.contractYears+' seasons</b></div></section>'+
+      '<section class="kc-management-card"><h3>🎙️ Media & supporters</h3><p>Choose how to handle the press. Your answers affect confidence and fan reputation.</p><button class="kc-secondary" onclick="KC_playerMedia(&quot;humble&quot;)" '+(m.teamTalkRound===c.round?'disabled':'')+'>Stay humble</button><button class="kc-secondary" onclick="KC_playerMedia(&quot;ambitious&quot;)" '+(m.teamTalkRound===c.round?'disabled':'')+'>Show ambition</button><button class="kc-secondary" onclick="KC_playerMedia(&quot;team&quot;)" '+(m.teamTalkRound===c.round?'disabled':'')+'>Praise the team</button></section></div>';
+  }
+
+  function careerDashboard(c){
+    ensureCareerShape(c);
+    const club=CL[c.club],next=fixtureFor(c),progress=Math.min(100,c.round/10*100);
+    const rating=c.mode==="player"?c.overall:"MANAGER";
+    const avatar=careerAvatar(c,110);
+    const modeName=c.mode==="player"?"PLAYER CAREER":"MANAGER CAREER";
+    const record=c.record;
+    let h='<div class="kc-hero"><div class="kc-eyebrow">KIKSTART CAREER MODE · SEASON '+c.season+'</div><h1>'+modeName+'</h1><p>'+esc(c.mode==="player"?"Every match is a chance to improve, impress and earn your next move.":"Your club. Your tactics. Your decisions. Build a team capable of winning everything.")+'</p></div>';
+    h+='<div class="kc-dash-head">'+avatar+'<div style="min-width:0;flex:1"><div class="kc-eyebrow">'+esc(club.n)+' · '+esc(LEAGUES[club.li].n)+'</div><div class="kc-dash-name">'+esc(c.name)+'</div><div class="kc-dash-sub">'+(c.mode==="player"?esc(c.position)+" · Age "+c.age+" · Shirt #"+c.person.number:"First-team manager · "+esc(c.tactic.replace(/^[a-z]/,x=>x.toUpperCase())))+'</div><div style="margin-top:8px"><span class="kc-chip">'+(c.mode==="player"?"⭐ "+rating+" OVR":"🧠 Head Coach")+'</span><span class="kc-chip">Season '+c.season+'</span><span class="kc-chip">Fixture '+Math.min(10,c.round+1)+'/10</span></div></div></div>';
+    h+='<div class="kc-kpis"><div class="kc-kpi"><small>APPEARANCES</small><b>'+record.played+'</b></div><div class="kc-kpi"><small>WINS</small><b>'+record.wins+'</b></div><div class="kc-kpi"><small>GOALS</small><b>'+record.goals+'</b></div><div class="kc-kpi"><small>ASSISTS</small><b>'+record.assists+'</b></div><div class="kc-kpi"><small>SEASON POINTS</small><b>'+((record.wins*3)+record.draws)+'</b></div><div class="kc-kpi"><small>'+(c.mode==="manager"?"TRANSFER BUDGET":"CAREER EARNINGS")+'</small><b style="font-size:17px">'+money(c.mode==="manager"?c.budget:c.salary)+'</b></div></div>';
+    h+=careerOpsStrip(c);
+    h+=internationalCareerHtml(c);
+    h+=careerInboxHtml(c);
+    h+=careerCalendarHtml(c);
+    if(c.lastPlayed){const lastLabel=c.lastPlayed.forfeit?"FORFEIT":c.lastPlayed.won?"WIN":c.lastPlayed.draw?"DRAW":"LOSS";h+='<div class="kc-panel" style="margin:10px 0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><div class="kc-eyebrow">LAST MATCH · '+lastLabel+'</div><b>'+esc(c.lastPlayed.opponent||"Opponent")+'</b><p class="kc-muted" style="margin:3px 0 0">'+(c.lastPlayed.won?"Three points earned.":c.lastPlayed.draw?"One point earned.":"Use training and tactics to respond next match.")+'</p></div><div class="kc-dash-name">'+c.lastPlayed.gf+' – '+c.lastPlayed.ga+'</div></div>';}
+    h+='<div class="kc-layout"><section class="kc-panel"><div class="kc-eyebrow">NEXT FIXTURE · MATCHDAY '+(c.round+1)+'</div><h2 class="kc-section-title">'+esc(club.n)+' <span style="color:#e6d28e">VS</span> '+esc(next.club.n)+'</h2><p class="kc-muted">'+esc(LEAGUES[next.club.li].n)+' · 3D match engine · Your career results are tracked separately from your main club save.</p><div class="kc-fixture"><div>'+badge(club,42)+' <b>'+esc(club.n)+'</b></div><span class="net-vs">VS</span><div>'+badge(next.club,42)+' <b>'+esc(next.club.n)+'</b></div></div><button class="kc-primary" style="width:100%" onclick="KC_playCareerMatch()">PLAY CAREER MATCH →</button><div style="margin-top:12px"><div class="kc-muted">Season progress · '+c.round+'/10 matches</div><div class="v27-progress"><i style="width:'+progress+'%"></i></div></div>';
+    if(c.mode==="player")h+='<p class="kc-muted">A win earns 2 development points, a draw or loss earns 1. Train once after each completed fixture.</p>';
+    else h+='<p class="kc-muted">Win matches to increase board confidence and earn performance bonuses for your transfer budget.</p>';
+    h+='</section><aside class="kc-panel"><h2 class="kc-section-title">Career objectives</h2>';
+    if(c.mode==="player")h+='<p class="kc-muted">Reach 75 OVR, score 5 goals this season and earn a move to a new club.</p><div class="kc-chip">XP '+c.xp+'</div><div class="kc-chip">Level '+c.level+'</div><div class="kc-chip">Skill points '+c.skillPoints+'</div>';
+    else h+='<p class="kc-muted">Board confidence reflects your results. Keep winning and build a squad strong enough to compete for domestic and European trophies.</p><div class="kc-chip">Board confidence '+c.boardConfidence+'%</div><div class="kc-chip">First-team squad '+c.xiIds.length+' players</div>';
+    h+='<div style="margin-top:12px"><button class="kc-secondary" style="width:100%" onclick="KC_showTransfers()">'+(c.mode==="player"?"TRANSFER HUB":"TRANSFER MARKET")+'</button></div><div style="margin-top:8px"><button class="kc-secondary" style="width:100%" onclick="KC_showTrophies()">🏆 Trophy cabinet ('+c.trophies.length+')</button></div><div style="margin-top:8px"><button class="kc-secondary" style="width:100%" onclick="KC_showHistory()">Season history</button></div></aside></div>';
+    if(c.mode==="player"){
+      h+='<h2 class="kc-section-title">Your attributes · '+c.overall+' OVR</h2><div class="kc-panel">'+statsHtml(c)+'<p class="kc-muted">Train once per matchday using a development point. Higher attributes improve your career rating and match performance.</p><div class="kc-toolbar">'+["pace","shooting","passing","dribbling","defending","physical"].map(k=>'<button class="kc-secondary" onclick="KC_playerTraining(\''+k+'\')" '+(c.skillPoints<1||c.trainingRound===c.round?'disabled':'')+'>Train '+k+'</button>').join(" ")+'</div></div>';
+    } else {
+      h+='<h2 class="kc-section-title">Manager tactics & first team</h2><div class="kc-panel"><div class="kc-field" style="max-width:320px"><label>Team identity</label><select onchange="KC_setTactic(this.value)"><option value="balanced" '+(c.tactic==="balanced"?'selected':'')+'>Balanced</option><option value="possession" '+(c.tactic==="possession"?'selected':'')+'>Possession</option><option value="pressing" '+(c.tactic==="pressing"?'selected':'')+'>High pressing</option><option value="counter" '+(c.tactic==="counter"?'selected':'')+'>Counter attack</option></select></div><p class="kc-muted">Your selected players start each career match. Transfers strengthen the starting XI when a signing is better than the current player in that position.</p><div class="kc-roster">'+c.xiIds.map(id=>POOL.fb[id]).filter(Boolean).map(p=>'<div class="kc-roster-item"><span><b>'+esc(p.n)+'</b><small>'+p.pos+' · '+p.o+' OVR</small></span><span>'+p.f+'</span></div>').join("")+'</div></div>';
+      h+=managerOperationsHtml(c);
+    }
+    if(c.mode==="player")h+=playerLifeHtml(c);
+    h+='<h2 class="kc-section-title">Honours</h2><div class="kc-trophy-grid">'+(c.trophies.length?c.trophies.slice(-6).reverse().map(t=>'<div class="kc-trophy"><span>'+trophyInfo(t.name).icon+'</span><b>'+esc(t.name)+'</b><small>Season '+t.season+'</small></div>').join(""):'<div class="kc-panel kc-muted">Your trophy cabinet is empty. Start winning matches to earn your first silverware.</div>')+'</div>';
+    h+='<div class="kc-toolbar" style="margin-top:20px"><button class="kc-secondary" onclick="KC_newCareer()">Start another career</button><button class="kc-secondary" onclick="showTab(\'home\')">Back to main club</button></div>';
+    return h;
+  }
+  function renderCareer(){
+    const page=$("career");if(!page)return;
+    if(!S){page.innerHTML='<div class="kc-hero"><div class="kc-eyebrow">KIKSTART CAREER MODE</div><h1>YOUR STORY STARTS HERE</h1><p>Choose your main club first, then create your own player or manager career.</p></div>';return;}
+    const c=careerClub();
+    if(c){ensureCareerShape(c);page.innerHTML=careerDashboard(c);return;}
+    page.innerHTML='<div class="kc-hero"><div class="kc-eyebrow">KIKSTART ORIGINAL CAREER EXPERIENCE</div><h1>YOUR STORY. YOUR LEGACY.</h1><p>Start from the beginning. Create your own face, choose a club and build a career from your first appearance to the biggest nights in football. Career Mode has its own progression, squad, money and trophy cabinet.</p></div><div class="kc-mode-grid"><button class="kc-mode-card" onclick="KC_beginCareer(\'player\')"><span class="kc-mode-icon">⚽</span><h2>Player Career</h2><p>Create a footballer, play matches as your own character, train attributes, earn a starting spot and move between clubs.</p><strong>CREATE YOUR PLAYER →</strong></button><button class="kc-mode-card" onclick="KC_beginCareer(\'manager\')"><span class="kc-mode-icon">🧠</span><h2>Manager Career</h2><p>Create your manager, take charge of a club, shape tactics, sign players, manage the budget and chase trophies.</p><strong>CREATE YOUR MANAGER →</strong></button></div><div class="kc-panel"><h2>Career Mode features</h2><div class="kc-trophy-grid"><div class="kc-trophy"><span>🧑‍🎨</span><b>Character creator</b><small>Custom name and appearance</small></div><div class="kc-trophy"><span>📈</span><b>Player development</b><small>Six attributes and OVR growth</small></div><div class="kc-trophy"><span>🔁</span><b>Transfers</b><small>Move to clubs across five leagues</small></div><div class="kc-trophy"><span>🏆</span><b>Trophy ceremonies</b><small>League, UCL, Ballon d&#39;Or and Golden Boot</small></div></div></div>';
+  }
+  function careerRender(){renderCareer();}
+
+  function createCareerClubFixture(c){
+    const next=fixtureFor(c),op=next.club;
+    return {n:op.n,k:op.k,a:op.a,b:op.b,str:Math.max(55,Math.min(91,68+Math.round(rnd()*15-5))),careerFixture:true};
+  }
+  function createInternationalFixture(c){
+    const homeNation=nationalityFor(c.nationality);
+    const opponents=NATIONAL_TEAMS.filter(n=>n.name!==homeNation.name);
+    const index=(Number(c.international.fixtureIndex)||0)%opponents.length;
+    const opponent=opponents[index];
+    return {n:opponent.name,k:opponent.code,a:opponent.a,b:opponent.b,str:cl(64+Math.round((c.overall||65)*.19)+Math.round(rnd()*7-3),62,91),careerFixture:true,international:true};
+  }
+  function restoreCareerClubIdentity(){
+    if(liveClubIdentitySnapshot){CL[liveClubIdentitySnapshot.index]=liveClubIdentitySnapshot.original;liveClubIdentitySnapshot=null;}
+  }
+  function careerStartMatch(kind){
+    const c=careerClub();if(!c||liveMatch||M&&!M.over)return;
+    ensureCareerShape(c);
+    const competition=kind==="international"&&c.mode==="player"&&c.international.accepted&&c.international.fixturesRemaining>0?"international":"club";
+    const opponent=competition==="international"?createInternationalFixture(c):createCareerClubFixture(c);
+    liveSnapshot={state:JSON.parse(JSON.stringify(S)),NXmedium:NX.medium,fee:LV.medium.fee,win:LV.medium.win};
+    liveMatch=true;liveXI=currentXI();lastMatchRef=M;
+    S.club=c.club;S.mode="fb";NX.medium=opponent;LV.medium.fee=0;LV.medium.win=0;
+    if(competition==="international"){
+      const national=nationalityFor(c.nationality);
+      liveClubIdentitySnapshot={index:c.club,original:CL[c.club]};
+      CL[c.club]=Object.assign({},CL[c.club],{n:national.name,k:national.code,a:national.a,b:national.b});
+    }
+    const startMessage=$("lobbyMsg");if(startMessage)startMessage.textContent=competition==="international"?"Preparing your international fixture…":"Preparing your career fixture…";
+
+    // IMPORTANT: #play is hidden when a career match is launched. The old flow
+    // initialised WebGL while #stage had a 0x0 size, leaving a permanently black canvas.
+    // Reveal the match tab and stage first, force layout, then initialise the engine.
+    try{
+      baseShowTab("play");
+      document.querySelectorAll("#main > .tab").forEach(el=>el.classList.toggle("on",el.id==="play"));
+      document.querySelectorAll("#side .sitems button").forEach(el=>el.classList.toggle("on",el.id==="nav-play"));
+      const mv=$("matchView");if(mv){mv.style.display="block";mv.style.visibility="hidden";}
+      const stage=$("stage");if(stage){stage.getBoundingClientRect();}
+    }catch(error){console.warn("Career match tab preparation failed",error);}
+
+    let attempts=0;
+    const watchForMatch=()=>{
+      if(!liveMatch||!liveSnapshot)return;
+      pollTimer=setInterval(()=>{
+        attempts++;
+        if(M&&M!==lastMatchRef&&!M.over&&M.pl&&M.pl.length){
+          clearInterval(pollTimer);pollTimer=null;
+          M.careerModeType=c.mode;M.careerAttached=true;M.careerGoals=0;M.careerAssists=0;M.careerCompetition=competition;
+          M.L=Object.assign({},M.L,{fee:0,win:0});
+          if(c.mode==="player"){
+            const slot=c.position==="FWD"?9:c.position==="MID"?6:2;
+            M.careerActor=M.pl.find(p=>p.t===0&&p.i===slot)||null;
+            if(M.careerActor){M.careerActor.isCareerAvatar=true;}
+          }
+          // Apply the manager's saved formation to the home team before kickoff.
+          const formations={
+            "4-3-3":[[-.95,0],[-.64,-.75],[-.66,-.25],[-.66,.25],[-.64,.75],[-.2,-.5],[-.12,0],[-.2,.5],[.42,-.68],[.52,0],[.42,.68]],
+            "4-2-3-1":[[-.95,0],[-.64,-.75],[-.66,-.25],[-.66,.25],[-.64,.75],[-.28,-.3],[-.28,.3],[.08,-.58],[.16,0],[.08,.58],[.58,0]],
+            "4-4-2":[[-.95,0],[-.6,-.7],[-.6,-.25],[-.6,.25],[-.6,.7],[-.1,-.7],[-.1,-.25],[-.1,.25],[-.1,.7],[.35,-.25],[.35,.25]],
+            "3-5-2":[[-.95,0],[-.62,-.6],[-.68,0],[-.62,.6],[-.18,-.8],[-.22,-.4],[-.08,0],[-.22,.4],[-.18,.8],[.48,-.25],[.48,.25]],
+            "3-4-3":[[-.95,0],[-.62,-.6],[-.68,0],[-.62,.6],[-.2,-.62],[-.1,-.2],[-.1,.2],[-.2,.62],[.42,-.65],[.5,0],[.42,.65]]
+          };
+          if(c.mode==="manager"){
+            const formation=formations[c.management.formation]||formations["4-3-3"];
+            M.pl.filter(p=>p.t===0).forEach((p,i)=>{if(formation[i])p.h=formation[i].slice();});
+          }
+          const modifiers={balanced:1,possess:.98,possession:.98,pressing:1.055,counter:1.025};
+          const op=c.management;
+          const prep=cl(.92+op.morale*.00035+op.chemistry*.00025+op.fitness*.0003,.92,1.09);
+          const boost=(modifiers[c.tactic]||1)*prep;
+          M.pl.filter(p=>p.t===0).forEach(p=>{p.spd*=boost;});
+          if(c.mode==="player"&&M.careerActor){M.careerActor.spd*=cl(.82+(c.stats.pace/100)*.2,.9,1.05);}
+          const mv=$("matchView");if(mv){mv.style.display="block";mv.style.visibility="visible";}
+          KC_resizeCareerRenderer();
+          if($("lobby"))$("lobby").style.display="none";
+          const badgeEl=document.createElement("div");badgeEl.id="kcCareerMatchBadge";badgeEl.textContent=competition==="international"?"INTERNATIONAL · "+c.nationality+" vs "+opponent.n:(c.mode==="player"?"PLAYER CAREER MATCH":"MANAGER CAREER MATCH");$("stage").appendChild(badgeEl);
+          if(startMessage)startMessage.textContent="";
+        } else if(attempts>360){clearInterval(pollTimer);pollTimer=null;rollbackCareerMatch();ask("The career match engine did not finish loading. Refresh the game and try again.");}
+      },100);
+    };
+    const startEngine=()=>{
+      if(!liveMatch||!liveSnapshot)return;
+      const mv=$("matchView");if(mv){mv.style.visibility="visible";mv.style.display="block";}
+      const stage=$("stage");if(stage)stage.getBoundingClientRect();
+      try{KC_resizeCareerRenderer();baseStartMatch("medium");watchForMatch();}
+      catch(error){console.error("Career match start failed",error);rollbackCareerMatch();ask("Career match could not start. Refresh the game and try again.");}
+    };
+    requestAnimationFrame(()=>requestAnimationFrame(startEngine));
+  }
+  function rollbackCareerMatch(){
+    if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+    if(!liveSnapshot)return;
+    restoreCareerClubIdentity();
+    LV.medium.fee=liveSnapshot.fee;LV.medium.win=liveSnapshot.win;NX.medium=liveSnapshot.NXmedium;
+    S=liveSnapshot.state;
+    liveMatch=false;liveXI=null;liveSnapshot=null;baseSave();
+    if($("matchView"))$("matchView").style.display="none";
+    if($("lobby"))$("lobby").style.display="block";
+    refresh();
+    showTab("career");
+  }
+  // Track goals by the created player separately from the main club profile.
+  goal=function(team){
+    if(liveMatch&&M&&team===0){if(M.lastP&&M.lastP===M.careerActor)M.careerGoals=(M.careerGoals||0)+1;if(M.lastAssist&&M.lastAssist===M.careerActor&&M.lastP!==M.careerActor)M.careerAssists=(M.careerAssists||0)+1;}
+    return baseGoal(team);
+  };
+  finishMatch=function(forfeit){
+    if(!liveMatch||!M||!M.careerAttached)return baseFinishMatch(forfeit);
+    const match=M,c=careerClub();if(!c)return baseFinishMatch(forfeit);
+    const gf=Number(match.score[0])||0,ga=Number(match.score[1])||0;
+    const won=!forfeit&&gf>ga,draw=!forfeit&&gf===ga;
+    const goals=Number(match.careerGoals)||0,assists=Number(match.careerAssists)||0;
+    const competition=match.careerCompetition==="international"?"international":"club";
+    baseFinishMatch(forfeit);
+    restoreCareerClubIdentity();
+    if(competition==="international"){
+      const intl=c.international;
+      intl.played++;intl.caps++;intl.goals+=goals;intl.assists+=assists;
+      intl.wins+=won?1:0;intl.draws+=draw?1:0;intl.losses+=(!won&&!draw)?1:0;
+      intl.fixturesRemaining=Math.max(0,intl.fixturesRemaining-1);intl.nextMatchAvailable=intl.fixturesRemaining>0;
+      intl.fixtureIndex=(Number(intl.fixtureIndex)||0)+1;intl.lastOpponent=match.team&&match.team.n||"International opponent";
+      pushCareerInbox(c,"international","INTERNATIONAL MATCH REPORT",c.nationality+" vs "+intl.lastOpponent+" · "+gf+"–"+ga+" · "+(won?"Victory":draw?"Draw":"Defeat")+". You now have "+intl.caps+" caps.");
+    }else{
+      c.record.played++;c.record.goals+=c.mode==="player"?goals:gf;c.record.assists+=c.mode==="player"?assists:0;c.record.wins+=won?1:0;c.record.draws+=draw?1:0;c.record.losses+=(!won&&!draw)?1:0;
+      if(ga===0&&!forfeit)c.record.cleanSheets++;
+      c.record.gf+=gf;c.record.ga+=ga;
+    }
+    if(c.mode==="player"){
+      c.xp+=won?180:draw?110:75;c.level=1+Math.floor(c.xp/600);c.skillPoints+=won?2:1;c.salary=(c.salary||0)+(won?8500:draw?5500:3500);
+      if(goals)c.skillPoints+=Math.min(2,goals);
+      c.management.fitness=cl(c.management.fitness-11+(c.management.staff.fitness||1)*2,0,100);
+      c.management.morale=cl(c.management.morale+(won?6:draw?1:-5),0,100);
+      c.management.fanTrust=cl(c.management.fanTrust+(goals?3:0)+(won?2:draw?0:-1),0,100);
+      c.age=Math.min(40,Number(c.age||18)+(competition!=="international"&&c.round===9?1:0));
+    }else{
+      const sponsorBonus=(won?65000:draw?25000:0)*c.management.sponsorTier;
+      c.budget+=(won?300000:draw?125000:50000)+sponsorBonus;
+      c.management.seasonIncome+=sponsorBonus;
+      c.management.fitness=cl(c.management.fitness-8+(c.management.staff.fitness||1)*2,0,100);
+      c.management.morale=cl(c.management.morale+(won?5:draw?0:-6)+(c.management.staff.coach||1),0,100);
+      c.management.chemistry=cl(c.management.chemistry+(won?2:draw?0:-1),0,100);
+      c.boardConfidence=cl((c.boardConfidence||70)+(won?3:draw?0:-4),0,100);
+    }
+    if(competition!=="international")c.round++;
+    c.lastPlayed={gf,ga,won,draw,forfeit,competition,opponent:match.team&&match.team.n||"Opponent",date:new Date().toISOString()};
+    if(competition!=="international"&&c.mode==="player")maybeOfferInternationalCallup(c);
+    // Restore every main-save field, retaining only the career-mode progress just earned.
+    const updatedCareer=JSON.parse(JSON.stringify(c));
+    liveMatch=false;liveXI=null;
+    LV.medium.fee=liveSnapshot.fee;LV.medium.win=liveSnapshot.win;NX.medium=liveSnapshot.NXmedium;
+    S=liveSnapshot.state;S.career=updatedCareer;
+    liveSnapshot=null;baseSave();
+    const end=$("endBox");if(end){end.innerHTML='<div class="kc-eyebrow">'+(competition==="international"?"INTERNATIONAL MATCH RESULT":"CAREER MATCH RESULT")+'</div><h2>'+(forfeit?"MATCH FORFEITED":won?(competition==="international"?"INTERNATIONAL WIN":"CAREER WIN"):draw?(competition==="international"?"INTERNATIONAL DRAW":"CAREER DRAW"):(competition==="international"?"INTERNATIONAL LOSS":"CAREER LOSS"))+'</h2><div class="kc-dash-name">'+gf+' – '+ga+'</div><p class="kc-muted">'+(c.mode==="player"?esc(c.name)+" · +"+(won?180:draw?110:75)+" XP · +"+(won?2:1)+" skill points":"Board confidence "+c.boardConfidence+"% · Transfer budget "+money(c.budget))+'</p><button class="kc-primary" onclick="KC_continueCareer()">CONTINUE CAREER →</button>';
+      end.style.display="block";}
+    const badgeEl=$("kcCareerMatchBadge");if(badgeEl)badgeEl.remove();
+    if(won){careerToast(competition==="international"?"🌍":"🏆",competition==="international"?"INTERNATIONAL VICTORY":"CAREER VICTORY",c.mode==="player"?(competition==="international"?"A win for your country. Your international record has been updated.":"A strong performance earned XP and development points."):"Three points secured. The board and supporters are pleased.");try{burst(innerWidth/2,innerHeight*.3,competition==="international"?COL.diamond:COL.gold,55,8);}catch(e){}}
+    else if(draw)careerToast("🤝","POINTS SHARED","Take the positives into your next fixture.");
+    else careerToast("📋","MATCH REVIEW","Use recovery, training and tactics to prepare for the next fixture.");
+    if($("matchView"))$("matchView").style.display="none";
+    if($("lobby"))$("lobby").style.display="block";
+    if(competition!=="international"&&c.round>=10)updateSeason();else careerRender();
+    refresh();
+    showTab("career");
+  };
+  // When the 3D engine uses its regular lineup callback, swap in only the active career XI.
+  window.KC_playCareerMatch=careerStartMatch;
+  window.KC_continueCareer=function(){M=null;if(ring)ring.visible=false;if($("matchView"))$("matchView").style.display="none";if($("lobby"))$("lobby").style.display="block";showTab("career");};
+
+  function train(stat){
+    const c=careerClub();if(!c||c.mode!=="player"||!Object.prototype.hasOwnProperty.call(c.stats,stat))return;
+    if(c.skillPoints<1)return ask("You need a development point. Play another match to earn one.");
+    if(c.trainingRound===c.round)return ask("You have already trained for this matchday.");
+    if(c.stats[stat]>=99)return ask("That attribute is already at its maximum.");
+    c.stats[stat]=clampStat(c.stats[stat]+1);c.skillPoints--;c.trainingRound=c.round;c.overall=overall(c.stats);save();careerRender();
+  }
+  window.KC_train=train;
+  function setTactic(tactic){const c=careerClub();if(!c||c.mode!=="manager")return;if(!["balanced","possession","pressing","counter"].includes(tactic))return;c.tactic=tactic;save();careerRender();}
+  window.KC_setTactic=setTactic;
+
+  function playerTraining(stat){
+    const c=careerClub();if(!c||c.mode!=="player"||!Object.prototype.hasOwnProperty.call(c.stats,stat))return;
+    const m=c.management;if(m.trainingUsedRound===c.round)return ask("You have already completed your between-match activity. Recover or train again after the next fixture.");
+    if(c.skillPoints<1)return ask("You need a development point. Play another match to earn one.");
+    if(c.stats[stat]>=99)return ask("That attribute is already at its maximum.");
+    c.stats[stat]=clampStat(c.stats[stat]+2);c.skillPoints--;c.trainingRound=c.round;m.trainingUsedRound=c.round;
+    m.fitness=cl(m.fitness-4,0,100);m.morale=cl(m.morale+2,0,100);c.overall=overall(c.stats);save();careerRender();careerToast("🏋️","TRAINING COMPLETE",stat.toUpperCase()+" improved by 2 points · fitness -4");
+  }
+  window.KC_playerTraining=playerTraining;
+  function playerRecovery(){
+    const c=careerClub();if(!c||c.mode!=="player")return;const m=c.management;if(m.trainingUsedRound===c.round)return ask("You have already used your between-match activity this matchday.");
+    m.trainingUsedRound=c.round;m.fitness=cl(m.fitness+18,0,100);m.morale=cl(m.morale+5,0,100);save();careerRender();careerToast("🧘","RECOVERY DAY","Fitness and confidence restored. Ready for the next fixture.");
+  }
+  window.KC_playerRecovery=playerRecovery;
+  function playerMedia(choice){
+    const c=careerClub();if(!c||c.mode!=="player")return;const m=c.management;if(m.teamTalkRound===c.round)return ask("You've already completed your media duties this matchday.");
+    m.teamTalkRound=c.round;
+    if(choice==="humble"){m.fanTrust=cl(m.fanTrust+5,0,100);m.morale=cl(m.morale+3,0,100);}
+    else if(choice==="ambitious"){m.fanTrust=cl(m.fanTrust+2,0,100);m.morale=cl(m.morale+5,0,100);}
+    else{m.fanTrust=cl(m.fanTrust+4,0,100);m.morale=cl(m.morale+4,0,100);}
+    save();careerRender();careerToast("🎙️","MEDIA DUTIES COMPLETE","Your response improved your standing with supporters.");
+  }
+  window.KC_playerMedia=playerMedia;
+  function managerTraining(focus){
+    const c=careerClub();if(!c||c.mode!=="manager")return;const m=c.management;if(m.trainingUsedRound===c.round)return ask("The squad has already trained since the last fixture.");
+    m.trainingUsedRound=c.round;m.trainingFocus=focus;
+    const coach=m.staff.coach||1;
+    if(focus==="attack"){m.morale=cl(m.morale+5+coach,0,100);m.chemistry=cl(m.chemistry+4,0,100);m.fitness=cl(m.fitness-5,0,100);}
+    else if(focus==="defence"){m.chemistry=cl(m.chemistry+6,0,100);m.morale=cl(m.morale+2+coach,0,100);m.fitness=cl(m.fitness-4,0,100);}
+    else{m.fitness=cl(m.fitness+12+(m.staff.fitness||1)*2,0,100);m.morale=cl(m.morale+2,0,100);}
+    save();careerRender();careerToast("🏋️","TEAM SESSION COMPLETE",focus.toUpperCase()+" training has changed the squad's preparation.");
+  }
+  window.KC_managerTraining=managerTraining;
+  function teamTalk(choice){
+    const c=careerClub();if(!c||c.mode!=="manager")return;const m=c.management;if(m.teamTalkRound===c.round)return ask("You've already addressed the squad before this fixture.");m.teamTalkRound=c.round;
+    if(choice==="back"){m.morale=cl(m.morale+8,0,100);m.fanTrust=cl(m.fanTrust+2,0,100);}
+    else if(choice==="demand"){if(c.boardConfidence>=60)m.morale=cl(m.morale+6,0,100);else{m.morale=cl(m.morale-2,0,100);c.boardConfidence=cl(c.boardConfidence-1,0,100);}}
+    else{m.fitness=cl(m.fitness+3,0,100);m.morale=cl(m.morale+3,0,100);}
+    save();careerRender();careerToast("🗣️","TEAM TALK COMPLETE",choice==="demand"?"The squad has been challenged to raise its standards.":"The squad leaves the meeting focused and supported.");
+  }
+  window.KC_teamTalk=teamTalk;
+  function setFormation(formation){const c=careerClub();if(!c||c.mode!=="manager"||!["4-3-3","4-2-3-1","4-4-2","3-5-2","3-4-3"].includes(formation))return;c.management.formation=formation;save();careerRender();careerToast("📋","FORMATION UPDATED",formation+" will be used in your next career match.");}
+  window.KC_setFormation=setFormation;
+  function scoutProspects(){
+    const c=careerClub();if(!c||c.mode!=="manager")return;const m=c.management;if(c.budget<85000)return ask("You need 85,000 in your transfer budget to send the scout.");
+    c.budget-=85000;const excluded=new Set(c.xiIds.concat(c.benchIds,m.scoutedProspects));
+    const options=POOL.fb.filter(p=>!excluded.has(p.id)).sort(()=>rnd()-.5).slice(0,3+(m.staff.scout||1));
+    m.scoutedProspects=options.map(p=>p.id);m.scoutingSpend=(m.scoutingSpend||0)+85000; c.history.push({event:"Scouting mission",season:c.season,targets:m.scoutedProspects.length});save();careerRender();careerToast("🔎","SCOUTING REPORT READY",m.scoutedProspects.length+" prospects identified and added to your recruitment shortlist.");
+  }
+  window.KC_scoutProspects=scoutProspects;
+  function hireStaff(role){
+    const c=careerClub();if(!c||c.mode!=="manager")return;const m=c.management,fees={coach:550000,fitness:500000,scout:450000};if(!fees[role]||m.staff[role]>=3)return ask("That staff department is already at its maximum level.");if(c.budget<fees[role])return ask("Your transfer budget is too low for this appointment.");
+    c.budget-=fees[role];m.staff[role]++;m.staffSpend=(m.staffSpend||0)+fees[role];c.history.push({event:"Staff appointment",role,level:m.staff[role],season:c.season});save();careerRender();careerToast("🧑‍💼","STAFF APPOINTED",role.toUpperCase()+" department upgraded to level "+m.staff[role]+".");
+  }
+  window.KC_hireStaff=hireStaff;
+  function upgradeSponsor(){
+    const c=careerClub();if(!c||c.mode!=="manager")return;const m=c.management;if(m.sponsorTier>=3)return ask("Your sponsorship package is already at the highest tier.");if(c.budget<650000)return ask("You need 650,000 in your transfer budget to upgrade sponsorship.");
+    c.budget-=650000;m.sponsorTier++;c.history.push({event:"Sponsor upgrade",tier:m.sponsorTier,season:c.season});save();careerRender();careerToast("🤝","SPONSORSHIP UPGRADED","Match bonuses are now higher for the rest of the season.");
+  }
+  window.KC_upgradeSponsor=upgradeSponsor;
+  function boardMeeting(){
+    const c=careerClub();if(!c||c.mode!=="manager")return;const m=c.management;if(c.round<3||c.round-m.lastBoardReviewRound<3)return ask("The board schedules reviews after every three fixtures.");
+    m.lastBoardReviewRound=c.round;
+    if(c.record.wins>=Math.ceil(c.round*.55)){const reward=175000+(m.staff.coach||1)*25000;c.budget+=reward;c.boardConfidence=cl(c.boardConfidence+5,0,100);careerToast("📈","BOARD MEETING · POSITIVE","The board approved a performance bonus of "+money(reward)+".");}
+    else{c.boardConfidence=cl(c.boardConfidence-6,0,100);careerToast("📉","BOARD MEETING · TARGET MISSED","The board expects stronger results in the next review period.");}
+    save();careerRender();
+  }
+  window.KC_boardMeeting=boardMeeting;
+
+  function showTransfers(){
+    const c=careerClub();if(!c)return;
+    if(c.mode==="player"){
+      const offers=CL.map((club,index)=>({club,index})).filter(x=>x.index!==c.club).sort((a,b)=>a.club.n.localeCompare(b.club.n));
+      const h='<div class="kc-panel"><div class="kc-eyebrow">PLAYER TRANSFER HUB</div><h2>Find your next club</h2><p class="kc-muted">Choose a club to request a move. Your career statistics, player rating and trophies travel with you.</p><div class="kc-field"><label>Available clubs</label><select id="kcTransferClub">'+offers.map(x=>'<option value="'+x.index+'">'+esc(x.club.n)+' · '+esc(LEAGUES[x.club.li].n)+'</option>').join("")+'</select></div><button class="kc-primary" style="margin-top:12px" onclick="KC_moveClub()">REQUEST TRANSFER</button><button class="kc-secondary" style="margin-left:8px" onclick="KC_render()">Back</button></div>';
+      $("career").innerHTML=h;return;
+    }
+    const already=new Set(c.xiIds.concat(c.benchIds));
+    const market=POOL.fb.filter(p=>!already.has(p.id)).sort((a,b)=>b.o-a.o).slice(0,24);
+    $("career").innerHTML='<div class="kc-hero"><div class="kc-eyebrow">CAREER MODE · RECRUITMENT</div><h1>TRANSFER MARKET</h1><p>Strengthen your first team with new signings. Better players cost more. Your main club coins and collection are not affected.</p></div><div class="kc-panel"><div class="kc-dash-name">Budget · '+money(c.budget)+'</div><p class="kc-muted">Signings are automatically added to the bench or replace a weaker player in the same position.</p><div class="kc-roster">'+market.map(p=>{const cost=Math.round(200000+p.o*p.o*650);return '<div class="kc-roster-item"><span><b>'+esc(p.n)+'</b><small>'+p.pos+' · '+p.o+' OVR</small></span><button class="kc-secondary" '+(c.budget<cost?'disabled':'')+' onclick="KC_signPlayer('+p.id+')">'+money(cost)+'</button></div>';}).join("")+'</div><h2 class="kc-section-title">Manager job board</h2><p class="kc-muted">After three fixtures, you can apply to manage another club. Your career record and trophy cabinet will follow you.</p><div class="kc-field" style="max-width:360px"><label>Available club</label><select id="kcManagerClub">'+CL.map((club,index)=>'<option value="'+index+'" '+(index===c.club?'disabled':'')+'>'+esc(club.n)+' · '+esc(LEAGUES[club.li].n)+'</option>').join("")+'</select></div><button class="kc-secondary" style="margin-top:9px" onclick="KC_managerMoveClub()" '+(c.round<3?'disabled':'')+'>APPLY FOR MANAGER JOB</button><button class="kc-secondary" style="margin:14px 0 0 8px" onclick="KC_render()">Back to career</button></div>';
+  }
+  window.KC_showTransfers=showTransfers;
+  function moveClub(){
+    const c=careerClub(),el=$("kcTransferClub");if(!c||!el)return;
+    const index=cl(Number(el.value)||0,0,CL.length-1);if(index===c.club)return;
+    const old=CL[c.club].n;c.club=index;c.history.push({event:"Transfer",from:old,to:CL[index].n,season:c.season});c.transferCooldown=3;save();careerRender();ask("Transfer complete. You have joined "+CL[index].n+".");
+  }
+  window.KC_moveClub=moveClub;
+  function signPlayer(id){
+    const c=careerClub();if(!c||c.mode!=="manager")return;const p=POOL.fb[Number(id)];if(!p||c.xiIds.includes(p.id)||c.benchIds.includes(p.id))return;
+    const cost=Math.round(200000+p.o*p.o*650);if(c.budget<cost)return ask("Your transfer budget is too low for this signing.");
+    c.budget-=cost;
+    const slots=c.xiIds.map((pid,index)=>({p:POOL.fb[pid],index})).filter(x=>x.p&&x.p.pos===p.pos).sort((a,b)=>a.p.o-b.p.o);
+    if(slots.length&&p.o>slots[0].p.o){const old=c.xiIds[slots[0].index];c.xiIds[slots[0].index]=p.id;c.benchIds.push(old);}else c.benchIds.push(p.id);
+    c.management.scoutedProspects=(c.management.scoutedProspects||[]).filter(pid=>Number(pid)!==p.id);
+    c.history.push({event:"Signing",player:p.n,fee:cost,season:c.season});save();showTransfers();careerToast("📝","SIGNING COMPLETED",p.n+" has joined "+CL[c.club].n+".");
+  }
+  window.KC_signPlayer=signPlayer;
+  window.KC_managerMoveClub=function(){
+    const c=careerClub(),el=$("kcManagerClub");if(!c||c.mode!=="manager"||!el)return;
+    if(c.round<3)return ask("Complete at least three fixtures before applying for a new job.");
+    const index=cl(Number(el.value)||0,0,CL.length-1);if(index===c.club)return;
+    const old=CL[c.club].n;c.club=index;c.boardConfidence=70;c.history.push({event:"Manager appointment",from:old,to:CL[index].n,season:c.season});save();careerRender();ask("Appointment confirmed. You are now the manager of "+CL[index].n+".");
+  };
+
+  function showTrophies(){const c=careerClub();if(!c)return;$("career").innerHTML='<div class="kc-hero"><div class="kc-eyebrow">CAREER HONOURS</div><h1>TROPHY CABINET</h1><p>Every silverware moment is recorded here. Select a trophy to replay its presentation animation.</p></div><div class="kc-trophy-grid">'+(c.trophies.length?c.trophies.slice().reverse().map((t,i)=>'<button class="kc-trophy" onclick="KC_replayTrophy('+ (c.trophies.length-1-i) +')"><span>'+trophyInfo(t.name).icon+'</span><b>'+esc(t.name)+'</b><small>Season '+t.season+' · Replay ceremony</small></button>').join(""):'<div class="kc-panel kc-muted">No trophies won yet. Your first ceremony is waiting.</div>')+'</div><button class="kc-secondary" style="margin-top:14px" onclick="KC_render()">Back to career</button>';
+  }
+  window.KC_showTrophies=showTrophies;
+  window.KC_replayTrophy=function(index){const c=careerClub(),t=c&&c.trophies[index];if(t)showTrophy(t.name,t.season);};
+  function showHistory(){const c=careerClub();if(!c)return;$("career").innerHTML='<div class="kc-hero"><div class="kc-eyebrow">CAREER ARCHIVE</div><h1>SEASON HISTORY</h1><p>Your previous clubs, seasonal results and honours.</p></div>'+(c.history.length?c.history.map(h=>'<div class="kc-panel" style="margin:9px 0"><b>Season '+h.season+' · '+esc(h.club||h.to||"")+'</b><p class="kc-muted">'+(h.record? h.record.wins+' W · '+h.record.draws+' D · '+h.record.losses+' L · '+h.record.goals+' goals':esc(h.event||"Career event"))+'</p><div>'+((h.awards||[]).map(a=>'<span class="kc-chip">🏆 '+esc(a)+'</span>').join(""))+'</div></div>').join(""):'<div class="kc-panel kc-muted">Your first season is still underway.</div>')+'<button class="kc-secondary" style="margin-top:14px" onclick="KC_render()">Back</button>';
+  }
+  window.KC_showHistory=showHistory;
+  window.KC_render=careerRender;
+  function newCareer(){
+    if(!confirm("Start a new career? Your existing Career Mode save will be replaced. Your main club, coins and packs stay untouched."))return;
+    delete S.career;save();careerRender();
+  }
+  window.KC_newCareer=newCareer;
+
+  // Extend the final tab controller without disturbing the Stadium/Online special handlers.
+  showTab=function(name){
+    if(name==="career"){
+      if(M&&!M.over)return;
+      tabOn="career";
+      document.querySelectorAll("#main > .tab").forEach(el=>el.classList.toggle("on",el.id==="career"));
+      document.querySelectorAll("#side .sitems button").forEach(el=>el.classList.toggle("on",el.id==="nav-career"));
+      careerRender();
+      document.querySelectorAll("#start .sitems button").forEach(el=>el.classList.toggle("sel",el.dataset.t==="career"));
+      return;
+    }
+    const result=baseShowTab(name);
+    const page=$("career");if(page)page.classList.remove("on");
+    const nav=$("nav-career");if(nav)nav.classList.remove("on");
+    return result;
+  };
+  refresh=function(){baseRefresh();if(tabOn==="career")careerRender();};
+  const baseMenuGo=menuGo;
+  menuGo=function(name){
+    if(name==="career"){
+      audio();music(true);$("start").classList.add("hide");
+      document.querySelectorAll("#start .sitems button").forEach(b=>b.classList.toggle("sel",b.dataset.t==="career"));
+      if(S){refresh();showTab("career");}else{pending="career";openPick();}
+      return;
+    }
+    return baseMenuGo(name);
+  };
+
+  // Install career mode in the browser while keeping the main save schema backwards-compatible.
+  if(S&&S.career)ensureCareerShape(S.career);
+  if(S)baseSave();
+  careerRender();
+  window.KIKSTART_CAREER_V17_READY=true;
+})();
+
+</script>
+<script>
+/* KIKSTART v20 — KHIZAR SECRET CARD
+   Code-exclusive 100 OVR player, hidden from the Player Index, packs and market.
+*/
+(function KIKSTART_V19_KHIZARGIVE(){
+  if (window.__kikstartV20KhizarInstalled) return;
+  window.__kikstartV20KhizarInstalled = true;
+
+  const code = "__ks404_khizar__";
+  const secretPlayers = {};
+  const modes = ["fb", "fs"];
+
+  // Keep the IDs stable on subsequent loads by adding each player only once.
+  modes.forEach(mode => {
+    const pool = POOL[mode];
+    let player = pool.find(item => item && item.khizargive === true);

@@ -1,0 +1,1000 @@
+    let panel = $("kcTeamControlPanel");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "kcTeamControlPanel";
+      panel.innerHTML = '<span id="kcTeamControlName" aria-live="polite"></span><button id="kcTeamControlButton" type="button" aria-label="Switch to the next teammate">↻ SWITCH PLAYER <kbd>C</kbd></button>';
+      stage.appendChild(panel);
+      const button = $("kcTeamControlButton");
+      button.addEventListener("click", () => window.KC_switchCareerPlayer());
+    }
+    const name = $("kcTeamControlName");
+    const text = "CONTROLLING · " + playerLabel(m.careerControlPlayer || m.ctrl);
+    if (name && name.textContent !== text) name.textContent = text;
+    panel.style.display = "flex";
+  }
+
+  function switchCareerPlayer(direction){
+    const m = M;
+    if (!isPlayerCareerMatch(m)) return false;
+    const players = activeHomePlayers(m);
+    if (!players.length) return false;
+    const current = players.indexOf(m.careerControlPlayer || m.ctrl || m.careerActor);
+    const step = direction < 0 ? -1 : 1;
+    const nextIndex = current < 0 ? 0 : (current + step + players.length) % players.length;
+    m.careerControlPlayer = players[nextIndex];
+    m.careerManualControl = true;
+    m.ctrl = m.careerControlPlayer;
+    paintSwitchPanel(m);
+    return true;
+  }
+  window.KC_switchCareerPlayer = () => switchCareerPlayer(1);
+  window.KC_switchCareerPlayerBack = () => switchCareerPlayer(-1);
+
+  // The default game auto-selects the ball carrier or nearest defender. In Player
+  // Career, that selection now covers every home player (including the created
+  // avatar and goalkeeper), and C cycles through the full active XI.
+  pickCtrl = function(){
+    const m = M;
+    if (!isPlayerCareerMatch(m)) return previousPickCtrl.apply(this, arguments);
+
+    const players = activeHomePlayers(m);
+    if (!players.length) { m.ctrl = null; return; }
+
+    if (!m.careerControlPlayer || !players.includes(m.careerControlPlayer)) {
+      m.careerControlPlayer = players.includes(m.careerActor) ? m.careerActor : players[0];
+      m.careerManualControl = false;
+    }
+
+    // Key is edge-triggered so holding C never skips through the squad.
+    if (K.KeyC && !m.careerSwitchHeld) {
+      switchCareerPlayer(1);
+      m.careerSwitchHeld = true;
+    }
+    if (!K.KeyC) m.careerSwitchHeld = false;
+
+    // Preserve normal football auto-switching until the user manually chooses
+    // another teammate. Once they do, the selected player stays under control.
+    if (!m.careerManualControl) {
+      if (m.owner && m.owner.t === 0 && players.includes(m.owner)) {
+        m.careerControlPlayer = m.owner;
+      } else {
+        let nearest = null, bestDistance = Infinity;
+        players.forEach(p => {
+          if (p.gk) return;
+          const distance = Math.hypot(p.x - m.ball.x, p.z - m.ball.z);
+          if (distance < bestDistance) { bestDistance = distance; nearest = p; }
+        });
+        if (nearest) m.careerControlPlayer = nearest;
+      }
+    }
+
+    if (!players.includes(m.careerControlPlayer)) m.careerControlPlayer = players[0];
+    m.ctrl = m.careerControlPlayer;
+    paintSwitchPanel(m);
+  };
+
+  // After a pass by the human-controlled player, transfer control to the receiver
+  // so the player can continue the move naturally.
+  passTo = function(p, q){
+    const m = M;
+    const shouldFollowReceiver = isPlayerCareerMatch(m) && p && q && p.t === 0 && q.t === 0 && (m.careerControlPlayer === p || m.ctrl === p);
+    const result = previousPassTo.apply(this, arguments);
+    if (shouldFollowReceiver && activeHomePlayers(m).includes(q)) {
+      m.careerControlPlayer = q;
+      m.careerManualControl = true;
+      m.ctrl = q;
+      paintSwitchPanel(m);
+    }
+    return result;
+  };
+
+  // Hide the helper when the user has left the live match. It will be recreated
+  // automatically next time a Player Career match starts.
+  const style = document.createElement("style");
+  style.id = "kikstartV23CareerControlStyle";
+  style.textContent = `
+    #kcTeamControlPanel{position:absolute;right:12px;bottom:27px;z-index:12;display:none;align-items:center;gap:9px;max-width:calc(100% - 24px);padding:8px 10px;border:1px solid #8de9e477;border-radius:12px;background:linear-gradient(125deg,#0a1728ed,#172c4bed);box-shadow:0 8px 22px #0008;pointer-events:auto;backdrop-filter:blur(8px)}
+    #kcTeamControlName{max-width:175px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d8fff7;font-size:10px;font-weight:900;letter-spacing:.06em}
+    #kcTeamControlButton{padding:8px 11px!important;border:1px solid #8de9e4!important;border-radius:9px!important;background:linear-gradient(135deg,#d7fff6,#55d9c0)!important;color:#071b24!important;font-size:10px!important;font-weight:1000!important;white-space:nowrap}
+    #kcTeamControlButton kbd{margin-left:5px;padding:2px 5px;border-radius:4px;background:#082f3c;color:#fff;font:900 10px system-ui}
+    @media(max-width:650px){#kcTeamControlPanel{left:8px;right:8px;bottom:8px;justify-content:space-between}#kcTeamControlName{max-width:46vw}#kcTeamControlButton{min-height:38px}}
+  `;
+  document.head.appendChild(style);
+
+  // Expose the selected player and switch function for mobile controls and tests.
+  window.KC_getControlledPlayer = () => isPlayerCareerMatch(M) ? playerLabel(M.careerControlPlayer || M.ctrl) : null;
+  window.KIKSTART_V23_CAREER_TEAM_CONTROL_READY = true;
+})();
+
+</script>
+<script>
+/* KIKSTART v24 — Easier, assisted shooting
+   Tap Shoot for a strong accurate effort; hold briefly for extra power.
+   Includes a visible Quick Shoot button and an optional assist toggle.
+*/
+(function KIKSTART_V24_EASIER_SHOOTING(){
+  if (window.__kikstartV24EasierShooting) return;
+  window.__kikstartV24EasierShooting = true;
+
+  const $ = id => document.getElementById(id);
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const shootBase = shoot;
+  const userCtrlBase = userCtrl;
+  const stepMatchBase = stepMatch;
+
+  function assistEnabled(match = M) {
+    if (!match) return true;
+    if (typeof match.v24ShotAssist === "boolean") return match.v24ShotAssist;
+    return !(S && S.v24ShotAssist === false);
+  }
+
+  function paintAssistUI(match = M) {
+    const button = $("v24ShotAssistToggle");
+    const status = $("v24ShotAssistStatus");
+    const quick = $("v24QuickShoot");
+    const enabled = assistEnabled(match);
+    if (button) {
+      button.textContent = enabled ? "ASSIST ON" : "ASSIST OFF";
+      button.classList.toggle("off", !enabled);
+      button.setAttribute("aria-pressed", enabled ? "true" : "false");
+    }
+    if (status) status.textContent = enabled
+      ? "Tap SHOOT for a strong, accurate shot · Hold briefly for extra power"
+      : "Manual shooting · Hold SHOOT to build power";
+    if (quick) quick.disabled = !match || match.over || match.wait || match.intro > 0;
+  }
+
+  function setAssist(enabled) {
+    if (S) {
+      S.v24ShotAssist = !!enabled;
+      try { save(); } catch (_) {}
+    }
+    if (M) {
+      M.v24ShotAssist = !!enabled;
+      M.v24ShotAssistInitialised = true;
+      if (!enabled) M.chg = 0;
+    }
+    paintAssistUI(M);
+  }
+  window.KIKSTART_setShotAssist = setAssist;
+
+  // Assisted shots retain the selected direction but nudge it toward the usable
+  // goal mouth, use a reliable minimum power, and greatly reduce random spread.
+  shoot = function(player, power, aimZ, shotHeight) {
+    const match = M;
+    const userControlled = !!(match && player && player.t === 0 &&
+      (player === match.ctrl || player === match.owner || player === match.careerControlPlayer));
+    if (!userControlled || !assistEnabled(match)) {
+      return shootBase.apply(this, arguments);
+    }
+
+    const field = match.F || {};
+    const goalHalfWidth = Math.max(1, Number(field.gw) || 12);
+    const requestedAim = Number.isFinite(Number(aimZ)) ? Number(aimZ) : 0;
+    // Keep the user's aim direction, but bring very wide efforts back inside the posts.
+    const assistedAim = clamp(requestedAim * 0.58, -goalHalfWidth * 0.32, goalHalfWidth * 0.32);
+    const assistedPower = Math.max(clamp(Number(power) || 0, 0, 1), 0.78);
+    const preferredHeight = Number.isFinite(Number(shotHeight))
+      ? Number(shotHeight)
+      : (Number.isFinite(Number(match.aimHeight)) ? Number(match.aimHeight) : 0.28);
+    const height = clamp(preferredHeight, 0.08, 0.62);
+
+    const originalRating = player.o;
+    const originalSkill = player.sk;
+    // The base shooting formula uses overall and skill to calculate dispersion.
+    // Temporarily lifting these values only for the shot makes the aim more forgiving
+    // without permanently changing the player's card or attributes.
+    player.o = Math.max(Number(player.o) || 0, 94);
+    player.sk = Math.max(Number(player.sk) || 1, 1.2);
+    try {
+      return shootBase.call(this, player, assistedPower, assistedAim, height);
+    } finally {
+      player.o = originalRating;
+      player.sk = originalSkill;
+    }
+  };
+
+  // A tap begins at useful power. Holding the button/key a little longer still
+  // charges the shot naturally to full power using the existing match controller.
+  userCtrl = function(player, dt) {
+    const match = M;
+    if (match && player && player.t === 0 && player === match.ctrl && assistEnabled(match)) {
+      const shootDown = !!(K.KeyF || K.KeyJ);
+      if (shootDown && !match.v24ShootWasDown && match.owner === player && !match.over && !match.wait && !(match.intro > 0)) {
+        match.chg = Math.max(Number(match.chg) || 0, 0.72);
+      }
+      match.v24ShootWasDown = shootDown;
+    } else if (match) {
+      match.v24ShootWasDown = false;
+    }
+    return userCtrlBase.apply(this, arguments);
+  };
+
+  // Initialise assistance and a forgiving default loft for each local or career match.
+  stepMatch = function(dt) {
+    if (M && !M.v24ShotAssistInitialised) {
+      M.v24ShotAssist = !(S && S.v24ShotAssist === false);
+      M.v24ShotAssistInitialised = true;
+      if (M.aimHeight === undefined || M.aimHeight === null || !Number.isFinite(Number(M.aimHeight))) M.aimHeight = 0.28;
+      else if (M.v24AimTouched !== true) M.aimHeight = 0.28;
+      const slider = $("shotAimRange");
+      const readout = $("shotAimReadout");
+      if (slider && M.v24AimTouched !== true) slider.value = String(Math.round(M.aimHeight * 100));
+      if (readout) readout.textContent = "Assisted · " + Math.round(M.aimHeight * 100) + "%";
+      paintAssistUI(M);
+    }
+    const result = stepMatchBase.apply(this, arguments);
+    if (M) paintAssistUI(M);
+    return result;
+  };
+
+  // Clicking Quick Shoot selects the current ball carrier in Player Career if needed,
+  // then fires immediately. It is also available on desktop, not just touch devices.
+  function quickShoot() {
+    const match = M;
+    if (!match || match.over || match.wait || match.intro > 0 || match.pause > 0) return;
+    let player = match.owner;
+    if (!player || player.t !== 0) {
+      if (typeof banner === "function") banner("WIN THE BALL BEFORE SHOOTING");
+      return;
+    }
+    if (typeof match.careerAttached !== "undefined" && match.careerAttached && match.careerModeType === "player") {
+      match.careerControlPlayer = player;
+      match.careerManualControl = true;
+    }
+    match.ctrl = player;
+    match.chg = 0;
+    shoot(player, 0.9, 0, 0.28);
+    match.chg = 0;
+    paintAssistUI(match);
+  }
+  window.KIKSTART_quickShoot = quickShoot;
+
+  // Build one clear control strip below the height slider.
+  const aimPanel = $("shotAimPanel");
+  if (aimPanel && !$("v24ShotAssistBar")) {
+    const bar = document.createElement("div");
+    bar.id = "v24ShotAssistBar";
+    bar.innerHTML = '<div class="v24-shot-copy"><b>SMART SHOOTING</b><small id="v24ShotAssistStatus">Tap SHOOT for a strong, accurate shot · Hold briefly for extra power</small></div>' +
+      '<div class="v24-shot-actions"><button type="button" id="v24QuickShoot" class="v24-quick-shot">⚽ QUICK SHOOT</button><button type="button" id="v24ShotAssistToggle" class="v24-assist-toggle" aria-pressed="true">ASSIST ON</button></div>';
+    aimPanel.insertAdjacentElement("afterend", bar);
+    $("v24QuickShoot").addEventListener("click", quickShoot);
+    $("v24ShotAssistToggle").addEventListener("click", () => setAssist(!assistEnabled(M)));
+  }
+
+  const slider = $("shotAimRange");
+  if (slider && !slider.dataset.v24AssistBound) {
+    slider.dataset.v24AssistBound = "1";
+    slider.addEventListener("input", () => {
+      if (M) M.v24AimTouched = true;
+    });
+  }
+
+  // If the keyboard button is tapped and released between two animation frames,
+  // pre-charge from the key event so the quick tap is still registered.
+  window.addEventListener("keydown", event => {
+    if (event.repeat || (event.code !== "KeyF" && event.code !== "KeyJ")) return;
+    const match = M;
+    if (!match || !assistEnabled(match) || match.over || match.wait || match.intro > 0) return;
+    if (match.owner && match.owner.t === 0) match.chg = Math.max(Number(match.chg) || 0, 0.72);
+  }, {passive:true});
+
+  // On touchscreens, a very quick pointer tap receives the same useful starting power.
+  const mobileShoot = $("mobileShoot");
+  if (mobileShoot && !mobileShoot.dataset.v24AssistBound) {
+    mobileShoot.dataset.v24AssistBound = "1";
+    mobileShoot.addEventListener("pointerdown", () => {
+      if (M && assistEnabled(M) && M.owner && M.owner.t === 0 && !M.over && !M.wait && !(M.intro > 0)) {
+        M.chg = Math.max(Number(M.chg) || 0, 0.72);
+      }
+    }, {passive:true});
+    mobileShoot.title = "Tap for a strong assisted shot; hold briefly for extra power";
+  }
+
+  const style = document.createElement("style");
+  style.id = "kikstartV24ShotAssistStyle";
+  style.textContent = `
+    #v24ShotAssistBar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%;max-width:920px;margin:0 0 16px;padding:12px 14px;border:1px solid #3c6b80;border-radius:14px;background:radial-gradient(circle at 90% 0%,#23dec522,transparent 44%),linear-gradient(120deg,#102542,#0a1428);box-shadow:0 10px 25px #0005}
+    .v24-shot-copy{display:flex;flex-direction:column;gap:4px;min-width:190px;flex:1}.v24-shot-copy b{font-size:11px;letter-spacing:.12em;color:#a6ffe8}.v24-shot-copy small{font-size:11px;line-height:1.4;color:#d6e4f4;opacity:.82}
+    .v24-shot-actions{display:flex;gap:8px;flex-wrap:wrap}.v24-shot-actions button{min-height:38px;padding:9px 13px;border-radius:10px;font-size:11px;font-weight:1000;letter-spacing:.04em}
+    .v24-quick-shot{background:linear-gradient(135deg,#fff0b2,#ffad42)!important;color:#291a05!important;border:1px solid #fff1bd!important;box-shadow:0 0 18px #ffbd4a55}
+    .v24-assist-toggle{background:linear-gradient(135deg,#b8ffeb,#41c9ac)!important;color:#06251f!important;border:1px solid #9dffe6!important}.v24-assist-toggle.off{background:#293954!important;color:#e2ebf8!important;border-color:#526786!important}
+    #mobileShoot{touch-action:none}#mobileShoot:active,.v24-quick-shot:active{filter:brightness(1.15);transform:scale(.97)}
+    @media(max-width:600px){#v24ShotAssistBar{align-items:stretch}.v24-shot-actions{width:100%}.v24-shot-actions button{flex:1}}
+  `;
+  document.head.appendChild(style);
+
+  // Update the old instructions without changing any other match help text.
+  const help = document.querySelector("#matchView > p");
+  if (help && /Move:/.test(help.textContent)) {
+    help.textContent = "Move: WASD / arrows · Pass: Space · Shoot: tap F / Shoot for a strong assisted shot, hold briefly for more power · Switch player: C · Sprint: Shift · Shot height: slider";
+  }
+
+  if (S && typeof S.v24ShotAssist !== "boolean") {
+    S.v24ShotAssist = true;
+    try { save(); } catch (_) {}
+  }
+  paintAssistUI(M);
+  window.KIKSTART_V24_SHOOTING_READY = true;
+})();
+
+</script>
+
+<script>
+/* KIKSTART v25 — compact football experience expansion
+   Adds match lab, fitness & injuries, smarter AI, career divisions, player evolution,
+   kit studio, friend divisions, Football Journey and diagnostics.
+   All new screens are nested inside Club Hub to keep the main navigation uncluttered. */
+(function KIKSTART_V25_COMPACT_EXPERIENCE(){
+  if (window.__kikstartV25CompactExperience) return;
+  window.__kikstartV25CompactExperience = true;
+
+  const $ = id => document.getElementById(id);
+  const clamp = (n,a,b) => Math.max(a,Math.min(b,Number(n)||0));
+  const safe = value => String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const money = n => "🪙 " + Math.max(0,Math.round(Number(n)||0)).toLocaleString("en-AU");
+  const pageNames = new Set(["matchlab","evolution","kitstudio","divisions","journey","diagnostics"]);
+  let activeLab = "penalty";
+  let labState = {started:false,phase:"shoot",round:0,player:0,opponent:0,history:[],target:"left",power:72,practiceScore:0,attempts:0,last:""};
+  let lastEnergyPaint = 0;
+
+  function ensureState(){
+    if(!S || typeof S!=="object") return null;
+    S.v25 = S.v25 && typeof S.v25==="object" ? S.v25 : {};
+    const v=S.v25;
+    v.evolution = v.evolution && typeof v.evolution==="object" ? v.evolution : {};
+    v.evolutionChallenge = v.evolutionChallenge && typeof v.evolutionChallenge==="object" ? v.evolutionChallenge : null;
+    v.kits = v.kits && typeof v.kits==="object" ? v.kits : {
+      homeShirt:CL[S.club]?.a||"#6CABDD",homeShorts:CL[S.club]?.b||"#1C2C5B",
+      awayShirt:"#F4F6FB",awayShorts:"#17233D",thirdShirt:"#20C9A2",thirdShorts:"#102A3B",pattern:"classic"
+    };
+    v.onlineDivision = Object.assign({rating:1000,wins:0,draws:0,losses:0,history:[],season:1},v.onlineDivision||{});
+    v.setPieceStats = Object.assign({penalties:0,penaltyGoals:0,freeKicks:0,freeKickTargets:0,corners:0,cornerChances:0},v.setPieceStats||{});
+    v.playerCondition = v.playerCondition && typeof v.playerCondition==="object" ? v.playerCondition : {};
+    v.lastErrors = Array.isArray(v.lastErrors) ? v.lastErrors.slice(-10) : [];
+    return v;
+  }
+  function divisionName(points){return points>=1500?"Elite":points>=1300?"Gold":points>=1125?"Silver":"Bronze";}
+  function keyFor(mode,id){return String(mode||"fb")+":"+String(id);}
+  function getCondition(mode,id){const v=ensureState();if(!v)return {fatigue:0,injuryMatches:0,suspensionMatches:0};const k=keyFor(mode,id);v.playerCondition[k]=Object.assign({fatigue:0,injuryMatches:0,suspensionMatches:0},v.playerCondition[k]||{});return v.playerCondition[k];}
+
+  // ---------- Compact access: one collapsed drawer on Club Hub, no extra sidebar tabs ----------
+  function injectHubDrawer(){
+    const root=$("clubhub");if(!root||$("v25MoreTools"))return;
+    const hero=root.querySelector(".v22-hero");if(!hero)return;
+    const box=document.createElement("details");box.id="v25MoreTools";box.className="v25-more-tools";
+    box.innerHTML='<summary><span>✦ MORE GAME FEATURES</span><small>Match Lab · Evolution · Kits · Divisions · Journey</small></summary><div class="v25-tool-links">'+
+      '<button onclick="V25_open(\'matchlab\')">🎯 Match Lab</button><button onclick="V25_open(\'evolution\')">✨ Player Evolution</button><button onclick="V25_open(\'kitstudio\')">👕 Kit Studio</button><button onclick="V25_open(\'divisions\')">🌐 Friend Divisions</button><button onclick="V25_open(\'journey\')">📖 Football Journey</button><button onclick="V25_open(\'diagnostics\')">🛠 Game Health</button></div>';
+    hero.insertAdjacentElement("afterend",box);
+  }
+  function ownHeader(title,sub){return '<div class="v25-page-head"><div><div class="v25-eyebrow">KIKSTART · CLUB HUB</div><h1>'+safe(title)+'</h1><p>'+safe(sub)+'</p></div><div class="v25-page-actions"><button onclick="V25_open(\'dashboard\')">← Hub</button><button class="alt" onclick="showTab(\'career\')">Career</button></div></div>';}
+  const openHubBase=window.V22_openHub;
+  if(typeof openHubBase==="function"){
+    window.V22_openHub=function(page){
+      if(pageNames.has(page)){V25_open(page);return;}
+      const r=openHubBase.apply(this,arguments);
+      if(page==="dashboard")setTimeout(injectHubDrawer,0);
+      return r;
+    };
+  }
+  window.V25_open=function(page){
+    const root=$("clubhub");if(!root)return;
+    if(page==="dashboard"){
+      if(typeof openHubBase==="function")openHubBase("dashboard");
+      setTimeout(injectHubDrawer,0);return;
+    }
+    if(!pageNames.has(page))return;
+    if(!S){root.innerHTML=ownHeader("Club Hub","Choose a club first.");return;}
+    if(page==="matchlab")root.innerHTML=renderMatchLab();
+    else if(page==="evolution")root.innerHTML=renderEvolution();
+    else if(page==="kitstudio")root.innerHTML=renderKitStudio();
+    else if(page==="divisions")root.innerHTML=renderDivisions();
+    else if(page==="journey")root.innerHTML=renderJourney();
+    else if(page==="diagnostics")root.innerHTML=renderDiagnostics();
+    if(page==="matchlab")drawLabCanvas();
+  };
+  const showTabBase=showTab;
+  showTab=function(name){const r=showTabBase.apply(this,arguments);if(name==="clubhub")setTimeout(injectHubDrawer,0);return r;};
+
+  // ---------- Match Lab: playable penalty shootout + free-kick / corner drills ----------
+  function pitchCanvas(){return '<canvas id="v25LabCanvas" width="900" height="480" aria-label="Set-piece practice pitch"></canvas>';}
+  function renderMatchLab(){
+    const s=ensureState().setPieceStats;
+    return ownHeader("Match Lab","Practise penalties, free kicks and corner deliveries without risking league points or coins.")+
+      '<div class="v25-lab-tabs"><button class="'+(activeLab==="penalty"?"active":"")+'" onclick="V25_labMode(\'penalty\')">⚽ Penalty shootout</button><button class="'+(activeLab==="freekick"?"active":"")+'" onclick="V25_labMode(\'freekick\')">🎯 Free kicks</button><button class="'+(activeLab==="corner"?"active":"")+'" onclick="V25_labMode(\'corner\')">🚩 Corners</button></div>'+
+      '<div class="v25-lab-layout"><section class="v25-card v25-pitch-card">'+pitchCanvas()+'<div class="v25-lab-score"><span>Practice score <b>'+s.penaltyGoals+'/'+s.penalties+'</b></span><span>Free-kick targets <b>'+s.freeKickTargets+'/'+s.freeKicks+'</b></span><span>Corner chances <b>'+s.cornerChances+'/'+s.corners+'</b></span></div></section><section class="v25-card v25-lab-controls">'+
+      (activeLab==="penalty"?penaltyControls():pieceControls())+'</section></div>'+
+      '<p class="v25-muted">Practice results are saved in your club profile. These drills do not change your league table, career record or player pack odds.</p>';
+  }
+  function penaltyControls(){
+    if(!labState.started)return '<div class="v25-eyebrow">FIVE KICKS EACH</div><h2>Penalty shootout</h2><p>Take five penalties against the AI goalkeeper, then try to read the opponent’s shot when you defend.</p><div class="v25-actions"><button onclick="V25_startPenalty()">START SHOOTOUT</button></div><div class="v25-scoreline"><b>Career practice record</b><span>Choose your corner · Save your side · Sudden-death not included</span></div>';
+    if(labState.round>=5)return '<div class="v25-eyebrow">SHOOTOUT COMPLETE</div><h2>'+(labState.player>labState.opponent?"🏆 SHOOTOUT WON":labState.player===labState.opponent?"🤝 SHOOTOUT DRAW":"SHOOTOUT LOST")+'</h2><div class="v25-big-score">'+labState.player+' – '+labState.opponent+'</div><p>'+safe(labState.last||"Five rounds completed.")+'</p><button onclick="V25_startPenalty()">PLAY AGAIN</button><button class="alt" onclick="V25_resetLab()">Back to Match Lab</button>';
+    const shooting=labState.phase==="shoot";
+    return '<div class="v25-eyebrow">ROUND '+(labState.round+1)+' / 5</div><h2>'+(shooting?"Your penalty":"Defend the penalty")+'</h2><div class="v25-scoreline"><b>'+labState.player+' – '+labState.opponent+'</b><span>'+(shooting?"Pick where to shoot":"Pick which way to dive")+'</span></div><div class="v25-direction-row">'+["left","centre","right"].map(d=>'<button class="v25-direction" onclick="V25_penaltyChoice(\''+d+'\')">'+(d==="centre"?"CENTRE":d.toUpperCase())+'</button>').join("")+'</div><p class="v25-lab-message" id="v25LabMessage">'+safe(labState.last||"Choose your direction.")+'</p>';
+  }
+  function pieceControls(){
+    const free=activeLab==="freekick",type=free?"Free kick":"Corner delivery";
+    return '<div class="v25-eyebrow">SKILL CHALLENGE</div><h2>'+type+'</h2><p>'+(free?"Pick a target around the wall and find the right power to bend the ball toward goal.":"Choose a delivery zone and power to put the ball into a dangerous area.")+'</p><label class="v25-field-label">'+(free?"Aim":"Delivery target")+'</label><div class="v25-direction-row">'+(free?["left","centre","right"]:["near","spot","far"]).map(d=>'<button class="v25-direction '+(labState.target===d?"selected":"")+'" onclick="V25_setLabTarget(\''+d+'\')">'+d.toUpperCase()+'</button>').join("")+'</div><label class="v25-field-label" for="v25Power">Power · <b id="v25PowerText">'+labState.power+'%</b></label><input id="v25Power" type="range" min="35" max="100" value="'+labState.power+'" oninput="V25_setLabPower(this.value)"><button class="v25-primary" onclick="V25_takePiece()">TAKE '+(free?"FREE KICK":"CORNER")+'</button><p class="v25-lab-message" id="v25LabMessage">'+safe(labState.last||"Aim carefully. You get a score for each attempt.")+'</p><div class="v25-scoreline"><b>Practice points: '+labState.practiceScore+'</b><span>Attempts: '+labState.attempts+'</span></div>';
+  }
+  function drawPitch(ctx,w,h){
+    const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,"#17683d");g.addColorStop(1,"#0a3d28");ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+    for(let i=0;i<10;i++){ctx.fillStyle=i%2?"rgba(255,255,255,.025)":"rgba(0,0,0,.035)";ctx.fillRect(i*w/10,0,w/10,h);}
+    ctx.strokeStyle="rgba(255,255,255,.78)";ctx.lineWidth=4;ctx.strokeRect(28,22,w-56,h-44);ctx.beginPath();ctx.moveTo(w/2,22);ctx.lineTo(w/2,h-22);ctx.stroke();ctx.beginPath();ctx.arc(w/2,h/2,63,0,Math.PI*2);ctx.stroke();ctx.strokeRect(w*.35,22,w*.3,90);ctx.strokeRect(w*.35,h-112,w*.3,90);
+    ctx.fillStyle="#f6fbff";ctx.fillRect(w/2-102,12,204,14);ctx.fillStyle="#102336";ctx.fillRect(w/2-97,16,194,6);ctx.fillStyle="#d9e8f4";ctx.fillRect(w/2-88,3,176,8);
+  }
+  function drawLabCanvas(){
+    const canvas=$("v25LabCanvas");if(!canvas)return;const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height;drawPitch(ctx,w,h);
+    const goalX=w/2,goalY=38;ctx.strokeStyle="#e8f4ff";ctx.lineWidth=8;ctx.strokeRect(goalX-110,goalY,220,48);ctx.strokeStyle="rgba(255,255,255,.25)";ctx.lineWidth=2;for(let x=goalX-100;x<goalX+100;x+=20){ctx.beginPath();ctx.moveTo(x,goalY+4);ctx.lineTo(x,goalY+44);ctx.stroke();}for(let y=goalY+10;y<goalY+48;y+=12){ctx.beginPath();ctx.moveTo(goalX-108,y);ctx.lineTo(goalX+108,y);ctx.stroke();}
+    ctx.fillStyle="#dceaf7";ctx.font="bold 23px system-ui";ctx.textAlign="center";ctx.fillText(activeLab==="penalty"?"PENALTY SHOOTOUT":activeLab==="freekick"?"FREE-KICK PRACTICE":"CORNER DELIVERY",w/2,130);
+    if(activeLab==="penalty"&&labState.started){ctx.fillStyle="#ffdb75";ctx.beginPath();ctx.arc(w/2,goalY+23,15,0,Math.PI*2);ctx.fill();ctx.fillStyle="#0b1728";ctx.font="bold 12px system-ui";ctx.fillText("GK",w/2,goalY+28);}
+    ctx.fillStyle="#fff";ctx.font="bold 15px system-ui";ctx.fillText("KIKSTART TRAINING GROUND",w/2,h-34);
+    ctx.fillStyle="rgba(255,255,255,.7)";ctx.font="12px system-ui";ctx.fillText(activeLab==="penalty"?"Choose a direction and read the goalkeeper":"Select the delivery zone, then adjust power",w/2,h-59);
+  }
+  window.V25_labMode=function(mode){if(!["penalty","freekick","corner"].includes(mode))return;activeLab=mode;labState={started:false,phase:"shoot",round:0,player:0,opponent:0,history:[],target:mode==="corner"?"spot":"left",power:72,practiceScore:0,attempts:0,last:""};V25_open("matchlab");};
+  window.V25_resetLab=function(){labState.started=false;V25_open("matchlab");};
+  window.V25_startPenalty=function(){activeLab="penalty";labState={started:true,phase:"shoot",round:0,player:0,opponent:0,history:[],target:"left",power:72,practiceScore:0,attempts:0,last:"Take your first penalty."};V25_open("matchlab");};
+  window.V25_penaltyChoice=function(direction){
+    if(!labState.started||labState.round>=5||!["left","centre","right"].includes(direction))return;
+    const dirs=["left","centre","right"];
+    if(labState.phase==="shoot"){
+      const keeper=dirs[Math.floor(Math.random()*dirs.length)],goal=keeper!==direction;
+      if(goal)labState.player++;labState.history.push({phase:"shoot",you:direction,keeper,goal});
+      labState.last=goal?"GOAL! You beat the goalkeeper.":"SAVED! The goalkeeper guessed correctly.";labState.phase="save";
+    }else{
+      const shot=dirs[Math.floor(Math.random()*dirs.length)],saved=shot===direction;
+      if(!saved)labState.opponent++;labState.history.push({phase:"save",you:direction,shot,saved});
+      labState.last=saved?"GREAT SAVE! You read the shot.":"GOAL CONCEDED. The opponent found the corner.";
+      labState.round++;labState.phase="shoot";
+      const v=ensureState();v.setPieceStats.penalties++;if(labState.history[labState.history.length-2]?.goal)v.setPieceStats.penaltyGoals++;
+    }
+    if(labState.round>=5){labState.started=true;save();}V25_open("matchlab");
+  };
+  window.V25_setLabTarget=function(target){if(activeLab==="freekick"&&["left","centre","right"].includes(target)||activeLab==="corner"&&["near","spot","far"].includes(target)){labState.target=target;V25_open("matchlab");}};
+  window.V25_setLabPower=function(value){labState.power=cl(value,35,100);const t=$("v25PowerText");if(t)t.textContent=labState.power+"%";};
+  window.V25_takePiece=function(){
+    if(!["freekick","corner"].includes(activeLab))return;
+    const power=cl(labState.power,35,100),aim=labState.target;
+    const sweet=activeLab==="freekick"?70:76,quality=1-Math.abs(power-sweet)/70;
+    const aimBonus=(activeLab==="freekick"?(aim==="centre"?.05:.02):(aim==="spot"?.12:.05));
+    const chance=cl((activeLab==="freekick"?.19:.34)+(quality*.36)+aimBonus,0,0.82),success=Math.random()<chance;
+    labState.attempts++;labState.practiceScore+=success?(activeLab==="freekick"?3:2):0;
+    const v=ensureState();if(activeLab==="freekick"){v.setPieceStats.freeKicks++;if(success)v.setPieceStats.freeKickTargets++;}else{v.setPieceStats.corners++;if(success)v.setPieceStats.cornerChances++;}
+    labState.last=success?(activeLab==="freekick"?"TOP CORNER! A clean free-kick finish.":"DANGEROUS DELIVERY! A teammate meets the cross."):(activeLab==="freekick"?"The wall or keeper dealt with that effort. Adjust your power.":"The delivery drifted away from the target. Try a different power.");save();V25_open("matchlab");
+  };
+
+  // ---------- Player Evolution: one active, fair challenge at a time ----------
+  function ownedPool(mode){return (POOL[mode]||[]).filter(p=>S&&S.owned&&S.owned[mode]&&Number(S.owned[mode][p.id])>0&&!p.secret&&!p.academy&&!p.youthGenerated);}
+  function evoLevel(mode,id){const v=ensureState();return clamp(v.evolution[mode+":"+id]||0,0,3);}
+  function renderEvolution(){
+    const v=ensureState(),mode=S.mode||"fb",players=ownedPool(mode),challenge=v.evolutionChallenge;
+    let h=ownHeader("Player Evolution","Complete small match challenges to improve cards you already own. Evolution bonuses are capped at +3 OVR and never change special secret cards.");
+    h+='<div class="v25-card v25-evo-status"><div><div class="v25-eyebrow">ACTIVE CHALLENGE</div><h2>'+(challenge?(safe((POOL[challenge.mode]||[]).find(p=>p.id===Number(challenge.id))?.n||"Your player")):"No active evolution")+'</h2><p>'+(challenge?"Score "+challenge.target+" team goals across your next "+challenge.matchesLeft+" matches.":"Choose an owned player to start an evolution challenge.")+'</p></div>'+(challenge?'<div class="v25-evo-progress"><b>'+challenge.goals+'/'+challenge.target+' goals</b><span>'+challenge.matchesLeft+' matches left</span></div>':'')+'</div>';
+    if(challenge&&challenge.ready)h+='<div class="v25-card"><b>✨ Challenge completed</b><p class="v25-muted">Claim your upgrade to add +1 OVR to the selected card.</p><button onclick="V25_claimEvolution()">CLAIM EVOLUTION</button></div>';
+    h+='<div class="v25-card"><div class="v25-card-head"><h3>Choose a player</h3><span class="v25-chip">'+(mode==="fb"?"Football":"Futsal")+'</span></div><p class="v25-muted">Switch Football / Futsal on Home to evolve players in the other squad.</p><div class="v25-evo-grid">';
+    h+=players.length?players.map(p=>{const level=evoLevel(mode,p.id),active=challenge&&challenge.mode===mode&&Number(challenge.id)===p.id;return '<article class="v25-evo-player"><div class="v25-evo-rating">'+Math.min(99,p.o+level)+'<small>OVR</small></div><div><b>'+safe(p.n)+'</b><small>'+p.pos+' · '+safe(p.r)+' · Evolution '+level+'/3</small></div><button class="v25-mini-button" '+(challenge?'disabled':'')+' onclick="V25_startEvolution(\''+mode+'\','+p.id+')">'+(active?"ACTIVE":"EVOLVE")+'</button></article>';}).join(""):'<p class="v25-muted">You have no eligible players in this mode yet. Claim or collect players first.</p>';
+    h+='</div></div>';
+    return h;
+  }
+  window.V25_startEvolution=function(mode,id){const p=(POOL[mode]||[])[Number(id)];if(!p||!S.owned[mode]||!S.owned[mode][p.id])return;if(S.v25.evolutionChallenge&&!S.v25.evolutionChallenge.ready)return ask("Finish your current evolution challenge first.");if(evoLevel(mode,id)>=3)return ask("This player has reached the evolution limit.");S.v25.evolutionChallenge={mode,id:Number(id),target:3,goals:0,matchesLeft:4,ready:false};save();V25_open("evolution");};
+  window.V25_claimEvolution=function(){const v=ensureState(),c=v.evolutionChallenge;if(!c||!c.ready)return;const k=c.mode+":"+c.id;v.evolution[k]=Math.min(3,(Number(v.evolution[k])||0)+1);v.evolutionChallenge=null;save();if(typeof refresh==="function")refresh();V25_open("evolution");if(window.V22_hubToast)V22_hubToast("✨","PLAYER EVOLVED","Your player gained +1 OVR.");};
+  const baseLineup=lineup;
+  lineup=function(mode){const list=baseLineup.apply(this,arguments);if(!S||!S.v25||(M&&M.careerAttached))return list;return list.map(p=>{if(!p||!Number.isInteger(Number(p.id)))return p;const level=evoLevel(mode,p.id);return level?Object.assign({},p,{o:Math.min(99,Number(p.o)+level),v25Evolution:level}):p;});};
+  const baseCardHTML=cardHTML;
+  cardHTML=function(p,extra,id,pop){let player=p;if(p&&Number.isInteger(Number(p.id))&&S&&S.v25){const level=evoLevel(S.mode,p.id);if(level&&!p.v25Evolution)player=Object.assign({},p,{o:Math.min(99,Number(p.o)+level),v25Evolution:level});}const tag=player&&player.v25Evolution?'<div class="v25-evo-badge">✦ EVO +'+player.v25Evolution+'</div>':'';return baseCardHTML(player,(extra||'')+tag,id,pop);};
+
+  // ---------- Kit Studio: previews and applies colours to the actual 3D player meshes ----------
+  function kitPreview(k,label){return '<div class="v25-kit-preview"><svg viewBox="0 0 180 180" role="img" aria-label="'+safe(label)+' kit"><defs><linearGradient id="v25KitGlow" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".32"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient></defs><path d="M48 24 24 38 10 72l24 12 12-19v87h88V65l12 19 24-12-14-34-24-14-19 15H67z" fill="'+k+'" stroke="#f8fbff" stroke-width="3"/><path d="M67 24q23 21 46 0" fill="none" stroke="#fff" stroke-width="5"/><path d="M34 85h112v16H34z" fill="url(#v25KitGlow)"/><text x="90" y="118" font-size="27" font-weight="900" text-anchor="middle" fill="#fff">10</text></svg><b>'+safe(label)+'</b></div>';}
+  function renderKitStudio(){
+    const k=ensureState().kits;
+    return ownHeader("Kit Studio","Build your own home, away and third kits. Your colours are saved and applied to your club players in the 3D match engine.")+
+      '<div class="v25-kit-grid"><section class="v25-card"><h3>Home kit</h3>'+kitPreview(k.homeShirt,"HOME")+'<label class="v25-field-label">Shirt colour</label><input type="color" value="'+safe(k.homeShirt)+'" onchange="V25_setKit(\'homeShirt\',this.value,this)"><label class="v25-field-label">Shorts colour</label><input type="color" value="'+safe(k.homeShorts)+'" onchange="V25_setKit(\'homeShorts\',this.value,this)"></section><section class="v25-card"><h3>Away kit</h3>'+kitPreview(k.awayShirt,"AWAY")+'<label class="v25-field-label">Shirt colour</label><input type="color" value="'+safe(k.awayShirt)+'" onchange="V25_setKit(\'awayShirt\',this.value,this)"><label class="v25-field-label">Shorts colour</label><input type="color" value="'+safe(k.awayShorts)+'" onchange="V25_setKit(\'awayShorts\',this.value,this)"></section><section class="v25-card"><h3>Third kit</h3>'+kitPreview(k.thirdShirt,"THIRD")+'<label class="v25-field-label">Shirt colour</label><input type="color" value="'+safe(k.thirdShirt)+'" onchange="V25_setKit(\'thirdShirt\',this.value,this)"><label class="v25-field-label">Shorts colour</label><input type="color" value="'+safe(k.thirdShorts)+'" onchange="V25_setKit(\'thirdShorts\',this.value,this)"></section></div><div class="v25-card"><h3>Shirt pattern</h3><div class="v25-patterns">'+[["classic","Classic"],["stripes","Stripes"],["hoops","Hoops"],["split","Half & half"],["lightning","Lightning"]].map(x=>'<button class="v25-direction '+(k.pattern===x[0]?"selected":"")+'" onclick="V25_setKit(\'pattern\',\''+x[0]+'\')">'+x[1]+'</button>').join("")+'</div><p class="v25-muted">Custom kit colours update the shirts and shorts in your next match. The pattern setting updates the kit preview.</p><button onclick="V25_resetKit()" class="alt">Reset club colours</button></div>';
+  }
+  window.V25_setKit=function(key,value,el){const v=ensureState();if(!["homeShirt","homeShorts","awayShirt","awayShorts","thirdShirt","thirdShorts"].includes(key)&&key!=="pattern")return;if(key==="pattern"&&!['classic','stripes','hoops','split','lightning'].includes(value))return;if(key!=="pattern"&&!/^#[0-9a-f]{6}$/i.test(String(value)))return;v.kits[key]=value;save();if(key==="pattern"){V25_open("kitstudio");return;}const card=el&&el.closest?el.closest(".v25-card"):null;if(card){const previews=card.querySelectorAll(".v25-kit-preview svg path:first-of-type");if(previews.length){const index=key.startsWith("home")?0:key.startsWith("away")?1:2;const target=card.parentElement.querySelectorAll(".v25-kit-preview svg path:first-of-type")[index];if(target)target.setAttribute("fill",value);}}};
+  window.V25_resetKit=function(){const v=ensureState();v.kits={homeShirt:CL[S.club]?.a||"#6CABDD",homeShorts:CL[S.club]?.b||"#1C2C5B",awayShirt:"#F4F6FB",awayShorts:"#17233D",thirdShirt:"#20C9A2",thirdShorts:"#102A3B",pattern:"classic"};save();V25_open("kitstudio");};
+  function applyKitToMatch(m){
+    if(!m||!Array.isArray(m.pl)||!S)return;const k=ensureState().kits;
+    m.pl.forEach(p=>{if(p.t!==0||!p.mesh||!Array.isArray(p.mesh.children))return;const shirt=p.mesh.children[0],shorts=p.mesh.children[1];try{if(shirt&&shirt.material&&shirt.material.color)shirt.material.color.set(k.homeShirt);if(shorts&&shorts.material&&shorts.material.color)shorts.material.color.set(k.homeShorts);}catch(_){}});
+  }
+
+  // ---------- Friend Divisions: local rating for private 1v1 matches, not a fake public ladder ----------
+  function renderDivisions(){
+    const d=ensureState().onlineDivision,name=divisionName(d.rating),next=name==="Bronze"?1125:name==="Silver"?1300:name==="Gold"?1500:null;
+    const rows=(d.history||[]).slice(0,8);
+    return ownHeader("Friend Divisions","A rating ladder for your private 1v1 matches with friends. Your division is saved locally; a public global leaderboard would require a separate game server.")+
+      '<div class="v25-division-hero"><div class="v25-eyebrow">YOUR CURRENT DIVISION</div><div class="v25-division-name">'+name+'</div><div class="v25-rating">'+d.rating+' <small>RATING</small></div><div class="v25-division-track"><i style="width:'+cl((d.rating-(name==="Bronze"?800:name==="Silver"?1125:name==="Gold"?1300:1500))/250*100,0,100)+'%"></i></div><p>'+(next?Math.max(0,next-d.rating)+' points to '+(next===1125?"Silver":next===1300?"Gold":"Elite"):'Top division reached.')+'</p></div><div class="v25-kpis"><div><small>Matches</small><b>'+((d.wins||0)+(d.draws||0)+(d.losses||0))+'</b></div><div><small>Wins</small><b>'+d.wins+'</b></div><div><small>Draws</small><b>'+d.draws+'</b></div><div><small>Losses</small><b>'+d.losses+'</b></div></div><div class="v25-card"><h3>Recent friend matches</h3>'+(rows.length?rows.map(r=>'<div class="v25-history-row"><b>'+safe(r.result)+'</b><span>'+safe(r.score)+' · '+safe(r.opponent||"Friend")+'</span><small>'+new Date(r.date).toLocaleDateString()+'</small></div>').join(""):'<p class="v25-muted">Complete a private 1v1 match to start your division record.</p>')+'</div>';
+  }
+  function applyOnlineResult(y,o,opponent){const d=ensureState().onlineDivision;d.rating=cl(d.rating+(y>o?25:y===o?8:-18),800,2200);if(y>o)d.wins++;else if(y===o)d.draws++;else d.losses++;d.history.unshift({result:y>o?"WIN":y===o?"DRAW":"LOSS",score:y+"–"+o,opponent:opponent||"Friend",date:new Date().toISOString(),rating:d.rating});d.history=d.history.slice(0,30);save();}
+  const baseRecord=record;
+  record=function(opp,y,o){const isOnline=!!(M&&M.onlineRole);const result=baseRecord.apply(this,arguments);if(isOnline)applyOnlineResult(Number(y)||0,Number(o)||0,opp&&opp.n);return result;};
+
+  // ---------- Football Journey: milestones, season archive and a deliberate retirement summary ----------
+  function ensureCareer(c){
+    if(!c)return;c.v25Journey=Array.isArray(c.v25Journey)?c.v25Journey:[];c.v25Retired=!!c.v25Retired;
+    c.v25CareerTier=cl(c.v25CareerTier||0,0,3);
+    c.v25LeagueTable=c.v25LeagueTable&&typeof c.v25LeagueTable==="object"?c.v25LeagueTable:null;
+    c.management=c.management||{};c.management.injuryMatches=Math.max(0,Number(c.management.injuryMatches)||0);c.management.suspensionMatches=Math.max(0,Number(c.management.suspensionMatches)||0);
+    if(!c.v25Journey.length)c.v25Journey.push({title:"Career created",detail:(c.mode==="player"?"Player":"Manager")+" career began at "+(CL[c.club]?.n||"your club"),date:new Date().toISOString(),season:c.season||1});
+  }
+  function journeyEvent(c,title,detail){if(!c)return;ensureCareer(c);const last=c.v25Journey[c.v25Journey.length-1];if(last&&last.title===title&&last.season===c.season&&last.detail===detail)return;c.v25Journey.unshift({title,detail,date:new Date().toISOString(),season:c.season||1});c.v25Journey=c.v25Journey.slice(0,60);}
+  function renderJourney(){
+    const c=S&&S.career;if(!c)return ownHeader("Football Journey","Start a career to build your story and Hall of Fame record.")+'<div class="v25-card"><button onclick="showTab(\'career\')">Create Career</button></div>';
+    ensureCareer(c);const retired=c.v25Retired;
+    let h=ownHeader("Football Journey","Your milestones, records, trophies, transfers and seasons—all collected in one career story.");
+    h+='<div class="v25-journey-hero"><div class="v25-eyebrow">'+(retired?"CAREER COMPLETE":"THE STORY SO FAR")+'</div><h2>'+safe(c.name)+'</h2><p>'+safe(CL[c.club]?.n||"Club")+' · Season '+c.season+' · '+(c.mode==="player"?c.overall+" OVR · "+c.age+" years old":"Manager career")+'</p><div class="v25-kpis"><div><small>Appearances</small><b>'+c.record.played+'</b></div><div><small>Goals</small><b>'+c.record.goals+'</b></div><div><small>Assists</small><b>'+c.record.assists+'</b></div><div><small>Trophies</small><b>'+c.trophies.length+'</b></div></div></div>';
+    h+='<div class="v25-card"><h3>Career timeline</h3><div class="v25-timeline">'+c.v25Journey.map(e=>'<div class="v25-timeline-item"><i></i><div><b>'+safe(e.title)+'</b><p>'+safe(e.detail)+'</p><small>Season '+(e.season||1)+' · '+new Date(e.date).toLocaleDateString()+'</small></div></div>').join("")+'</div></div>';
+    if(c.v25Retired)h+='<div class="v25-card"><h3>🏛 Hall of Fame</h3><p>Your career is complete. Your history and honours remain saved.</p><button onclick="KC_newCareer()">Start a new career</button></div>';
+    else h+='<div class="v25-card"><h3>Retirement</h3><p class="v25-muted">Player careers can retire from age 35. Manager careers can retire after five seasons. Retirement creates a permanent Hall of Fame summary.</p><button '+((c.mode==="player"?(Number(c.age)||18)<35:(Number(c.season)||1)<5)?'disabled':'')+' onclick="V25_retireCareer()">RETIRE & CREATE HALL OF FAME</button></div>';
+    return h;
+  }
+  window.V25_retireCareer=function(){const c=S&&S.career;if(!c||c.v25Retired)return;const eligible=c.mode==="player"?(Number(c.age)||18)>=35:(Number(c.season)||1)>=5;if(!eligible)return ask(c.mode==="player"?"Player retirement is available from age 35.":"Manager retirement is available after five seasons.");ask("Retire "+c.name+" and create a permanent Hall of Fame summary? You will no longer be able to play this career.",()=>{c.v25Retired=true;journeyEvent(c,"Retired · Hall of Fame",c.name+" retired after "+c.record.played+" appearances, "+c.record.goals+" goals and "+c.trophies.length+" trophies.");c.history.push({event:"Career retired",season:c.season,record:Object.assign({},c.record),trophies:c.trophies.length});save();V25_open("journey");});};
+  const baseCareerRender=window.KC_render;
+  if(typeof baseCareerRender==="function")window.KC_render=function(){const result=baseCareerRender.apply(this,arguments);const c=S&&S.career;if(c){ensureCareer(c);const root=$("career");if(root&&!$("v25JourneyShortcut")){const box=document.createElement("div");box.id="v25JourneyShortcut";box.className="v25-card v25-journey-shortcut";box.innerHTML='<div><div class="v25-eyebrow">YOUR FOOTBALL STORY</div><b>Career Journey</b><small>Milestones, Hall of Fame and retirement</small></div><button onclick="V25_open(\'journey\')">OPEN →</button>';root.appendChild(box);} }return result;};
+
+  // ---------- Career divisions: three tiers, six clubs per tier, ten home/away matchdays ----------
+  function leagueClubsFor(clubIndex){const li=CL[clubIndex]?.li;return CL.map((c,index)=>({club:c,index})).filter(x=>x.club.li===li);}
+  function ensureTier(c){
+    if(!c)return 1;const local=leagueClubsFor(c.club);const rank=Math.max(0,local.findIndex(x=>x.index===c.club));
+    if(!c.v25CareerTier)c.v25CareerTier=Math.floor(rank/6)+1;
+    return clamp(c.v25CareerTier,1,3);
+  }
+  function tierTeams(c){const local=leagueClubsFor(c.club),tier=ensureTier(c),start=(tier-1)*6;return local.slice(start,start+6);}
+  function makeLeagueTable(c){const teams=tierTeams(c);return {season:c.season,tier:ensureTier(c),playedRounds:[],rows:teams.map(x=>({index:x.index,name:x.club.n,k:x.club.k,a:x.club.a,b:x.club.b,pl:0,w:0,d:0,l:0,gf:0,ga:0,p:0}))};}
+  function ensureLeagueTable(c){ensureCareer(c);if(!c.v25LeagueTable||Number(c.v25LeagueTable.season)!==Number(c.season)||Number(c.v25LeagueTable.tier)!==ensureTier(c))c.v25LeagueTable=makeLeagueTable(c);return c.v25LeagueTable;}
+  window.V25_fixtureFor=function(c){
+    const teams=tierTeams(c),mine=teams.findIndex(x=>x.index===c.club),opponents=teams.filter((_,i)=>i!==mine);
+    if(!opponents.length)return {club:CL[(c.club+1)%CL.length],index:(c.club+1)%CL.length};
+    const op=opponents[(Number(c.round)||0)%opponents.length];return {club:op.club,index:op.index,home:(Number(c.round)||0)<5};
+  };
+  function tableApply(row,gf,ga){row.pl++;row.gf+=gf;row.ga+=ga;if(gf>ga){row.w++;row.p+=3;}else if(gf===ga){row.d++;row.p++;}else row.l++;}
+  function seeded(seed){let s=seed>>>0;return ()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
+  function recordCareerRound(c,round,gf,ga,opponentIndex){
+    if(!c||!Number.isFinite(round))return;let table=c.v25LeagueTable||makeLeagueTable(c);if(table.playedRounds.includes(round))return;
+    const me=table.rows.find(r=>r.index===c.club),op=table.rows.find(r=>r.index===opponentIndex);if(!me||!op)return;
+    tableApply(me,gf,ga);tableApply(op,ga,gf);
+    const others=table.rows.filter(r=>r.index!==c.club&&r.index!==opponentIndex),rand=seeded((c.season||1)*100000+(round+1)*913+(c.club||0));
+    for(let i=0;i+1<others.length;i+=2){const a=Math.floor(rand()*4),b=Math.floor(rand()*4);tableApply(others[i],a,b);tableApply(others[i+1],b,a);}
+    table.playedRounds.push(round);table.playedRounds.sort((a,b)=>a-b);c.v25LeagueTable=table;
+  }
+  function sortedCareerTable(table){return (table&&table.rows||[]).slice().sort((a,b)=>b.p-a.p||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf);}
+  function renderCareerTable(c){
+    ensureCareer(c);const t=ensureLeagueTable(c),rows=sortedCareerTable(t),mine=rows.findIndex(r=>r.index===c.club),position=mine+1;
+    return '<section class="v25-card" style="margin:14px 0"><div class="v25-card-head"><div><div class="v25-eyebrow">CAREER LEAGUE · TIER '+ensureTier(c)+'</div><h3>'+["","KIKSTART PREMIER DIVISION","KIKSTART CHAMPIONSHIP","KIKSTART LEAGUE ONE"][ensureTier(c)]+'</h3></div><span class="v25-chip">Position '+(position||"—")+'/6</span></div><div class="v25-table-wrap"><table class="v25-table"><thead><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>'+rows.map((r,i)=>'<tr class="'+(r.index===c.club?"mine":"")+'"><td>'+(i+1)+'</td><td>'+safe(r.name)+'</td><td>'+r.pl+'</td><td>'+r.w+'</td><td>'+r.d+'</td><td>'+r.l+'</td><td>'+(r.gf-r.ga)+'</td><td><b>'+r.p+'</b></td></tr>').join("")+'</tbody></table></div><p class="v25-muted">Six-team division · Home and away against every club · Top two promoted, bottom two relegated.</p></section>';
+  }
+  // Patch the legacy career fixture resolver to use the three-tier schedule.
+  try{
+    const source=[...document.scripts].map(x=>x.textContent||"").join("\n");
+    if(!window.V25_CAREER_FIXTURE_PATCHED && source.includes("function fixtureFor(c)"))window.V25_CAREER_FIXTURE_PATCHED=true;
+  }catch(_){}
+
+  // ---------- Stamina, minor injuries, suspensions and smarter teammate / goalkeeper AI ----------
+  function ensureFitnessPanel(m){
+    const stage=$("stage");if(!stage||!m)return;let el=$("v25FitnessHud");if(!el){el=document.createElement("div");el.id="v25FitnessHud";stage.appendChild(el);}
+    const p=m.ctrl||m.careerControlPlayer||m.owner;if(!p)return;const energy=cl(p.v25Energy??100,0,100),injury=p.v25Injured?" · INJURED":"",susp=p.v25Suspended?" · SUSPENDED":"";
+    el.innerHTML='<span>'+safe(p.playerName||p.dataName||p.n||"Selected player")+'</span><b>'+Math.round(energy)+'% FITNESS</b><i><span style="width:'+energy+'%"></span></i><small>'+injury+susp+'</small>';
+    el.classList.toggle("low",energy<30||!!p.v25Injured);
+  }
+  const baseAI=ai;
+  ai=function(p,dt){
+    const m=M;if(!m||!p)return baseAI.apply(this,arguments);
+    const F=m.F,b=m.ball,o=m.owner;
+    if(p.gk){
+      const attackDir=(p.t===0?1:-1)*(m.half?-1:1);
+      const goalX=-attackDir*(F.L/2-2.1*F.sc);
+      const defendSide=b.x*attackDir<0;
+      const danger=defendSide?cl(1-Math.abs(b.x-goalX)/(F.L*.47),0,1):0;
+      const forward=danger>0?danger*cl(1.4+Math.abs(b.x-goalX)*.1,1.4,5.5):0;
+      const tx=goalX+attackDir*forward;
+      const tz=cl(b.z*.82,-F.gw*.82,F.gw*.82);
+      const k=Math.min(1,Math.max(0,dt)*2.8);
+      p.vx=(tx-p.x)*Math.min(2.4,dt*2.8);p.vz=(tz-p.z)*Math.min(2.8,dt*3.2);
+      p.x=cl(p.x+p.vx,-F.L/2+.5,F.L/2-.5);p.z=cl(p.z+p.vz,-F.W/2+.5,F.W/2-.5);
+      p.dx=attackDir;p.dz=0;
+      if(!p.v25KeeperRead)p.v25KeeperRead=0;p.v25KeeperRead=Math.min(1,p.v25KeeperRead+dt*.12);
+      return;
+    }
+    baseAI.apply(this,arguments);
+    if(!m.owner||p===m.owner||p.gk)return;
+    // Off-ball teammates spread into passing lanes; defenders keep compact distances.
+    if(m.owner.t===p.t){
+      const direction=(p.t===0?1:-1)*(m.half?-1:1),forward=p.pos==="FWD"?7:p.pos==="MID"?3:-1;
+      const lane=(p.i%3-1)*5.5*F.sc;
+      const tx=cl(m.owner.x+direction*forward*F.sc,-F.L/2+4,F.L/2-4);
+      const tz=cl(m.owner.z+lane,-F.W/2+3,F.W/2-3);
+      const d=Math.hypot(tx-p.x,tz-p.z);if(d>5*F.sc){const k=Math.min(1,dt*1.8),dx=(tx-p.x)/d,dz=(tz-p.z)/d;p.x+=dx*p.spd*k*dt;p.z+=dz*p.spd*k*dt;p.x=cl(p.x,-F.L/2+.5,F.L/2-.5);p.z=cl(p.z,-F.W/2+.5,F.W/2-.5);p.dx=dx;p.dz=dz;}
+    }else{
+      const press=(m["c"+p.t]||[]).includes(p);if(!press){const attackDir=(p.t===0?1:-1)*(m.half?-1:1),homeX=-attackDir*F.L*.28,tx=homeX+(b.x-homeX)*.18,tz=p.z+(b.z-p.z)*.12;p.x+=(tx-p.x)*Math.min(1,dt*.8);p.z+=(tz-p.z)*Math.min(1,dt*.9);}
+    }
+  };
+  const baseUserCtrl=userCtrl;
+  userCtrl=function(p,dt){const m=M;const before=m&&m.v22Cards?Number(m.v22Cards.red)||0:0;const r=baseUserCtrl.apply(this,arguments);if(m&&m.v22Cards&&(Number(m.v22Cards.red)||0)>before)m.v25RedCardId=p&&p.playerId;return r;};
+  const baseStep=stepMatch;
+  stepMatch=function(dt){
+    const m=M;
+    if(m&&!m.over&&!m.wait){
+      m.pl.forEach(p=>{
+        if(p.v25Energy===undefined){const id=p.playerId??p.id;const careerStatus=(m.careerAttached&&p.isCareerAvatar&&S&&S.career&&S.career.management)?S.career.management:null;const cond=careerStatus?null:(Number.isInteger(Number(id))?getCondition(m.mo||S.mode,id):null);p.v25Energy=cl(100-(cond?cond.fatigue:0),35,100);p.v25Injured=careerStatus?Number(careerStatus.injuryMatches)>0:!!(cond&&cond.injuryMatches>0);p.v25Suspended=careerStatus?Number(careerStatus.suspensionMatches)>0:!!(cond&&cond.suspensionMatches>0);p.v25BaseSpd=Number(p.baseSpd)||Number(p.spd)||7;}
+        const tactic=Number(m.v22TacticMultiplier)||1,chem=Number(m.v22ChemMultiplier)||1,fitness=cl(p.v25Energy/100,.35,1);
+        p.spd=p.v25BaseSpd*tactic*chem*(.84+fitness*.16)*(p.v25Injured?.72:1)*(p.v25Suspended?.88:1);
+      });
+    }
+    const result=baseStep.apply(this,arguments);
+    if(m&&M===m&&!m.over&&!m.wait&&m.onlineRole!=="guest"){
+      m.pl.forEach(p=>{
+        const speed=Math.hypot(p.vx||0,p.vz||0),sprinting=p===m.ctrl&&!!(K.ShiftLeft||K.ShiftRight),moving=speed>1.5;
+        const drain=sprinting?4.1:moving?1.15:-.8;p.v25Energy=cl((p.v25Energy??100)-drain*Math.max(0,dt),0,100);
+        if(p.lunge>0&&p.v25Energy<32&&!p.v25Injured&&nearOpp(p)<1.25*m.F.sc&&rnd()<Math.max(0,dt)*.012){
+          p.v25Injured=true;m.v25InjuryEvents=m.v25InjuryEvents||[];m.v25InjuryEvents.push({id:p.playerId??p.id,name:p.playerName||p.n||"Player",team:p.t});
+          if(p.t===0){banner("PLAYER INJURY · CHECK YOUR BENCH");if(window.V22_hubToast)V22_hubToast("🩹","PLAYER INJURY","A player is carrying a knock. Consider a substitution.");}
+        }
+        if(p.v25BaseSpd){const tactic=Number(m.v22TacticMultiplier)||1,chem=Number(m.v22ChemMultiplier)||1,fitness=cl(p.v25Energy/100,.35,1);p.spd=p.v25BaseSpd*tactic*chem*(.84+fitness*.16)*(p.v25Injured?.72:1)*(p.v25Suspended?.88:1);}
+      });
+      if(performance.now()-lastEnergyPaint>180){ensureFitnessPanel(m);lastEnergyPaint=performance.now();}
+      applyKitToMatch(m);
+    }
+    return result;
+  };
+  const baseFinish=finishMatch;
+  finishMatch=function(forfeit){
+    const m=M,career=!!(m&&m.careerAttached),careerBefore=career&&S&&S.career?S.career:null,roundBefore=careerBefore?Number(careerBefore.round)||0:0,seasonBefore=careerBefore?Number(careerBefore.season)||1:0;
+    const gf=m?Number(m.score[0])||0:0,ga=m?Number(m.score[1])||0:0,oppName=m&&m.team&&m.team.n||"Opponent",oppIndex=CL.findIndex(c=>c.n===oppName&&c.li===(careerBefore?CL[careerBefore.club]?.li:CL[S?.club]?.li));
+    const injuries=m&&Array.isArray(m.v25InjuryEvents)?m.v25InjuryEvents.slice():[],redCardId=m&&m.v25RedCardId;
+    const result=baseFinish.apply(this,arguments);
+    if(career&&S&&S.career){
+      const c=S.career;ensureCareer(c);
+      recordCareerRound(c,roundBefore,gf,ga,oppIndex);
+      if(Number(c.management.injuryMatches)>0)c.management.injuryMatches=Math.max(0,Number(c.management.injuryMatches)-1);
+      if(Number(c.management.suspensionMatches)>0)c.management.suspensionMatches=Math.max(0,Number(c.management.suspensionMatches)-1);
+      if(injuries.some(x=>x.id==="career-avatar"))c.management.injuryMatches=Math.max(Number(c.management.injuryMatches)||0,1);
+      if(redCardId==="career-avatar")c.management.suspensionMatches=Math.max(Number(c.management.suspensionMatches)||0,1);
+      journeyEvent(c,roundBefore===0?"First competitive appearance":"Matchday "+(roundBefore+1),oppName+" · "+gf+"–"+ga+" · "+(gf>ga?"Victory":gf===ga?"Draw":"Defeat"));
+      if(c.record.goals>0&&!c.v25FirstGoal){c.v25FirstGoal=true;journeyEvent(c,"First career goal","Your first goal has been added to the career timeline.");}
+      if(c.international&&c.international.callupOffered&&!c.v25CallupLogged){c.v25CallupLogged=true;journeyEvent(c,"International call-up","Selected for "+c.nationality+".");}
+      const table=c.v25LeagueTable,sorted=sortedCareerTable(table),position=sorted.findIndex(r=>r.index===c.club)+1;
+      if(c.season!==seasonBefore&&table&&table.playedRounds&&table.playedRounds.length>=10){
+        c.v25LastLeagueFinish={season:seasonBefore,tier:table.tier,position,rows:sorted};
+        let message="Season complete · finished "+position+"th of 6.";
+        if(position<=2&&c.v25CareerTier>1){c.v25CareerTier--;message="PROMOTED! Your club moves up to the "+["","Premier Division","Championship","League One"][c.v25CareerTier]+".";journeyEvent(c,"Promotion earned",message);}
+        else if(position>=5&&c.v25CareerTier<3){c.v25CareerTier++;message="RELEGATED · Your club moves down to the "+["","Premier Division","Championship","League One"][c.v25CareerTier]+".";journeyEvent(c,"Relegation","Your club will rebuild in the next division.");}
+        else journeyEvent(c,"Season finished",message);
+        c.v25LeagueTable=makeLeagueTable(c);
+        if(window.V22_hubToast)V22_hubToast(position<=2?"⬆️":position>=5?"⬇️":"🏁","SEASON COMPLETE",message);
+      }
+      if(c.v25Retired&&window.KC_render)window.KC_render();
+      save();setTimeout(()=>{if(window.KC_render)window.KC_render();},0);
+    }else if(m&&!m.onlineRole&&S){
+      const v=ensureState();
+      m.pl.filter(p=>p.t===0).forEach(p=>{
+        const id=p.playerId??p.id;if(!Number.isInteger(Number(id)))return;const cond=getCondition(m.mo||S.mode,Number(id));
+        cond.fatigue=cl((100-(p.v25Energy??100))*.55,0,48);
+        if(cond.injuryMatches>0)cond.injuryMatches=Math.max(0,cond.injuryMatches-1);
+        if(cond.suspensionMatches>0)cond.suspensionMatches=Math.max(0,cond.suspensionMatches-1);
+        const event=injuries.find(x=>Number(x.id)===Number(id));if(event)cond.injuryMatches=Math.max(cond.injuryMatches,1);
+        if(redCardId!==undefined&&Number(redCardId)===Number(id))cond.suspensionMatches=Math.max(cond.suspensionMatches,1);
+      });
+      save();
+    }
+    return result;
+  };
+
+  // ---------- Match events: set-piece callouts and safe substitutions remain in the existing engine ----------
+  const baseOut=out;
+  out=function(){const m=M;if(m&&!m.over){const b=m.ball,F=m.F;const nearEnd=Math.abs(b.x)>F.L*.4;const side=Math.abs(b.z)>F.W*.44;const label=nearEnd?(side?"CORNER KICK":"GOAL KICK"):"THROW-IN";if(m.t< m.total)banner(label);}return baseOut.apply(this,arguments);};
+
+  // ---------- Kit customisation is applied after the base match scene has initialised ----------
+  // ---------- Career dashboard additions: division table and quick Football Journey link ----------
+  const originalCareerRender=window.KC_render;
+  if(typeof originalCareerRender==="function")window.KC_render=function(){
+    const r=originalCareerRender.apply(this,arguments),c=S&&S.career,root=$("career");
+    if(c&&root){ensureCareer(c);if(!$("v25CareerDivisionTable")){const div=document.createElement("div");div.id="v25CareerDivisionTable";div.innerHTML=renderCareerTable(c);const anchor=root.querySelector(".kc-kpis");if(anchor)anchor.insertAdjacentElement("afterend",div);else root.appendChild(div);}else $("v25CareerDivisionTable").innerHTML=renderCareerTable(c);}
+    return r;
+  };
+  const originalPlayCareer=window.KC_playCareerMatch;
+  if(typeof originalPlayCareer==="function")window.KC_playCareerMatch=function(){const c=S&&S.career;if(c&&c.v25Retired)return ask("This career has been retired. Your Hall of Fame record is saved.");return originalPlayCareer.apply(this,arguments);};
+
+  // ---------- Diagnostics and recovery are compactly nested in Club Hub ----------
+  function renderDiagnostics(){
+    const v=ensureState(),storageOk=(()=>{try{const k="kikstart-v25-test";localStorage.setItem(k,"ok");localStorage.removeItem(k);return true;}catch(_){return false;}})();
+    let gl=false;try{const c=document.createElement("canvas");gl=!!(c.getContext("webgl")||c.getContext("experimental-webgl"));}catch(_){gl=false;}
+    const checks=[["Save loaded",!!S],["Local storage",storageOk],["Three.js library",!!window.THREE||!!window.__kikThreePromise],["WebGL graphics",gl],["Club data",!!(S&&CL[S.club])],["Career save",!S||!S.career||Array.isArray(S.career.xiIds)]];
+    return ownHeader("Game Health","A small diagnostic page to help identify common browser, graphics and save problems.")+'<div class="v25-card"><h3>System check</h3>'+checks.map(x=>'<div class="v25-check-row"><span>'+safe(x[0])+'</span><b class="'+(x[1]?"ok":"warn")+'">'+(x[1]?"READY":"CHECK")+'</b></div>').join("")+'</div><div class="v25-card"><h3>Recent captured errors</h3>'+(v.lastErrors.length?v.lastErrors.map(e=>'<div class="v25-history-row"><b>'+safe(e.message)+'</b><small>'+safe(e.date)+'</small></div>').join(""):'<p class="v25-muted">No page errors have been captured in this session.</p>')+'<div class="v25-actions"><button onclick="V25_downloadDiagnostics()">Download diagnostic report</button><button class="alt" onclick="V25_restoreSaveBackup()">Restore latest automatic backup</button></div></div><div class="v25-card"><p class="v25-muted">The game cannot repair a blocked external 3D library or a corrupted browser profile automatically. Keep an exported save code before moving devices or clearing browser data.</p><button class="alt" onclick="V22_openHub(\'saves\')">Open Saves & Backups</button></div>';
+  }
+  window.V25_downloadDiagnostics=function(){const report={version:"v25",date:new Date().toISOString(),userAgent:navigator.userAgent,threeLoaded:!!window.THREE,webgl:(()=>{try{return !!document.createElement("canvas").getContext("webgl");}catch(_){return false;}})(),club:S&&CL[S.club]?CL[S.club].n:null,careerMode:S&&S.career?S.career.mode:null,errors:ensureState().lastErrors};const blob=new Blob([JSON.stringify(report,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="kikstart-diagnostics.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1200);};
+  window.V25_restoreSaveBackup=function(){if(typeof V22_restoreBackup!=="function")return ask("No backup restore function is available in this version.");ask("Restore the latest automatic backup? Your current state may be replaced.",()=>V22_restoreBackup(1));};
+  window.addEventListener("error",e=>{try{const v=ensureState();if(v){v.lastErrors.push({message:String(e.message||"Unknown script error").slice(0,180),date:new Date().toLocaleString()});v.lastErrors=v.lastErrors.slice(-10);save();}}catch(_){}});
+
+  // ---------- Global polish / compact responsive styles ----------
+  const style=document.createElement("style");style.id="kikstartV25Style";style.textContent=`
+    .v25-more-tools{margin:12px 0 18px;border:1px solid #344c6e;border-radius:13px;background:linear-gradient(135deg,#101f37,#0b1426);overflow:hidden}
+    .v25-more-tools summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 15px;cursor:pointer;list-style:none;font-size:11px;font-weight:1000;letter-spacing:.12em;color:#d7e9fb}.v25-more-tools summary::-webkit-details-marker{display:none}.v25-more-tools summary small{font-size:10px;letter-spacing:0;color:#8da4c1;font-weight:600}.v25-more-tools[open] summary{border-bottom:1px solid #2a405e}
+    .v25-tool-links{display:flex;flex-wrap:wrap;gap:8px;padding:12px}.v25-tool-links button,.v25-page-actions button{padding:8px 11px;border-radius:9px;background:#1a2d4b;border:1px solid #415d83;color:#eaf4ff;font-size:11px;font-weight:800}
+    .v25-page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:21px;border-radius:16px;margin:6px 0 15px;background:radial-gradient(circle at 90% 10%,#49d5c322,transparent 36%),linear-gradient(125deg,#102341,#091326);border:1px solid #385579;box-shadow:0 12px 24px #0004}.v25-page-head h1{font-size:clamp(25px,4vw,38px);margin:5px 0;font-weight:1000}.v25-page-head p{margin:0;color:#a8bdd7;font-size:12px;max-width:660px;line-height:1.5}.v25-eyebrow{font-size:9px;letter-spacing:.18em;font-weight:1000;color:#a6eedf}.v25-page-actions{display:flex;gap:7px;flex-wrap:wrap}
+    .v25-card{background:linear-gradient(145deg,#142744,#0b162a);border:1px solid #2f496a;border-radius:14px;padding:15px;margin:10px 0;box-shadow:0 10px 23px #0003;min-width:0}.v25-card h2,.v25-card h3{margin:0 0 8px}.v25-muted{color:#93a9c5;font-size:11px;line-height:1.55}.v25-chip{display:inline-flex;padding:5px 8px;border-radius:99px;background:#102b3c;border:1px solid #3d7182;color:#c8fff2;font-size:9px;font-weight:900}
+    .v25-lab-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.v25-lab-tabs button{padding:9px 12px;border-radius:10px;background:#172944;border:1px solid #365273;color:#dbe9fa;font-size:11px;font-weight:900}.v25-lab-tabs button.active{background:linear-gradient(120deg,#d9fdf2,#67dcc1);color:#09231d;border-color:#a8ffe7}.v25-lab-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(260px,.85fr);gap:12px;align-items:start}.v25-pitch-card{padding:10px}.v25-pitch-card canvas{display:block;width:100%;height:auto;border-radius:11px;border:1px solid #52745d;background:#12472d}.v25-lab-score{display:flex;gap:12px;flex-wrap:wrap;padding:10px 5px 2px;color:#95abc7;font-size:10px}.v25-lab-score b{color:#f0d990;margin-left:4px}.v25-lab-controls p{font-size:11px;color:#9aacc5;line-height:1.5}.v25-actions,.v25-direction-row{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.v25-actions button,.v25-primary{padding:10px 13px;border-radius:9px;background:linear-gradient(120deg,#d8f9ed,#68d8bb);border:1px solid #a0f4df;color:#08271f;font-weight:1000;font-size:10px}.v25-direction{flex:1;min-width:66px;padding:10px;border-radius:8px;background:#172c49;border:1px solid #425b7d;color:#dce9f8;font-size:10px;font-weight:900}.v25-direction.selected{border-color:#e4cf86;background:#564821;color:#ffe9a8}.v25-field-label{display:block;font-size:10px;color:#a9bdd7;font-weight:900;margin:12px 0 5px}.v25-lab-message{min-height:28px;padding:9px;border-radius:8px;background:#0a172a;border:1px solid #263d5d;color:#cfe0f4!important}.v25-scoreline{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 10px;margin:10px 0;background:#0b1728;border:1px solid #273e5e;border-radius:9px;font-size:10px}.v25-scoreline span{color:#91a9c7}.v25-big-score{font-size:38px;font-weight:1000;color:#f0d98c;margin:12px 0}.v25-lab-controls input[type=range]{width:100%;accent-color:#55d7b8}
+    .v25-evo-status{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:radial-gradient(circle at 90% 0,#b6a3ff22,transparent 40%),linear-gradient(120deg,#182a49,#0b152a)}.v25-evo-status h2{margin:5px 0}.v25-evo-progress{display:flex;flex-direction:column;gap:5px;text-align:right;color:#f1d990;font-size:13px}.v25-evo-progress span{font-size:10px;color:#9fb2cc}.v25-evo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px}.v25-evo-player{display:grid;grid-template-columns:50px 1fr auto;align-items:center;gap:9px;padding:9px;border-radius:10px;background:#0d1c32;border:1px solid #2d4567}.v25-evo-rating{font-size:24px;font-weight:1000;color:#f1d78d;text-align:center}.v25-evo-rating small{display:block;font-size:8px;color:#94a9c5}.v25-evo-player b,.v25-evo-player small{display:block}.v25-evo-player small{font-size:9px;color:#8fa7c5;margin-top:3px}.v25-mini-button{padding:7px 9px;font-size:9px!important;border-radius:8px!important}.v25-evo-badge{font-size:8px;letter-spacing:.08em;color:#e3ccff;margin-top:4px;text-shadow:0 0 7px #a883ff}
+    .v25-kit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}.v25-kit-preview{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px;border-radius:11px;background:radial-gradient(circle at 50% 0,#ffffff14,transparent 65%),#0a172a;margin:10px 0}.v25-kit-preview svg{width:112px;height:112px;filter:drop-shadow(0 8px 9px #0008)}.v25-kit-preview b{font-size:9px;letter-spacing:.16em;color:#b8c9df}.v25-card input[type=color]{height:38px;width:100%;background:#0a172a;border:1px solid #385271;border-radius:8px;padding:3px;margin-bottom:7px}.v25-patterns{display:flex;flex-wrap:wrap;gap:7px}
+    .v25-division-hero{padding:21px;border-radius:16px;border:1px solid #6c6846;background:radial-gradient(circle at 90% 0,#dec87944,transparent 38%),linear-gradient(120deg,#192c4a,#0b1428);text-align:center}.v25-division-name{font-size:clamp(28px,5vw,44px);font-weight:1000;color:#f4d987;font-style:italic;text-transform:uppercase}.v25-rating{font-size:33px;font-weight:1000}.v25-rating small{font-size:9px;letter-spacing:.12em;color:#93aac7}.v25-division-track{height:7px;border-radius:10px;background:#050d1b;overflow:hidden;max-width:460px;margin:10px auto}.v25-division-track i{display:block;height:100%;background:linear-gradient(90deg,#20d8ae,#e2cd7c);box-shadow:0 0 12px #9bf3d4}.v25-division-hero p{font-size:10px;color:#9eb2ce}.v25-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin:12px 0}.v25-kpis>div{padding:10px;border:1px solid #304969;border-radius:10px;background:#101f37}.v25-kpis small{display:block;font-size:9px;color:#90a6c3}.v25-kpis b{display:block;font-size:20px;color:#f1d98e;margin-top:3px}.v25-history-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid #263b58;font-size:11px}.v25-history-row span,.v25-history-row small{color:#9aafca}
+    .v25-journey-hero{padding:19px;border-radius:15px;background:radial-gradient(circle at 90% 0,#e2c67930,transparent 38%),linear-gradient(130deg,#182e50,#0b1528);border:1px solid #665b3a}.v25-journey-hero h2{font-size:28px;margin:5px 0}.v25-timeline{position:relative;margin:12px 0 0;padding-left:20px}.v25-timeline:before{content:"";position:absolute;left:6px;top:5px;bottom:5px;width:2px;background:linear-gradient(#f3d98c,#47d4ba,#345477)}.v25-timeline-item{position:relative;padding:0 0 16px 10px}.v25-timeline-item>i{position:absolute;left:-19px;top:4px;width:11px;height:11px;border-radius:50%;background:#f1d78c;box-shadow:0 0 10px #f1d78c88}.v25-timeline-item p{font-size:11px;color:#a6bad2;margin:4px 0}.v25-timeline-item small{font-size:9px;color:#758eae}.v25-journey-shortcut{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}.v25-journey-shortcut small{display:block;color:#91a9c4;font-size:10px;margin-top:3px}.v25-journey-shortcut button{background:#203a5c;border:1px solid #57739a;border-radius:9px;padding:8px 11px;color:#fff;font-size:10px;font-weight:900}
+    .v25-table-wrap{overflow-x:auto}.v25-table{width:100%;border-collapse:collapse;font-size:10px;white-space:nowrap}.v25-table th,.v25-table td{padding:8px 6px;text-align:center;border-bottom:1px solid #293e5c}.v25-table th{color:#92a8c7;background:#0b172a}.v25-table td:nth-child(2),.v25-table th:nth-child(2){text-align:left}.v25-table tr.mine td{background:#124638;color:#d9fff4}.v25-table tr:nth-child(1) td:first-child,.v25-table tr:nth-child(2) td:first-child{color:#82e3c4}.v25-check-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #263c59;font-size:11px}.v25-check-row .ok{color:#77e9bc}.v25-check-row .warn{color:#ffce74}
+    #v25FitnessHud{position:absolute;left:12px;bottom:12px;z-index:7;min-width:150px;max-width:220px;padding:7px 9px;border:1px solid #82d9c877;border-radius:9px;background:#071323db;backdrop-filter:blur(7px;color:#e8f9f4;font-size:9px;pointer-events:none;display:flex;flex-direction:column;gap:3px}#v25FitnessHud span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#a9c2d4}#v25FitnessHud b{font-size:10px;color:#aaffdf}#v25FitnessHud>i{height:5px;border-radius:9px;background:#243650;overflow:hidden}#v25FitnessHud>i>span{display:block;height:100%;background:linear-gradient(90deg,#ffca63,#5de6b7)}#v25FitnessHud.low{border-color:#ff9a8a}#v25FitnessHud.low b{color:#ffad9d}#v25FitnessHud small{color:#ffb5a5;font-size:8px}
+    @media(max-width:760px){.v25-lab-layout{grid-template-columns:1fr}.v25-page-head{align-items:flex-start}.v25-page-actions{width:100%}.v25-page-actions button{flex:1}.v25-more-tools summary{align-items:flex-start;flex-direction:column}.v25-evo-player{grid-template-columns:43px 1fr}.v25-mini-button{grid-column:1/-1}.v25-journey-shortcut{align-items:flex-start;flex-direction:column}.v25-journey-shortcut button{width:100%}}
+  `;document.head.appendChild(style);
+
+  // Save compatibility: add only a namespaced object; never rewrite or clear the existing main save.
+  const v=ensureState();
+  if(v){v.kits.homeShirt=v.kits.homeShirt||CL[S.club]?.a||"#6CABDD";v.kits.homeShorts=v.kits.homeShorts||CL[S.club]?.b||"#1C2C5B";if(S.career)ensureCareer(S.career);save();}
+  document.title="KIKSTART Enhanced v25 — Compact Football Experience";
+  window.KIKSTART_V25_READY=true;
+})();
+
+</script>
+<script>
+/* KIKSTART v26 — Stadium rebuild + Messi secret card
+   Built to replace the previous layered/blocky stadium scene, not add another overlay.
+   All architecture is generated locally with Three.js and procedural textures.
+*/
+(function KIKSTART_V26_STADIUM_AND_MESSI(){
+  if (window.__kikstartV26Installed) return;
+  window.__kikstartV26Installed = true;
+
+  // ---------------------------------------------------------------------------
+  // MESSI 100 — code-only, hidden from index, shop, normal packs and market.
+  // ---------------------------------------------------------------------------
+  const MESSI_CODE = "__ks404_messi__";
+  const MESSI = {};
+  if (typeof RAR !== "undefined" && !RAR.messi) {
+    RAR.messi = { n: "Messi Exclusive", i: "✦", pr: 0 };
+  }
+  ["fb", "fs"].forEach(mode => {
+    const pool = POOL[mode];
+    let player = pool.find(p => p && p.messiExclusive);
+    if (!player) {
+      player = {
+        id: pool.length,
+        n: "Messi",
+        pos: "FWD",
+        o: 100,
+        f: "🇦🇷",
+        look: "1111",
+        r: "messi",
+        kind: "secret",
+        secret: true,
+        messiExclusive: true,
+        traits: ["Argentina Legend", "Barcelona Maestro", "Finesse Master", "Elite Playmaker", "Unmatched Vision"]
+      };
+      pool.push(player);
+    }
+    MESSI[mode] = player;
+    if (S && S.stock && S.stock[mode]) S.stock[mode][player.id] = 0;
+  });
+
+  const baseStats = V27_stats;
+  V27_stats = function(player) {
+    if (player && player.messiExclusive) {
+      return { pace:100, shooting:100, passing:100, dribbling:100, defending:100, physical:100 };
+    }
+    return baseStats(player);
+  };
+  const baseTraits = V27_traits;
+  V27_traits = function(player) {
+    if (player && player.messiExclusive) return player.traits.slice();
+    return baseTraits(player);
+  };
+  const baseCardHTML = cardHTML;
+  cardHTML = function(player, extra, id, pop) {
+    let addOn = extra;
+    if (player && player.messiExclusive) {
+      addOn = String(extra || "").replace(/<button\b[^>]*onclick=["']sell\(\d+\)["'][^>]*>[\s\S]*?<\/button>/gi,
+        '<div class="messi-exclusive-tag">✦ CODE EXCLUSIVE · CANNOT BE SOLD ✦</div>');
+    }
+    let html = baseCardHTML(player, addOn, id, pop);
+    if (player && player.messiExclusive) {
+      html = html.replace(/class="card ([^"]*)"/, (m, classes) => 'class="card ' + classes + ' messi-100-card"');
+    }
+    return html;
+  };
+  const baseSell = sell;
+  sell = window.sell = function(id) {
+    const p = S && POOL[S.mode] && POOL[S.mode][id];
+    if (p && p.messiExclusive) return ask("Messi is a code-exclusive card and cannot be sold.");
+    return baseSell(id);
+  };
+  const baseBuy = buy;
+  buy = window.buy = function(id) {
+    const p = S && POOL[S.mode] && POOL[S.mode][id];
+    if (p && p.messiExclusive) return ask("Messi can only be unlocked with the Messi100Legend code.");
+    return baseBuy(id);
+  };
+  const baseRedeem = window.redeemCode || redeemCode;
+  window.redeemCode = redeemCode = function() {
+    const input = $("v27CodeInput");
+    const msg = $("v27CodeMsg");
+    const key = input && input.value ? input.value.trim().toLowerCase() : "";
+    if (key === MESSI_CODE && S && input && msg) {
+      S.redeemed = S.redeemed || {};
+      if (S.redeemed[MESSI_CODE] || S.messi100Claimed) {
+        msg.className = "v27-code-error";
+        msg.textContent = "Messi's 100 OVR secret card has already been claimed on this save.";
+        sfx.err();
+        return;
+      }
+      S.owned = S.owned || { fb:{}, fs:{} };
+      ["fb", "fs"].forEach(mode => {
+        S.owned[mode] = S.owned[mode] || {};
+        S.owned[mode][MESSI[mode].id] = Math.max(1, Number(S.owned[mode][MESSI[mode].id]) || 0);
+        if (S.stock && S.stock[mode]) S.stock[mode][MESSI[mode].id] = 0;
+      });
+      S.redeemed[MESSI_CODE] = true;
+      S.messi100Claimed = true;
+      input.value = "";
+      save(); sfx.coin(); refresh();
+      const fresh = $("v27CodeMsg");
+      if (fresh) {
+        fresh.className = "v27-code-success";
+        fresh.textContent = "✦ MESSI · 100 OVR has joined both Football and Futsal squads. Argentina × Barcelona edition claimed!";
+      }
+      return;
+    }
+    return baseRedeem.apply(this, arguments);
+  };
+
+  const messiStyle = document.createElement("style");
+  messiStyle.id = "kikstartV26MessiStyle";
+  messiStyle.textContent = `
+    .messi-100-card{position:relative;isolation:isolate;overflow:hidden!important;color:#fff!important;
+      background:
+        radial-gradient(circle at 12% 14%,#fff 0 1.5px,transparent 3px),
+        radial-gradient(circle at 86% 18%,#b8edff 0 2px,transparent 4px),
+        radial-gradient(circle at 18% 83%,#ffe3ed 0 2px,transparent 4px),
+        radial-gradient(circle at 88% 82%,#fff 0 1.5px,transparent 3px),
+        repeating-linear-gradient(135deg,transparent 0 8px,#ffffff20 8px 10px,transparent 10px 20px),
+        repeating-linear-gradient(45deg,#83d9ff 0 9px,#f8fbff 9px 18px,#b80c39 18px 25px,#13285f 25px 35px,#a50044 35px 43px,#004d98 43px 53px)!important;
+      border:1.5px solid #effcff!important;box-shadow:0 0 18px #83e4ff,0 0 38px #d8f6ff,0 0 62px #b80c39aa,0 0 82px #004d98aa,inset 0 0 26px #fff8!important;
+      transform-style:preserve-3d;animation:messiAura 2.3s ease-in-out infinite alternate}
+    .messi-100-card:before{content:"";position:absolute;inset:-80% -110%;z-index:0;pointer-events:none;
+      background:repeating-conic-gradient(from 8deg at 50% 50%,#ffffff00 0deg 7deg,#ffffff9c 7deg 8deg,#8bdcff70 8deg 13deg,#ffffff00 13deg 20deg),
+      linear-gradient(112deg,transparent 34%,#ffffff20 42%,#ffffffef 49%,#b9edffcc 53%,#d7194b88 57%,transparent 65%);
+      mix-blend-mode:screen;animation:messiPrism 3.2s linear infinite}
+    .messi-100-card:after{content:"ARGENTINA ✦ FC BARCELONA ✦ 100";position:absolute;left:0;right:0;top:3px;z-index:2;text-align:center;
+      color:#fff;font-size:7px;font-weight:1000;letter-spacing:.11em;text-shadow:0 0 7px #fff,0 0 14px #7adfff,0 0 18px #a50044;pointer-events:none}
+    .messi-100-card>*{position:relative;z-index:1}
+    .messi-100-card .ovr{color:#fff!important;text-shadow:0 0 8px #fff,0 0 17px #78dfff,0 0 22px #b80c39,0 2px 4px #102454!important}
+    .messi-100-card .nm{color:#fff!important;text-shadow:0 0 7px #fff,0 0 14px #76dfff,0 0 15px #a50044}
+    .messi-100-card .rar,.messi-100-card .pos{color:#fff!important;text-shadow:0 0 8px #142b68,0 0 12px #a50044}
+    .messi-100-card:hover{transform:translateY(-8px) perspective(700px) rotateY(6deg) rotateX(4deg) scale(1.045);filter:saturate(1.5) brightness(1.24);box-shadow:0 0 26px #fff,0 0 52px #83e4ff,0 0 80px #bd1548aa,0 0 96px #1645a8aa,inset 0 0 28px #fff!important}
+    .messi-exclusive-tag{margin:7px 0 3px;padding:5px 3px;border:1px solid #e9f8ff;border-radius:7px;background:linear-gradient(90deg,#12427b,#a50044,#102b62);color:#fff;font-size:7px;font-weight:1000;letter-spacing:.05em;text-shadow:0 0 9px #fff;box-shadow:0 0 13px #8fe5ff}
+    @keyframes messiPrism{0%{transform:translate(-8%,-6%) rotate(0deg)}50%{transform:translate(8%,6%) rotate(180deg)}100%{transform:translate(-8%,-6%) rotate(360deg)}}
+    @keyframes messiAura{from{filter:saturate(1.15) brightness(1.03)}to{filter:saturate(1.65) brightness(1.2)}}
+    @media(prefers-reduced-motion:reduce){.messi-100-card,.messi-100-card:before{animation:none!important}}
+  `;
+  document.head.appendChild(messiStyle);
+
+  // ---------------------------------------------------------------------------
+  // CLEAN STADIUM REBUILD — removes old opaque blocks and duplicate roof overlays.
+  // ---------------------------------------------------------------------------
+  function stadiumInstall(){
+    if (typeof THREE === "undefined" || !window.KIKSTART_getStadiumProfile) return false;
+    let currentKey = "";
+    let viewMode = "aerial";
+    let baseAngle = 0;
+    const views = {
+      aerial:    {pos:[170,145,178],look:[0,10,0],label:"Aerial"},
+      bowl:      {pos:[108,66,116],look:[0,16,0],label:"Inside bowl"},
+      pitchside: {pos:[0,9,118],look:[0,8,16],label:"Pitchside"},
+      mainstand: {pos:[0,48,139],look:[0,17,70],label:"Main stand"},
+      endstand:  {pos:[168,40,0],look:[78,15,0],label:"End stand"},
+      exterior:  {pos:[184,49,18],look:[105,15,12],label:"Exterior"}
+    };
+    // The camera's target is selected from the active club's architectural profile.
+    // These positions frame the feature the ground is known for, instead of aiming
+    // every club at the same centre point.
+    function cameraFor(mode){
+      const profile=window.KIKSTART_getStadiumProfile()||{};
+      const style=profile.style||"";
+      const custom={
+        yellowWall:{pos:[0,46,-137],look:[0,20,-76]},
+        singleSouth:{pos:[0,49,-139],look:[0,22,-78]},
+        kop:{pos:[0,45,-136],look:[0,20,-78]},
+        sanSiroTowers:{pos:[160,57,28],look:[104,18,20]},
+        metalLouvre:{pos:[0,55,145],look:[0,18,75]},
+        etfeDiamond:{pos:[136,57,94],look:[69,18,59]},
+        asymTwin:{pos:[135,54,106],look:[67,19,66]},
+        asymGrandstand:{pos:[140,51,92],look:[72,19,64]},
+        waterfrontBrick:{pos:[0,46,143],look:[0,15,91]},
+        cottageHeritage:{pos:[0,42,-137],look:[0,13,-82]},
+        waveCanopy:{pos:[-143,55,62],look:[-72,18,34]},
+        concreteRibs:{pos:[-144,53,-18],look:[-75,18,-8]},
+        blueShell:{pos:[140,48,80],look:[70,16,54]},
+        innerBowl:{pos:[134,55,96],look:[67,18,61]},
+        grandBowl:{pos:[0,56,145],look:[0,19,77]},
+        londonOlympicBowl:{pos:[150,62,84],look:[72,21,55]}
+      };
+      if(mode==="mainstand"&&custom[style])return {...custom[style],label:"Main stand"};
+      if(mode==="endstand"){
+        if(["yellowWall","singleSouth","kop"].includes(style))return {pos:[0,42,132],look:[0,17,72],label:"End stand"};
+        if(style==="sanSiroTowers")return {pos:[-158,48,0],look:[-88,16,0],label:"End stand"};
+      }
+      if(mode==="exterior"){
+        if(style==="sanSiroTowers")return {pos:[174,57,18],look:[111,17,14],label:"Exterior"};
+        if(style==="metalLouvre")return {pos:[0,50,-157],look:[0,17,-99],label:"Exterior"};
+        if(style==="etfeDiamond")return {pos:[0,54,158],look:[0,16,100],label:"Exterior"};
+        if(style==="waterfrontBrick")return {pos:[0,45,158],look:[0,15,103],label:"Exterior"};
+      }
+      return views[mode]||views.aerial;
+    }
+    const esc = value => String(value ?? "").replace(/[&<>\"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+    const hash = s => {let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
+    function texture(kind,seed=1){
+      const canvas=document.createElement("canvas");canvas.width=512;canvas.height=512;
+      const ctx=canvas.getContext("2d");let state=(seed||1)>>>0;
+      const rand=()=>{state=(Math.imul(state,1664525)+1013904223)>>>0;return state/4294967296;};
+      if(kind==="brick"){
+        ctx.fillStyle="#403c3a";ctx.fillRect(0,0,512,512);
+        for(let y=0;y<512;y+=32){for(let x=0;x<512;x+=80){const xx=x+((y/32)%2)*40;ctx.fillStyle=["#79584b","#8a6252","#6d5148","#936d5b"][Math.floor(rand()*4)];ctx.fillRect(xx+2,y+2,76,28);}}
+        ctx.strokeStyle="#c5b9ae55";ctx.lineWidth=2;for(let y=0;y<=512;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(512,y);ctx.stroke();}
+      }else if(kind==="metal"){
+        const gr=ctx.createLinearGradient(0,0,512,0);gr.addColorStop(0,"#667483");gr.addColorStop(.25,"#d9e0e7");gr.addColorStop(.52,"#8d9aa8");gr.addColorStop(.78,"#e4e9ed");gr.addColorStop(1,"#6f8092");ctx.fillStyle=gr;ctx.fillRect(0,0,512,512);
+        for(let y=0;y<512;y+=5){ctx.fillStyle=y%10?"#ffffff18":"#17283a28";ctx.fillRect(0,y,512,1.5);}
+        for(let i=0;i<7000;i++){ctx.fillStyle=rand()>.5?"#ffffff12":"#0717290d";ctx.fillRect(rand()*512,rand()*512,1,1);}
+      }else if(kind==="grass"){
+        ctx.fillStyle="#17683a";ctx.fillRect(0,0,512,512);
+        for(let i=0;i<16;i++){ctx.fillStyle=i%2?"#23864a":"#1d7840";ctx.fillRect(i*32,0,32,512);}
+        for(let i=0;i<16000;i++){ctx.fillStyle=rand()>.5?"#c5ed9a20":"#001c1028";ctx.fillRect(rand()*512,rand()*512,1+rand()*2,2+rand()*5);}
+      }else if(kind==="etfe"){
+        const gr=ctx.createLinearGradient(0,0,512,512);gr.addColorStop(0,"#ccefff");gr.addColorStop(.36,"#4a8fce");gr.addColorStop(.7,"#183d79");gr.addColorStop(1,"#d6f2ff");ctx.fillStyle=gr;ctx.fillRect(0,0,512,512);
+        ctx.strokeStyle="#ffffff9c";ctx.lineWidth=3;for(let y=-512;y<1024;y+=36){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(512,y+512);ctx.stroke();}
+        ctx.strokeStyle="#17396b70";ctx.lineWidth=2;for(let x=0;x<512;x+=32){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,512);ctx.stroke();}
+      }else{
+        ctx.fillStyle="#7f8b96";ctx.fillRect(0,0,512,512);
+        for(let i=0;i<13000;i++){const v=Math.floor(95+rand()*105);ctx.fillStyle=`rgba(${v},${v},${v},${.12+rand()*.15})`;ctx.fillRect(rand()*512,rand()*512,1+rand()*2,1+rand()*2);}
+        ctx.strokeStyle="#ffffff20";ctx.lineWidth=2;for(let y=0;y<512;y+=96){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(512,y);ctx.stroke();}
+      }
+      const tex=new THREE.CanvasTexture(canvas);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.anisotropy=4;return tex;
+    }
+    function disposeGroup(group){if(!group)return;group.traverse(o=>{if(o.geometry&&o.geometry.dispose)o.geometry.dispose();if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m&&m.map&&m.map.dispose)m.map.dispose();if(m&&m.dispose)m.dispose();});});}
+    function shapePoint(a,rx,rz,power){const c=Math.cos(a),s=Math.sin(a);return [Math.sign(c)*Math.pow(Math.abs(c),power)*rx,Math.sign(s)*Math.pow(Math.abs(s),power)*rz];}
+    function build(){
+      if(!S||!sr||!ss||typeof THREE==="undefined")return false;
+      const club=CL[S.club];if(!club)return false;
+      const profile=window.KIKSTART_getStadiumProfile()||{venue:club.n+" Stadium",style:"compactModern",label:"Club ground",note:"A club-specific stadium."};
+      const style=profile.style||"compactModern",level=Math.max(0,Math.min(10,Number(S.st&&S.st.a)||0));
+      const key=[S.club,style,level,JSON.stringify(S.stadiumCustom||{})].join("|");
+      if(key===currentKey&&sw&&sw.parent===ss)return true;
+      if(sw){ss.remove(sw);disposeGroup(sw);}
+      // Clear any orphaned stadium overlays left by prior builders (not lighting or world scene).
+      ss.children.slice().forEach(child=>{
+        if(child!==sw && child && typeof child.name==="string" && (/^KIKSTART_ClubStadium_/i.test(child.name)||/^V22_Stadium_/i.test(child.name)||/^legacyStadium/i.test(child.name))){
+          ss.remove(child);disposeGroup(child);
+        }
+      });
+      sw=new THREE.Group();sw.name="KIKSTART_ClubStadium_"+club.k;ss.add(sw);
+      const g=sw,seed=hash(club.k+style);
+      const concreteTex=texture("concrete",seed),metalTex=texture("metal",seed+7),grassTex=texture("grass",seed+13),brickTex=texture("brick",seed+19),etfeTex=texture("etfe",seed+23);
+      const mat=(color,rough=.7,metal=.1,emissive=0,opacity=1,map=null)=>new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive,transparent:opacity<1,opacity,map,side:THREE.DoubleSide,depthWrite:opacity>=1});
+      const concrete=mat(0x84909b,.94,.04,0,1,concreteTex),darkConcrete=mat(0x273746,.88,.12),steel=mat(0x9baab9,.35,.78,0,1,metalTex),darkSteel=mat(0x18283a,.45,.7),silver=mat(0xd1dbe4,.27,.8,0,1,metalTex),glass=mat(0x74c6e8,.14,.32,0x0b3455,.42),brick=mat(0x9a6c59,.92,.02,0,1,brickTex),etfe=mat(0xc9eaff,.18,.22,0x163d77,.91,etfeTex),white=mat(0xeaf2f8,.42,.16),clubA=mat(club.a,.52,.24),clubB=mat(club.b,.55,.18),pitchMat=mat(0xffffff,.94,.01,0,1,grassTex);
+      const basic=(color)=>new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide});
+      const add=(geo,material,x=0,y=0,z=0,rx=0,ry=0,rz=0)=>{const o=new THREE.Mesh(geo,material);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);o.castShadow=true;o.receiveShadow=true;g.add(o);return o;};
+      const box=(w,h,d,x,y,z,material,rx=0,ry=0,rz=0)=>add(new THREE.BoxGeometry(w,h,d),material,x,y,z,rx,ry,rz);
+      const plane=(w,h,x,y,z,material,rotation=-Math.PI/2)=>add(new THREE.PlaneGeometry(w,h),material,x,y,z,rotation,0,0);
+      const tube=(pts,r,material,segments=64)=>{const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],p[1],p[2])));const m=add(new THREE.TubeGeometry(curve,segments,r,8,false),material);m.castShadow=true;return m;};
+      const beam=(a,b,r,material,r2)=>{const va=new THREE.Vector3(a[0],a[1],a[2]),vb=new THREE.Vector3(b[0],b[1],b[2]),dir=vb.clone().sub(va);const mesh=add(new THREE.CylinderGeometry(r2===undefined?r:r2,r,dir.length(),10),material);mesh.position.copy(va.clone().add(vb).multiplyScalar(.5));mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());return mesh;};
+      const shapePower=(style==="metalLouvre"||style==="etfeDiamond"||style==="roundArena"||style==="blueShell"||style==="meshSkin"||style==="radialCanopy"||style==="cableBowl")?.86:.48;
+      const radii=(style==="compactStand"||style==="compactTerrace"||style==="compactClassic"||style==="compactModern"||style==="classicTerrace")?[84,72]:style==="olympicTrack"||style==="londonOlympicBowl"?[102,88]:[96,82];
+      const rx=radii[0],rz=radii[1];
+      const ringPts=(xRadius,zRadius,y,phase=0)=>{const pts=[];for(let i=0;i<=160;i++){const a=i/160*Math.PI*2;const [x,z]=shapePoint(a,xRadius,zRadius,shapePower);pts.push([x,y+(phase?Math.sin(a*2+phase)*phase:0),z]);}return pts;};
+      const ring=(xRadius,zRadius,y,r,material,phase=0)=>tube(ringPts(xRadius,zRadius,y,phase),r,material,200);
+      const ringWall=(outerX,outerZ,innerX,innerZ,y0,y1,material)=>{
+        const seg=160,levels=10,positions=[],indices=[];
+        for(let i=0;i<=seg;i++){const a=i/seg*Math.PI*2;for(let j=0;j<=levels;j++){const v=j/levels,[ix,iz]=shapePoint(a,innerX+(outerX-innerX)*v,innerZ+(outerZ-innerZ)*v,shapePower);positions.push(ix,y0+(y1-y0)*Math.sin(v*Math.PI/2),iz);}}
+        for(let i=0;i<seg;i++)for(let j=0;j<levels;j++){const p=i*(levels+1)+j,q=p+levels+1;indices.push(p,q,p+1,q,q+1,p+1);}
+        const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));geo.setIndex(indices);geo.computeVertexNormals();return add(geo,material);
+      };
+      const board=(text,x,y,z,w,h,rotation=0)=>{
+        const canvas=document.createElement("canvas");canvas.width=1024;canvas.height=256;const ctx=canvas.getContext("2d");
+        const grad=ctx.createLinearGradient(0,0,1024,0);grad.addColorStop(0,club.a);grad.addColorStop(.5,"#08152b");grad.addColorStop(1,club.b);ctx.fillStyle=grad;ctx.fillRect(0,0,1024,256);
+        ctx.strokeStyle="#ffffff99";ctx.lineWidth=10;ctx.strokeRect(7,7,1010,242);ctx.fillStyle="#fff";ctx.font="900 78px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.shadowColor="#ffffff";ctx.shadowBlur=16;ctx.fillText(String(text).toUpperCase(),512,132);
+        const tex=new THREE.CanvasTexture(canvas);const m=add(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide,toneMapped:false}),x,y,z);m.rotation.y=rotation;return m;
+      };
+
+      // Surrounding plaza and tactile pitch surface.
+      const plazaMat=mat(0x485563,.96,.06,0,1,concreteTex);plane(260,236,0,-1.15,0,plazaMat);
+      plane(110,72,0,-.46,0,pitchMat);

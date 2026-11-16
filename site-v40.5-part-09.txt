@@ -1,0 +1,1000 @@
+      for(let i=0;i<12;i++){
+        const stripeMat=mat(i%2?0x277f48:0x1f7440,.98,.01);
+        plane(110/12,72,-55+(i+.5)*(110/12),-.425,0,stripeMat);
+      }
+      const line=mat(0xf1f8f2,.6,.02,0x1b2a1d,.95);
+      const fieldLine=(w,h,x,z)=>plane(w,h,x,-.37,z,line);
+      fieldLine(110,.22,0,-35.8);fieldLine(110,.22,0,35.8);fieldLine(.22,72,-55,0);fieldLine(.22,72,55,0);fieldLine(.18,72,0,0);
+      fieldLine(16.5,.18,-46.75,0);fieldLine(16.5,.18,46.75,0);fieldLine(.18,40,-46.75,0);fieldLine(.18,40,46.75,0);
+      const centerCircle=add(new THREE.RingGeometry(9.05,9.25,96),line,0,-.345,0,-Math.PI/2);centerCircle.receiveShadow=false;
+      [-1,1].forEach(side=>{
+        const x=side*56.2;
+        beam([x,0,-3.75],[x,4.6,-3.75],.12,white);beam([x,0,3.75],[x,4.6,3.75],.12,white);beam([x,4.6,-3.75],[x,4.6,3.75],.12,white);
+        const net=add(new THREE.BoxGeometry(4.2,4.3,7.45),new THREE.MeshBasicMaterial({color:0xe4edf5,wireframe:true,transparent:true,opacity:.24,depthWrite:false}),x+side*2.1,2.15,0);
+        net.castShadow=false;
+      });
+
+      // Track only on venues that genuinely use an athletics-style bowl.
+      if(style==="olympicTrack"||style==="londonOlympicBowl"){
+        const track=mat(0x9c4e43,.85,.03);const ringMesh=add(new THREE.RingGeometry(69,86,160),track,0,-.31,0,-Math.PI/2);ringMesh.scale.z=.79;
+        for(let lane=0;lane<6;lane++){const r=70.5+lane*2.25;const rm=add(new THREE.RingGeometry(r,r+.075,160),line,0,-.25,0,-Math.PI/2);rm.scale.z=.79;}
+      }
+
+      // Stepped seats: thousands of compact seat instances, not filled-in concrete blocks.
+      const seatBaseGeo=new THREE.BoxGeometry(.82,.2,.62),seatBackGeo=new THREE.BoxGeometry(.82,.48,.13);
+      const seatMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.56,metalness:.03}),backMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.6,metalness:.02});
+      const seatItems=[],backItems=[];
+      const addSeat=(x,y,z,rotation,section,row,col)=>{
+        let colour=club.a;
+        if(style==="yellowWall"&&section==="endMinus")colour=((row+col)%9<7)?"#f5d817":"#f6ec91";
+        else if((row*5+col*3)%17<3)colour=club.b;
+        else if((row+col*2)%29===0)colour="#f1f4f6";
+        seatItems.push({x,y,z,ry:rotation,c:colour});
+        const dx=section.startsWith("long")?0:(rotation>0?-.22:.22),dz=section.startsWith("long")?(rotation===0?-.22:.22):0;
+        backItems.push({x:x+dx,y:y+.27,z:z+dz,ry:rotation,c:colour});
+      };
+      let lowerRows=style==="steepMestalla"?20:style==="yellowWall"?17:style==="compactTerrace"||style==="classicTerrace"?13:15;
+      let upperRows=style==="grandBowl"||style==="innerBowl"||style==="asymTwin"||style==="metalLouvre"||style==="etfeDiamond"?12:8;
+      if(style==="modularArena")upperRows=4;
+      // v35: stadium seating is constructed over time instead of appearing complete at level zero.
+      const fullLowerRows=lowerRows,fullUpperRows=upperRows;
+      lowerRows=level<=0?0:Math.max(2,Math.round(fullLowerRows*Math.min(1,level/4)));
+      upperRows=level<6?0:Math.max(1,Math.round(fullUpperRows*Math.min(1,(level-5)/5)));
+      for(let row=0;row<lowerRows;row++){
+        const y=2.7+row*.78,offset=row*1.05;
+        for(const side of [-1,1]){
+          const z=side*(38.5+offset);
+          for(let x=-54;x<=54;x+=1.48)addSeat(x,y,z,side>0?0:Math.PI,side>0?"longPlus":"longMinus",row,Math.round(x));
+          const ex=side*(58+offset);
+          for(let z=-34;z<=34;z+=1.48)addSeat(ex,y,z,side>0?Math.PI/2:-Math.PI/2,side>0?"endPlus":"endMinus",row,Math.round(z));
+          // Thin row decks. These are separate steps, not oversized slabs through the seating.
+          box(110,.16,1.02,0,y-.17,z,concrete);
+          box(1.02,.16,70,ex,y-.17,0,concrete);
+        }
+      }
+      const upperStart=style==="grandBowl"||style==="innerBowl"?18.4:17.2;
+      for(let row=0;row<upperRows;row++){
+        const y=upperStart+row*.82,offset=15.5+row*1.12;
+        for(const side of [-1,1]){
+          const z=side*(38.5+offset);
+          for(let x=-54;x<=54;x+=1.55)addSeat(x,y,z,side>0?0:Math.PI,side>0?"upperLongPlus":"upperLongMinus",row,Math.round(x));
+          const ex=side*(58+offset);
+          for(let z=-34;z<=34;z+=1.55)addSeat(ex,y,z,side>0?Math.PI/2:-Math.PI/2,side>0?"upperEndPlus":"upperEndMinus",row,Math.round(z));
+          box(110,.16,1.05,0,y-.18,z,concrete);box(1.05,.16,70,ex,y-.18,0,concrete);
+        }
+      }
+      if(level>=9&&(style==="grandBowl"||style==="asymTwin"||style==="metalLouvre")){
+        for(let row=0;row<5;row++)for(const side of [-1,1]){
+          const y=28.5+row*.78,z=side*(65+row*1.12);
+          for(let x=-52;x<=52;x+=1.8)addSeat(x,y,z,side>0?0:Math.PI,side>0?"upperLongPlus":"upperLongMinus",row+20,Math.round(x));
+        }
+      }
+      function makeInstances(items,geometry,material){
+        const mesh=new THREE.InstancedMesh(geometry,material,items.length),dummy=new THREE.Object3D();
+        items.forEach((item,i)=>{dummy.position.set(item.x,item.y,item.z);dummy.rotation.y=item.ry;dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);mesh.setColorAt(i,new THREE.Color(item.c));});
+        mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.castShadow=false;mesh.receiveShadow=false;g.add(mesh);return mesh;
+      }
+      makeInstances(seatItems,seatBaseGeo,seatMat);makeInstances(backItems,seatBackGeo,backMat);
+
+      // v35: the stadium exterior is added after the lower seating bowl reaches level five.
+      if(level>=5){
+      // Open concourse façade: separated textured panels, vertical ribs and visible portals.
+      const facadeMat=style==="waterfrontBrick"||style==="cottageHeritage"?brick:style==="metalLouvre"?silver:style==="etfeDiamond"?etfe:concrete;
+      ring(rx*.985,rz*.985,5.8,.75,darkSteel);ring(rx*1.015,rz*1.015,15,.42,steel);ring(rx*1.02,rz*1.02,29,.55,darkSteel);
+      for(let i=0;i<80;i++){
+        const a=i/80*Math.PI*2,[x,z]=shapePoint(a,rx,rz,shapePower),[x2,z2]=shapePoint(a,rx+2.1,rz+2.1,shapePower);
+        beam([x2,3,z2],[x2,28,z2],.38,steel);
+        if(i%2===0){const tangent=a+Math.PI/2;const panel=box(4.4,9,.42,x2,10.4,z2,facadeMat,0,-tangent,0);panel.castShadow=true;}
+      }
+      // Recessed entry bays and glazed concourse windows at regular intervals.
+      for(let i=0;i<16;i++){
+        const a=i/16*Math.PI*2,[x,z]=shapePoint(a,rx+2.5,rz+2.5,shapePower);
+        const win=box(5.1,4.5,.22,x,8,z,glass,0,-a-Math.PI/2,0);win.receiveShadow=false;
+        const lintel=box(6,.36,.55,x,10.5,z,steel,0,-a-Math.PI/2,0);
+      }
+
+      }
+      // v35: roof trusses begin at level seven; canopy panels are installed progressively at levels 8–10.
+      if(level>=7){
+      // Continuous annular roof with a real open centre. The pitch is not hidden under an opaque slab.
+      const roofBase=style==="waveCanopy"?35:style==="sanSiroTowers"?36:style==="yellowWall"||style==="singleSouth"?36:33+Math.min(3,level)*.45;
+      const roofInnerX=59,roofInnerZ=42,roofOuterX=rx+12,roofOuterZ=rz+12;
+      const roofType=style==="metalLouvre"?"metal":style==="etfeDiamond"?"etfe":style==="waveCanopy"?"wave":"standard";
+      const roofMaterial=roofType==="metal"?mat(0xb9c5d0,.28,.82,0,.94,metalTex):roofType==="etfe"?etfe:mat(0xdce7f0,.3,.38,0,.9,etfeTex);
+      const roofProgress=level>=10?1:level===9?.72:level===8?.36:0;
+      const nx=160,nv=9,positions=[],indices=[];
+      for(let i=0;i<=nx;i++){
+        const a=i/nx*Math.PI*2;
+        for(let j=0;j<=nv;j++){
+          const v=1-(j/nv)*roofProgress,xx=roofInnerX+(roofOuterX-roofInnerX)*v,zz=roofInnerZ+(roofOuterZ-roofInnerZ)*v,[x,z]=shapePoint(a,xx,zz,shapePower);
+          const wave=roofType==="wave"?3.5*Math.sin(a*4)+1.2*Math.sin(a*8):style==="radialCanopy"?1.8*Math.sin(a*8):.8*Math.sin(a*4);
+          const y=roofBase+wave+Math.sin(v*Math.PI)*1.4-v*.55;
+          positions.push(x,y,z);
+        }
+      }
+      for(let i=0;i<nx;i++)for(let j=0;j<nv;j++){const a=i*(nv+1)+j,b=a+nv+1;indices.push(a,b,a+1,b,b+1,a+1);}
+      if(roofProgress>0){const roofGeo=new THREE.BufferGeometry();roofGeo.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));roofGeo.setIndex(indices);roofGeo.computeVertexNormals();add(roofGeo,roofMaterial);}
+      ring(roofOuterX,roofOuterZ,roofBase,.9,steel);
+      if(level>=8)ring(roofInnerX,roofInnerZ,roofBase+1,.65,white);
+      for(let i=0;i<40;i++){
+        const a=i/40*Math.PI*2,[ox,oz]=shapePoint(a,roofOuterX,roofOuterZ,shapePower),[ix,iz]=shapePoint(a,roofInnerX,roofInnerZ,shapePower);
+        beam([ox,roofBase-.2,oz],[ix,roofBase+1.2,iz],.22,steel);
+        if(i%2===0){const [mx,mz]=shapePoint(a,(roofOuterX+roofInnerX)/2,(roofOuterZ+roofInnerZ)/2,shapePower);beam([mx,roofBase-1,mz],[ox,roofBase-.2,oz],.12,darkSteel);}
+      }
+      // Roof underside ribs and translucent skylight panes.
+      for(const yoff of [-1.1,-2.1])ring(roofOuterX-2,roofOuterZ-2,roofBase+yoff,.18,darkSteel);
+      for(let i=0;i<80;i++){
+        const a=i/80*Math.PI*2,[x,z]=shapePoint(a,roofInnerX+4,roofInnerZ+4,shapePower);
+        const light=box(3.8,.22,.24,x,roofBase+.6,z,mat(0xbfeaff,.18,.2,0x58c9ff,.7),0,-a-Math.PI/2,0);
+        light.castShadow=false;
+      }
+
+      // Club-specific roof skins and signature architectural finish appear at level nine.
+      if(level>=9){
+      // Venue-specific silhouette and architecture — never opaque cuboid walls through the stands.
+      if(style==="metalLouvre"){
+        // Bernabéu: brushed stainless-steel wrap, dense curved louvres, retractable roof rails.
+        for(let y=7;y<=28;y+=1.05)ring(rx+5,rz+5,y,.12,silver);
+        for(let side of [-1,1]){beam([side*42,roofBase+1,-42],[side*42,roofBase+1,42],.42,darkSteel);beam([side*42,roofBase+1,-42],[side*42,roofBase+1,42],.18,white);}
+        for(let i=0;i<2;i++){const z=-10+i*20;for(let x=-44;x<=44;x+=8)beam([x,roofBase+.9,z],[x+4,roofBase+.9,z],.1,silver);}
+        board("SANTIAGO BERNABÉU",0,14,-rz-8,46,4,0);
+      }
+      if(style==="etfeDiamond"){
+        // Allianz Arena: luminous ETFE cushion façade, individually faceted panels.
+        const cushionGeo=new THREE.OctahedronGeometry(2.05,0),cushionMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.18,metalness:.16,emissive:0x17325e,emissiveIntensity:.62});
+        const panels=[];for(let row=0;row<5;row++)for(let i=0;i<96;i++){
+          const a=i/96*Math.PI*2,[x,z]=shapePoint(a,rx+5,rz+5,shapePower);const c=(row+i)%3===0?"#df173c":(row+i)%3===1?"#3178d1":"#d9efff";
+          panels.push({x,y:6+row*4.2,z,ry:-a,c});
+        }
+        const im=new THREE.InstancedMesh(cushionGeo,cushionMat,panels.length),dummy=new THREE.Object3D();panels.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.ry,0);dummy.scale.set(1.0,.62,.28);dummy.updateMatrix();im.setMatrixAt(i,dummy.matrix);im.setColorAt(i,new THREE.Color(p.c));});im.instanceMatrix.needsUpdate=true;im.instanceColor.needsUpdate=true;g.add(im);
+        board("ALLIANZ ARENA",0,17,-rz-10,42,4,0);
+      }
+      if(style==="sanSiroTowers"){
+        // San Siro: eleven freestanding cylindrical towers and helical access ramps.
+        for(let i=0;i<11;i++){
+          const a=i/11*Math.PI*2-Math.PI/2,[x,z]=shapePoint(a,rx+16,rz+15,shapePower);
+          const tower=add(new THREE.CylinderGeometry(2.7,3.45,36,20),concrete,x,18,z);
+          add(new THREE.CylinderGeometry(3.8,3.8,1.2,20),clubA,x,36.4,z);
+          const points=[];for(let j=0;j<=200;j++){const t=j/200,angle=t*Math.PI*8;points.push([x+4.2*Math.cos(angle),2+t*33,z+4.2*Math.sin(angle)]);}tube(points,.27,steel,260);
+          for(let y=6;y<34;y+=5)ring(3.9,3.9,y,.12,darkSteel);
+          beam([x,35,z],[x*.74,roofBase+2,z*.74],.72,clubA);
+        }
+        board("SAN SIRO",0,14,-rz-12,36,4,0);
+      }
+      if(style==="yellowWall"){
+        // Dortmund: steep, continuous, single-tier south terrace with yellow roof pylons.
+        for(let i=0;i<6;i++){const x=-54+i*21;beam([x,4,-74],[x,roofBase+8,-82],.58,mat(0xf3d51a,.5,.32));}
+        for(let x=-55;x<=55;x+=5.5)beam([x,roofBase+8,-82],[x+2,roofBase+3,-64],.2,steel);
+        board("DIE GELBE WAND",0,26,-84,50,6,0);
+      }
+      if(style==="singleSouth"){
+        // Tottenham: very tall, steep single-tier South Stand and cable-supported canopy.
+        for(let row=0;row<9;row++)for(let x=-54;x<=54;x+=18){beam([x,13+row*2.4,-(70+row*.55)],[x,roofBase+4,-84],.16,steel);}
+        for(let x=-54;x<=54;x+=18)beam([x,roofBase+4,-84],[x,roofBase+1,-49],.13,white);
+        board("SOUTH STAND",0,31,-88,44,5,0);
+      }
+      if(style==="kop"){
+        // Anfield: steep Kop plus an enlarged, multi-level main stand.
+        for(let i=0;i<8;i++){const x=-64+i*18;beam([x,5,-72],[x,roofBase+5,-84],.38,steel);}
+        for(let x=-60;x<=60;x+=15){beam([x,14,73],[x,roofBase+9,83],.42,clubA);beam([x,roofBase+9,83],[x+7,roofBase+4,58],.23,steel);}
+        board("THE KOP",0,26,-88,35,4.8,0);board("ANFIELD MAIN STAND",0,31,89,49,5,Math.PI);
+      }
+      if(style==="asymTwin"){
+        // Old Trafford: taller West Stand and four distinctive roof corner supports.
+        for(let x=-52;x<=52;x+=17){beam([x,8,73],[x,roofBase+10,84],.48,clubA);beam([x,roofBase+10,84],[x+8,roofBase+5,52],.23,steel);}
+        for(const z of [-1,1])for(const x of [-1,1]){beam([x*86,2,z*70],[x*93,42,z*76],.56,steel);}
+        board("OLD TRAFFORD",0,29,89,42,5,Math.PI);
+      }
+      if(style==="cableBowl"||style==="tensionCanopy"||style==="radialCanopy"){
+        // Cable-supported roof: perimeter masts, radial cables and a lightweight ring.
+        for(let i=0;i<8;i++){const a=i/8*Math.PI*2,[x,z]=shapePoint(a,rx+18,rz+18,shapePower);beam([x,2,z],[x*1.03,roofBase+12,z*1.03],.62,white);for(let j=-1;j<=1;j++){const [ix,iz]=shapePoint(a+j*.12,roofInnerX,roofInnerZ,shapePower);beam([x*1.03,roofBase+12,z*1.03],[ix,roofBase+1,iz],.12,steel);}}
+        for(let i=0;i<32;i++){const a=i/32*Math.PI*2,[x,z]=shapePoint(a,rx+18,rz+18,shapePower),[ix,iz]=shapePoint(a,roofInnerX,roofInnerZ,shapePower);beam([x,roofBase,z],[ix,roofBase+1,iz],.1,white);}
+      }
+      if(style==="waveCanopy"){
+        // Marseille: rising and falling white roof silhouette with repeated wave ribs.
+        for(let i=0;i<28;i++){const a=i/28*Math.PI*2,[x,z]=shapePoint(a,rx+10,rz+10,shapePower),[ix,iz]=shapePoint(a,roofInnerX,roofInnerZ,shapePower);const wave=Math.sin(a*4)*4;beam([x,roofBase+wave,z],[ix,roofBase+wave*.45+2,iz],.34,white);}
+        board("ORANGE VÉLODROME",0,19,-rz-10,43,4,0);
+      }
+      if(style==="concreteRibs"){
+        // Parc des Princes: exposed sweeping concrete rib frame.
+        for(let i=0;i<32;i++){const a=i/32*Math.PI*2,[x,z]=shapePoint(a,rx+10,rz+9,shapePower),[ix,iz]=shapePoint(a,rx-2,rz-2,shapePower);beam([x,4,z],[ix,roofBase+2,iz],.82,concrete);}
+      }
+      if(style==="waterfrontBrick"){
+        // Hill Dickinson: brick warehouse-inspired podium with open steel X-bracing.
+        for(let i=0;i<48;i++){const a=i/48*Math.PI*2,[x,z]=shapePoint(a,rx+7,rz+7,shapePower);const panel=box(5.1,9,.65,x,8,z,brick,0,-a-Math.PI/2,0);panel.castShadow=true;}
+        for(let x=-60;x<=60;x+=20){beam([x,1,78],[x+10,25,83],.72,darkSteel);beam([x+10,25,83],[x+20,1,78],.72,darkSteel);}
+        board("HILL DICKINSON STADIUM",0,14,-rz-10,53,4.5,0);
+      }
+      if(style==="cottageHeritage"){
+        // Craven Cottage-style heritage pavilion and brick end blocks.
+        const pavilion=box(34,11,13,0,6,-rz-8,brick);const roof=box(38,.5,15,0,11.8,-rz-8,white);roof.rotation.z=.025;
+        beam([-19,12,-rz-8],[0,19,-rz-8],.4,white);beam([0,19,-rz-8],[19,12,-rz-8],.4,white);
+        for(let x=-13;x<=13;x+=6.5)box(1,5,.35,x,5,-rz-14,glass);
+      }
+      if(style==="olympicTrack"||style==="londonOlympicBowl"){
+        for(let i=0;i<20;i++){const a=i/20*Math.PI*2,[x,z]=shapePoint(a,rx+12,rz+11,shapePower);beam([x,2,z],[x,roofBase+1,z],.32,steel);}
+      }
+      if(style==="slidingRoof"||style==="retractableCanopy"){
+        // Two light translucent roof leaves run on visible rails above the central aperture.
+        for(const side of [-1,1]){
+          for(let x=-50;x<=50;x+=10)beam([x,roofBase+1,side*14],[x,roofBase+1,side*38],.12,steel);
+          const leaf=box(105,.28,12,0,roofBase+2,side*12,mat(0xc9dce9,.18,.22,0x23435f,.65));leaf.castShadow=false;
+        }
+        beam([-58,roofBase,0],[58,roofBase,0],.22,steel);
+      }
+      if(style==="marathonTower"||style==="dallAraTower"){
+        const tx=-rx-13,tz=rz-12;box(8,41,8,tx,20.5,tz,concrete);box(10,.8,10,tx,41.2,tz,steel);
+        for(let y=8;y<39;y+=6)box(8.4,.48,8.4,tx,y,tz,clubA);board(style==="dallAraTower"?"DALL'ARA":"MARATHON TOWER",tx+10,31,tz,22,3,Math.PI/2);
+      }
+      if(style==="solarShell"){
+        const solar=mat(0x174b45,.22,.76,0x0c2925);for(let x=-60;x<=60;x+=8)for(let z of [-1,1]){const p=box(6,.12,8,x,roofBase-1,z*56,solar);p.rotation.z=.08;}
+      }
+      if(style==="vArena"){
+        for(let side of [-1,1])for(let x=-60;x<=60;x+=24){beam([x-9,1,side*78],[x,roofBase+1,side*86],.62,steel);beam([x+9,1,side*78],[x,roofBase+1,side*86],.62,clubA);}
+      }
+      if(style==="steepMestalla"){
+        for(let x=-60;x<=60;x+=20){beam([x,4,-76],[x,roofBase+7,-81],.4,steel);beam([x,4,76],[x,roofBase+7,81],.4,steel);}
+      }
+      if(style==="modularArena"){
+        // Modular venue: slim separate cladding fins and open service bays, not blocks
+        // running through the seating bowl.
+        const moduleMat=mat(0x243d59,.68,.32),moduleEdge=mat(0x718aa2,.46,.58);
+        for(let side of [-1,1])for(let x=-54;x<=54;x+=12){
+          for(let row=0;row<3;row++){
+            const y=5+row*5.2;
+            const panel=box(9.2,.34,.48,x,y,side*77,moduleMat);panel.castShadow=false;
+            box(9.2,.08,.52,x,y+.22,side*77,moduleEdge).castShadow=false;
+          }
+        }
+      }
+
+      // Additional venue-specific architecture for the remaining profile families.
+      if(style==="asymGrandstand"){
+        // St James' Park: the prominent west stand rises above the rest of the ground.
+        for(let x=-58;x<=58;x+=14){beam([x,8,72],[x,roofBase+12,86],.52,steel);beam([x,roofBase+12,86],[x+7,roofBase+5,55],.24,clubA);}
+        board("ST JAMES' PARK",0,roofBase*.62,91,44,5,Math.PI);
+      }
+      if(style==="blueShell"){
+        // Reale Arena: a continuous blue-toned, translucent skin with slender ribs.
+        const blueGlass=mat(0x5aa7d3,.2,.34,0x123d69,.5);
+        for(let i=0;i<96;i++){
+          const a=i/96*Math.PI*2,[x,z]=shapePoint(a,rx+5,rz+5,shapePower);
+          const m=box(3.0,13,.16,x,16,z,blueGlass,0,-a-Math.PI/2,0);m.castShadow=false;
+          if(i%4===0){const [rx2,rz2]=shapePoint(a,rx+7,rz+7,shapePower);beam([rx2,4,rz2],[rx2,roofBase+2,rz2],.2,white);}
+        }
+        board("REALE ARENA",0,15,-rz-10,34,4,0);
+      }
+      if(style==="ceramicYellow"){
+        // Estadio de la Cerámica: glazed yellow ceramic cladding with blue tile accents.
+        const yellowTile=mat(0xf0c928,.28,.18),blueTile=mat(0x1e4e89,.32,.22);
+        for(let i=0;i<104;i++){
+          const a=i/104*Math.PI*2,[x,z]=shapePoint(a,rx+5,rz+5,shapePower);
+          for(let row=0;row<4;row++){
+            const tile=box(2.6,3.2,.32,x,7+row*4.5,z,(i+row)%7===0?blueTile:yellowTile,0,-a-Math.PI/2,0);tile.castShadow=false;
+          }
+        }
+        board("ESTADIO DE LA CERÁMICA",0,15,-rz-10,42,4,0);
+      }
+      if(style==="cornerMasts"){
+        // Borussia-Park: four visible corner masts and cable-stayed roof edges.
+        for(const sx of [-1,1])for(const sz of [-1,1]){
+          const [x,z]=shapePoint(Math.atan2(sz,sx),rx+18,rz+18,shapePower);
+          beam([x,1,z],[x*1.04,roofBase+15,z*1.04],.78,white);
+          for(let j=-1;j<=1;j++){
+            const [ix,iz]=shapePoint(Math.atan2(sz,sx)+j*.12,roofInnerX,roofInnerZ,shapePower);
+            beam([x*1.04,roofBase+15,z*1.04],[ix,roofBase+1,iz],.16,steel);
+          }
+        }
+      }
+      if(style==="greenCauldron"){
+        // Geoffroy-Guichard: steep, enclosed green terraces and a strong roof edge.
+        for(let x=-56;x<=56;x+=14){beam([x,3,-74],[x,roofBase+4,-79],.38,clubA);beam([x,3,74],[x,roofBase+4,79],.38,clubA);}
+        const greenLED=box(114,.5,.3,0,2,-38,basic(0x1cb767));greenLED.castShadow=false;
+        board("LE CHAUDRON",0,22,-85,34,4.8,0);
+      }
+      if(style==="archedOpen"||style==="heritageGable"){
+        // Monaco / historic French grounds: repeated open concrete arches rather than a closed box.
+        for(let i=0;i<9;i++){
+          const x=-68+i*17;
+          tube([[x,7,-73],[x,roofBase-5,-67],[x,roofBase+2,0],[x,roofBase-5,67],[x,7,73]],.48,style==="heritageGable"?concrete:steel,42);
+        }
+        if(style==="heritageGable"){
+          const brickPavilion=box(28,9,10,0,4.5,-rz-8,brick);
+          beam([-16,9,-rz-8],[0,18,-rz-8],.42,white);beam([0,18,-rz-8],[16,9,-rz-8],.42,white);
+        }
+      }
+      if(style==="innerBowl"){
+        // Leipzig: the modern football bowl sits visibly inside a broader outer stadium ring.
+        ring(rx+22,rz+20,7,1.0,darkSteel);ring(rx+23,rz+21,19,.34,clubA);
+        for(let i=0;i<12;i++){
+          const a=i/12*Math.PI*2,[x,z]=shapePoint(a,rx+22,rz+20,shapePower);
+          beam([x,2,z],[x,roofBase+3,z],.55,concrete);
+        }
+      }
+      if(style==="meshSkin"){
+        // Athletic Club / Nice: perforated lattice envelope, kept light and see-through.
+        const lattice=mat(0x9eb6c8,.42,.7,0,.72);
+        for(let i=0;i<72;i++){
+          const a=i/72*Math.PI*2,b=(i+1)/72*Math.PI*2;
+          const [x1,z1]=shapePoint(a,rx+7,rz+7,shapePower),[x2,z2]=shapePoint(b,rx+7,rz+7,shapePower);
+          beam([x1,5,z1],[x2,roofBase,z2],.11,lattice);
+          beam([x2,5,z2],[x1,roofBase,z1],.11,steel);
+        }
+      }
+      if(style==="redWhiteFacade"){
+        // Sevilla: vertical red-and-white façade fins with the club's alternating rhythm.
+        for(let i=0;i<80;i++){
+          const a=i/80*Math.PI*2,[x,z]=shapePoint(a,rx+6,rz+6,shapePower);
+          const m=box(1.2,17,.7,x,15,z,i%2?clubA:white,0,-a-Math.PI/2,0);m.castShadow=true;
+        }
+        board("RAMÓN SÁNCHEZ-PIZJUÁN",0,14,-rz-11,46,4,0);
+      }
+      if(style==="roundArena"){
+        // BayArena: compact, rounded enclosure with a broad circular roof ring.
+        ring(rx+8,rz+8,roofBase-2,1.0,white);ring(rx+14,rz+14,22,.45,clubA);
+        for(let i=0;i<32;i++){const a=i/32*Math.PI*2,[x,z]=shapePoint(a,rx+10,rz+10,shapePower);beam([x,8,z],[x,roofBase,z],.24,steel);}
+      }
+      if(style==="ovalTruss"){
+        // Emirates / Volkspark-style oval roof truss with a long, continuous outer rim.
+        ring(rx+14,rz+12,roofBase+1,.95,white);
+        for(let i=0;i<48;i++){
+          const a=i/48*Math.PI*2,[x,z]=shapePoint(a,rx+14,rz+12,shapePower),[ix,iz]=shapePoint(a,roofInnerX,roofInnerZ,shapePower);
+          beam([x,roofBase,z],[ix,roofBase+1,iz],.16,steel);
+        }
+      }
+      if(style==="classicTerrace"||style==="compactTerrace"||style==="compactClassic"){
+        // Traditional city grounds: visible stand breaks, separate canopy edges and exposed trusses.
+        for(const side of [-1,1]){
+          for(const x of [-54,-27,0,27,54])beam([x,8,side*69],[x,roofBase+1,side*77],.3,steel);
+          beam([-67,roofBase,side*75],[67,roofBase,side*75],.48,clubA);
+        }
+        for(const side of [-1,1])for(const z of [-32,0,32])beam([side*77,8,z],[side*84,roofBase-2,z],.28,steel);
+      }
+      if(style==="compactModern"||style==="compactStand"){
+        // Compact modern grounds: a closer-to-pitch shell with open corner glazing and a clean roof lip.
+        ring(rx+4,rz+4,24,.34,white);
+        for(const side of [-1,1])for(const x of [-52,0,52])beam([x,6,side*(rz+2)],[x,roofBase+1,side*(rz+8)],.28,steel);
+        for(const side of [-1,1])for(const z of [-34,34])beam([side*(rx+2),6,z],[side*(rx+8),roofBase+1,z],.28,steel);
+      }
+      if(style==="grandBowl"){
+        // Camp Nou / large multi-tier grounds: three distinct terraces and broad side roofs.
+        for(const y of [13,23,33])ring(rx+6+(y-13)*.22,rz+6+(y-13)*.22,y,.42,y===23?clubA:steel);
+        for(const side of [-1,1])for(let x=-55;x<=55;x+=22){beam([x,16,side*72],[x,roofBase+4,side*84],.33,steel);}
+        board(profile.venue||"CAMP NOU",0,17,-rz-10,42,4.2,0);
+      }
+      if(style==="gothicFerraris"){
+        // Luigi Ferraris: four heavy corner towers, exposed steel links and tight historic bowl.
+        for(const sx of [-1,1])for(const sz of [-1,1]){
+          const [x,z]=shapePoint(Math.atan2(sz,sx),rx+15,rz+14,shapePower);
+          const tower=add(new THREE.CylinderGeometry(2.5,3.1,30,18),concrete,x,15,z);
+          add(new THREE.CylinderGeometry(3.3,3.3,1.1,18),clubA,x,30.5,z);
+          beam([x,28,z],[x*.72,roofBase+3,z*.72],.55,steel);
+        }
+      }
+      if(style==="redWhiteFacade")board("HOME OF THE CLUB",0,18,-rz-11,30,3,0);
+      if(style==="londonOlympicBowl"){
+        // London Stadium conversion: broad athletics bowl, cable roof and large corner video screens.
+        for(const sx of [-1,1])for(const sz of [-1,1]){
+          const [x,z]=shapePoint(Math.atan2(sz,sx),rx+16,rz+16,shapePower);beam([x,4,z],[x,roofBase+12,z],.38,steel);
+        }
+        for(const x of [-50,50])board("MATCHDAY",x,roofBase-5,0,13,7,x<0?Math.PI/2:-Math.PI/2);
+      }
+
+      }
+      // Stadium signage, scoreboards and finished matchday lighting arrive with exterior finishing.
+      if(level>=9){
+      // Brand panels, scoreboards, concourse signage and matchday lighting.
+      board(profile.venue||club.n+" Stadium",0,roofBase*.52,-rz-13,47,4.3,0);
+      board(club.n+" HOME",0,roofBase*.52,rz+13,36,3.8,Math.PI);
+      for(const side of [-1,1]){
+        const led=box(112,.42,.34,0,1.25,side*37,basic(club.a));led.castShadow=false;
+        for(let x=-55;x<=55;x+=11){box(1.4,.36,.38,x,1.27,side*37,basic(club.b));}
+      }
+      for(const [x,z] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
+        const [px,pz]=shapePoint(Math.atan2(z,x),rx+18,rz+18,shapePower);beam([px,0,pz],[px,roofBase+4,pz],.34,steel);
+        const crown=box(8,.6,2.2,px,roofBase+4,pz,white);crown.castShadow=false;
+        for(let i=0;i<7;i++)box(.72,.25,.35,px-2.5+i*.8,roofBase+4.5,pz,basic(0xfff4ce));
+      }
+      // Roof-level floodlight ribbons and internal concourse glazing.
+      const floodColor=level>=5?0xfff2d2:0xcbdaf0;
+      for(let x=-62;x<=62;x+=31){beam([x,roofBase-3,-63],[x,roofBase+2,-78],.2,steel);beam([x,roofBase-3,63],[x,roofBase+2,78],.2,steel);}
+      if(ss){const glow=new THREE.PointLight(floodColor,level>=5?1.15:.55,210);glow.position.set(-18,roofBase+12,-10);g.add(glow);const fill=new THREE.PointLight(club.a,level>=5?.42:.18,160);fill.position.set(35,roofBase+7,20);g.add(fill);}
+      // Stadium upgrade level now adjusts capacity/lighting details without inserting oversized blocks.
+      for(let i=0;i<Math.min(10,level);i++){
+        const a=i/10*Math.PI*2,[x,z]=shapePoint(a,rx+10,rz+10,shapePower);const strip=box(5,.18,.24,x,roofBase-1,z,basic(club.a));strip.castShadow=false;
+      }
+      }
+      }
+      currentKey=key;
+      if(sr&&sc){const el=$("stad3d");if(el){sr.setSize(Math.max(1,el.clientWidth),Math.max(1,el.clientHeight));sc.aspect=Math.max(1,el.clientWidth)/Math.max(1,el.clientHeight);sc.updateProjectionMatrix();}}
+      return true;
+    }
+
+    function setCamera(mode){
+      if(!views[mode])return;viewMode=mode;sauto=(mode==="aerial");
+      const p=cameraFor(mode);baseAngle=Math.atan2(p.pos[2]-p.look[2],p.pos[0]-p.look[0]);sang=baseAngle;
+      if(sc){sc.position.set(p.pos[0],p.pos[1],p.pos[2]);sc.lookAt(p.look[0],p.look[1],p.look[2]);}
+      const root=$("stadP");if(root)root.querySelectorAll("[data-v26-camera]").forEach(b=>b.classList.toggle("active",b.dataset.v26Camera===mode));
+    }
+    window.KIKSTART_setStadiumView=setCamera;
+    buildStad=build;
+    const priorRender=renderStadium;
+    renderStadium=function(){
+      const result=priorRender.apply(this,arguments);
+      const root=$("stadP");
+      if(root){
+        root.querySelectorAll(".k16-stadium-intro,.ks14-view-panel").forEach(el=>el.remove());
+        const p=window.KIKSTART_getStadiumProfile()||{venue:CL[S.club].n+" Stadium",label:"Club ground",note:"Club-specific architectural design."};
+        const panel=document.createElement("section");panel.className="panel v26-stadium-panel";
+        panel.innerHTML='<div class="v26-kicker">CLUB GROUND · '+esc(CL[S.club].k)+'</div><b>'+esc(p.venue)+'</b><p>'+esc(p.label)+'. '+esc(p.note)+'</p><div class="v26-camera-row">'+Object.entries(views).map(([key,v])=>'<button type="button" class="'+(key===viewMode?'active':'')+'" data-v26-camera="'+key+'">'+v.label+'</button>').join("")+'</div><small>Each camera moves to a fixed position aimed at the actual stand, pitch or exterior. Drag to orbit after selecting a view.</small>';
+        root.insertBefore(panel,root.firstChild);
+        panel.querySelectorAll("[data-v26-camera]").forEach(b=>b.addEventListener("click",()=>setCamera(b.dataset.v26Camera)));
+      }
+      build();setCamera(viewMode);return result;
+    };
+    const stadiumLoop=function(){
+      requestAnimationFrame(stadiumLoop);
+      if(tabOn!=="stadium"||!sw||!sr||!sc)return;
+      const preset=cameraFor(viewMode);
+      if(viewMode==="aerial"&&sauto)sang+=.00075;
+      const tx=preset.look[0],tz=preset.look[2];
+      const dx=preset.pos[0]-tx,dz=preset.pos[2]-tz,radius=Math.hypot(dx,dz);
+      const pos=new THREE.Vector3(tx+Math.cos(sang)*radius,preset.pos[1],tz+Math.sin(sang)*radius);
+      sc.position.lerp(pos,.12);sc.lookAt(tx,preset.look[1],tz);sr.render(ss,sc);
+    };
+    stadLoop=stadiumLoop;
+    if(sr){sr.shadowMap.enabled=true;sr.shadowMap.type=THREE.PCFSoftShadowMap;sr.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));if(THREE.ACESFilmicToneMapping!==undefined){sr.toneMapping=THREE.ACESFilmicToneMapping;sr.toneMappingExposure=1.12;}}
+    if(ss){ss.background=new THREE.Color(0x07101f);ss.fog=new THREE.Fog(0x07101f,240,440);const hemi=new THREE.HemisphereLight(0xcbdfff,0x172333,.95);ss.add(hemi);const key=new THREE.DirectionalLight(0xfff1dc,1.15);key.position.set(-80,150,55);key.castShadow=true;ss.add(key);const rim=new THREE.DirectionalLight(0x6daeff,.55);rim.position.set(85,90,-120);ss.add(rim);}
+    if(S){try{renderStadium();}catch(err){console.warn("KIKSTART v26 stadium build:",err);}}
+    return true;
+  }
+
+  // Keep any previously-created renderer; wait for Three.js before replacing its scene builder.
+  if(typeof THREE!=="undefined")stadiumInstall();
+  else if(window.__kikThreePromise&&typeof window.__kikThreePromise.then==="function")window.__kikThreePromise.then(()=>stadiumInstall()).catch(err=>console.warn("KIKSTART v26 stadium install:",err));
+  else window.addEventListener("load",()=>{if(typeof THREE!=="undefined")stadiumInstall();},{once:true});
+
+  const stadiumStyle=document.createElement("style");stadiumStyle.id="kikstartV26StadiumStyle";
+  stadiumStyle.textContent=`
+    .v26-stadium-panel{margin:5px 0 14px;background:radial-gradient(circle at 95% 0,#53d6ec22,transparent 40%),linear-gradient(135deg,#152a47,#091426);border:1px solid #426184;box-shadow:0 12px 28px #0006,inset 0 1px #ffffff18}
+    .v26-kicker{font-size:9px;font-weight:1000;letter-spacing:.18em;color:#8ce9df;margin-bottom:5px}.v26-stadium-panel>b{display:block;font-size:17px;color:#f4f8ff}.v26-stadium-panel p{font-size:12px;line-height:1.55;color:#a8bdd4;margin:7px 0 10px}.v26-stadium-panel small{display:block;color:#8ca4bf;font-size:10px;margin-top:8px}
+    .v26-camera-row{display:flex;flex-wrap:wrap;gap:7px}.v26-camera-row button{padding:8px 11px;border-radius:9px;border:1px solid #3d5e82;background:linear-gradient(145deg,#1a3455,#101d33);color:#dceafa;font-size:10px;font-weight:900}.v26-camera-row button.active{background:linear-gradient(120deg,#00b98b,#72e9d0);color:#06251e;border-color:#baffef;box-shadow:0 0 14px #59e5c477}
+    #stad3d{height:min(78vh,710px)!important;min-height:450px!important;background:radial-gradient(ellipse at 50% 45%,#233c58,#07111f 78%)!important;border:1px solid #3e6088!important;box-shadow:0 20px 46px #000a,inset 0 1px #ffffff22!important}
+    #stad3d canvas{display:block;width:100%!important;height:100%!important;filter:saturate(1.05) contrast(1.07)}
+    @media(max-width:760px){#stad3d{height:58vh!important;min-height:330px!important}.v26-camera-row button{flex:1 1 29%}}
+  `;
+  document.head.appendChild(stadiumStyle);
+})();
+
+</script>
+<script>
+/* KIKSTART v26 hardening: keep code-only cards out of market restocks and improve camera targeting. */
+(function KIKSTART_V26_HARDENING(){
+  if (window.__kikstartV26Hardening) return;
+  window.__kikstartV26Hardening = true;
+
+  // Hidden/exclusive players have no ordinary-market rarity. Never let a secret card
+  // crash a normal market restock when its rarity is not present in ST.
+  const previousRestock = restock;
+  restock = function safeRestock(){
+    if (!S) return;
+    const stock = { fb: {}, fs: {} };
+    ["fb", "fs"].forEach(mode => {
+      (POOL[mode] || []).forEach(player => {
+        if (!player || player.secret || player.academy || player.youthGenerated || player.removed || player.messiExclusive || player.khizarExclusive || player.daniyalExclusive) {
+          if (player) stock[mode][player.id] = 0;
+          return;
+        }
+        const odds = ST && ST[player.r];
+        if (!odds || !Number.isFinite(odds[0]) || !Number.isFinite(odds[1])) {
+          stock[mode][player.id] = 0;
+          return;
+        }
+        if (rnd() < odds[0]) stock[mode][player.id] = 1 + Math.floor(rnd() * odds[1]);
+      });
+    });
+    S.stock = stock;
+    S.rest = Date.now() + 120000;
+    save();
+  };
+
+  // Explicitly initialise stock safely for an already-loaded save too.
+  if (S) {
+    try { restock(); }
+    catch (error) { console.warn("KIKSTART safe market restock:", error); }
+  }
+})();
+
+</script>
+<script>
+/* KIKSTART v28 — Mac gameplay polish, pause/fullscreen, and All-Time XI code collection.
+   Appended after the existing v27 game scripts so all old systems keep their wrappers. */
+(function KIKSTART_V28_NATIVE_POLISH_AND_ALLTIME_XI(){
+  if (window.__kikstartV28Installed) return;
+  window.__kikstartV28Installed = true;
+
+  const $ = id => document.getElementById(id);
+  const code = "__ks404_alltime__";
+  const modes = ["fb", "fs"];
+  const specs = [
+    { key:"messi", name:"Messi", pos:"FWD", flag:"🇦🇷", look:"1111", theme:"messi", traits:["Argentina Icon","Barcelona Maestro","Finesse Master","Visionary","Big-Game Player"], reuse:p=>p.messiExclusive },
+    { key:"ronaldo", name:"Cristiano Ronaldo", pos:"FWD", flag:"🇵🇹", look:"1400", theme:"ronaldo", traits:["Aerial Dominance","Power Finisher","Clutch Performer","Explosive Pace","Leader"] },
+    { key:"neymar", name:"Neymar", pos:"FWD", flag:"🇧🇷", look:"2101", theme:"neymar", traits:["Five-Star Skills","Flair","Elastico Master","Creative Finisher","Trickster"] },
+    { key:"iniesta", name:"Andrés Iniesta", pos:"MID", flag:"🇪🇸", look:"1110", theme:"iniesta", traits:["Press Resistant","First Touch","La Croqueta","Playmaker","Big-Match Calm"] },
+    { key:"xavi", name:"Xavi", pos:"MID", flag:"🇪🇸", look:"0100", theme:"xavi", traits:["Tiki-Taka","Incisive Passing","Tempo Controller","Visionary","Press Resistant"] },
+    { key:"busquets", name:"Sergio Busquets", pos:"MID", flag:"🇪🇸", look:"1101", theme:"busquets", traits:["Read the Game","Discipline","One-Touch Passing","Screening","Press Resistant"] },
+    { key:"danialves", name:"Dani Alves", pos:"DEF", flag:"🇧🇷", look:"2100", theme:"danialves", traits:["Overlapping Run","Elite Crossing","Relentless Engine","Technical Defender","Leader"] },
+    { key:"ramos", name:"Sergio Ramos", pos:"DEF", flag:"🇪🇸", look:"1101", theme:"ramos", traits:["Aerial Threat","Aggressive Leader","Last-Ditch Tackle","Big-Game Defender","Set-Piece Threat"] },
+    { key:"puyol", name:"Carles Puyol", pos:"DEF", flag:"🇪🇸", look:"1401", theme:"puyol", traits:["Captain's Heart","Brave Block","Relentless Marker","Aerial Defender","Never Give Up"] },
+    { key:"cafu", name:"Cafu", pos:"DEF", flag:"🇧🇷", look:"2100", theme:"cafu", traits:["Endless Engine","Overlapping Run","Elite Crossing","Recovery Pace","Captain"] },
+    { key:"yashin", name:"Lev Yashin", pos:"GK", flag:"🇷🇺", look:"1400", theme:"yashin", traits:["Black Spider","Reflex Saves","Commanding Keeper","Sweeper Keeper","Penalty Specialist"] }
+  ];
+
+  // Reuse the existing code-only Messi 100 card; create special 100-rated editions for the other ten.
+  const allTime = { fb:{}, fs:{} };
+  modes.forEach(mode => {
+    const pool = POOL[mode];
+    specs.forEach(spec => {
+      let player = spec.reuse ? pool.find(spec.reuse) : null;
+      if (!player) player = pool.find(p => p && p.allTimeXI && p.allTimeKey === spec.key);
+      if (!player) {
+        player = {
+          id: pool.length,
+          n: spec.name,
+          pos: spec.pos,
+          o: 100,
+          f: spec.flag,
+          look: spec.look,
+          r: "diamond",
+          kind: "secret",
+          secret: true,
+          allTimeXI: true,
+          allTimeKey: spec.key,
+          allTimeTheme: spec.theme,
+          traits: spec.traits.slice()
+        };
+        pool.push(player);
+      }
+      player.o = 100;
+      player.secret = true;
+      player.kind = "secret";
+      player.allTimeXI = true;
+      player.allTimeKey = spec.key;
+      player.allTimeTheme = spec.theme;
+      player.traits = spec.traits.slice();
+      allTime[mode][spec.key] = player;
+      if (S && S.stock && S.stock[mode]) S.stock[mode][player.id] = 0;
+    });
+  });
+  window.KIKSTART_ALLTIME_XI = allTime;
+
+  // v30: persist All-Time XI ownership by permanent keys, not only pool indexes.
+  function v30RestoreAllTimeXI() {
+    if (!S) return;
+    const claimed = !!(S.allTimeXIClaimed || (S.redeemed && S.redeemed[code]) ||
+      (Array.isArray(S.allTimeXIPlayerKeys) && S.allTimeXIPlayerKeys.length));
+    if (!claimed) return;
+    S.owned = S.owned || { fb:{}, fs:{} };
+    S.allTimeXIPlayerKeys = specs.map(spec => spec.key);
+    modes.forEach(mode => {
+      S.owned[mode] = S.owned[mode] || {};
+      specs.forEach(spec => {
+        const player = allTime[mode][spec.key];
+        if (player) S.owned[mode][player.id] = Math.max(1, Number(S.owned[mode][player.id]) || 0);
+        if (S.stock && S.stock[mode] && player) S.stock[mode][player.id] = 0;
+      });
+    });
+    S.redeemed = S.redeemed || {};
+    S.redeemed[code] = true;
+    S.allTimeXIClaimed = true;
+    save();
+  }
+  v30RestoreAllTimeXI();
+
+  // Force 100 OVR attributes and signature traits for every All-Time XI edition.
+  const baseStats = V27_stats;
+  V27_stats = function(player) {
+    if (player && player.allTimeXI) {
+      return player.pos === "GK"
+        ? { positioning:100, control:100, throwing:100, pace:100, passing:100, physical:100 }
+        : { pace:100, shooting:100, passing:100, dribbling:100, defending:100, physical:100 };
+    }
+    return baseStats(player);
+  };
+  const baseTraits = V27_traits;
+  V27_traits = function(player) {
+    if (player && player.allTimeXI) return player.traits.slice();
+    return baseTraits(player);
+  };
+
+  // Apply exclusive visual tags and block sale/purchase paths. The code is the only unlock route.
+  const baseCardHTML = cardHTML;
+  cardHTML = function(player, extra, id, pop) {
+    let cardExtra = extra;
+    if (player && player.allTimeXI) {
+      cardExtra = String(extra || "").replace(/<button\b[^>]*onclick=["']sell\(\d+\)["'][^>]*>[\s\S]*?<\/button>/gi,
+        '<div class="ks-at-exclusive-note">✦ ALL-TIME XI · CODE EXCLUSIVE · CANNOT BE SOLD ✦</div>');
+    }
+    let html = baseCardHTML(player, cardExtra, id, pop);
+    if (!player || !player.allTimeXI) return html;
+    html = html.replace(/class="card ([^"]*)"/, (m, classes) => 'class="card ' + classes + ' ks-at-card ks-at-' + player.allTimeTheme + '"');
+    html = html.replace(/(<div class="rar">[\s\S]*?<\/div>)/, '$1<div class="ks-at-ribbon">ALL-TIME XI · 100</div>');
+    return html;
+  };
+
+  const baseSell = sell;
+  sell = window.sell = function(id) {
+    const p = S && POOL[S.mode] && POOL[S.mode][id];
+    if (p && p.allTimeXI) { ask("All-Time XI cards are exclusive and cannot be sold."); return; }
+    return baseSell.apply(this, arguments);
+  };
+  const baseBuy = buy;
+  buy = window.buy = function(id) {
+    const p = S && POOL[S.mode] && POOL[S.mode][id];
+    if (p && p.allTimeXI) { ask("All-Time XI cards can only be unlocked with the ALLTIMELEGENDS code."); return; }
+    return baseBuy.apply(this, arguments);
+  };
+
+  // The reward is idempotent and grants the same collection to Football and Futsal.
+  const previousRedeem = window.redeemCode || redeemCode;
+  window.redeemCode = redeemCode = function() {
+    const input = $("v27CodeInput");
+    const msg = $("v27CodeMsg");
+    const typed = input && input.value ? input.value.trim().toLowerCase() : "";
+    if (typed !== code || !S || !input || !msg) return previousRedeem.apply(this, arguments);
+
+    S.redeemed = S.redeemed || {};
+    // v30: allow re-entering the code to repair any missing All-Time XI ownership.
+    S.owned = S.owned || { fb:{}, fs:{} };
+    modes.forEach(mode => {
+      S.owned[mode] = S.owned[mode] || {};
+      specs.forEach(spec => {
+        const p = allTime[mode][spec.key];
+        S.owned[mode][p.id] = Math.max(1, Number(S.owned[mode][p.id]) || 0);
+        if (S.stock && S.stock[mode]) S.stock[mode][p.id] = 0;
+      });
+    });
+    S.redeemed[code] = true;
+    S.allTimeXIClaimed = true;
+    S.allTimeXIPlayerKeys = specs.map(spec => spec.key);
+    input.value = "";
+    save();
+    sfx.coin();
+    refresh();
+    const fresh = $("v27CodeMsg");
+    if (fresh) {
+      fresh.className = "v27-code-success";
+      fresh.textContent = "✦ ALL-TIME XI unlocked · 11 legendary 100 OVR cards added to Football and Futsal!";
+    }
+    try { fx(allTime[S.mode].messi, innerWidth / 2, innerHeight / 2); } catch (_) {}
+  };
+
+  // Ensure existing save stock never includes exclusive players.
+  const baseRestock = restock;
+  restock = function() {
+    const result = baseRestock.apply(this, arguments);
+    modes.forEach(mode => specs.forEach(spec => {
+      const p = allTime[mode][spec.key];
+      if (S && S.stock && p) S.stock[mode][p.id] = 0;
+    }));
+    if (S) save();
+    return result;
+  };
+  if (S && S.stock) {
+    modes.forEach(mode => specs.forEach(spec => { S.stock[mode][allTime[mode][spec.key].id] = 0; }));
+    save();
+  }
+
+  // ---------- Keyboard handling: consume in-game keys before WebKit/macOS can beep or scroll. ----------
+  const gameKeys = new Set([
+    "KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight",
+    "Space","KeyF","KeyC","KeyQ","KeyE","ShiftLeft","ShiftRight","Escape","KeyP"
+  ]);
+  function isEditableTarget(target) {
+    return !!(target && target.closest && target.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]'));
+  }
+  window.addEventListener("keydown", function(event) {
+    if (!M || M.over || !gameKeys.has(event.code) || isEditableTarget(event.target)) return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    event.preventDefault();
+    if (event.code === "Escape" || event.code === "KeyP") {
+      event.stopPropagation();
+      K["Space"] = K["KeyF"] = K["ShiftLeft"] = K["KeyW"] = K["KeyA"] = K["KeyS"] = K["KeyD"] = 0;
+      KS_togglePause();
+    }
+  }, true);
+  window.addEventListener("keyup", function(event) {
+    if (!M || !gameKeys.has(event.code) || isEditableTarget(event.target)) return;
+    if (!event.metaKey && !event.ctrlKey && !event.altKey) event.preventDefault();
+  }, true);
+  window.addEventListener("blur", function() {
+    if (!M || M.over) return;
+    ["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space","KeyF","KeyC","KeyQ","KeyE","ShiftLeft","ShiftRight"].forEach(k => K[k] = 0);
+  });
+
+  // ---------- Compact matchday layout, pause panel and proper full-screen support. ----------
+  const style = document.createElement("style");
+  style.id = "kikstartV28MatchStyle";
+  style.textContent = `
+    #play.tab{max-width:none;width:100%;padding:0 clamp(12px,2.6vw,32px) 36px}
+    #lobby{max-width:1260px;margin:0 auto}
+    #lobby>.hero{margin-top:8px;padding:22px 26px;border:1px solid #3b6090;background:radial-gradient(circle at 92% 10%,#29c9b155,transparent 38%),linear-gradient(120deg,#101d3a,#1d3670 58%,#14254c);box-shadow:0 16px 36px #0006}
+    #lobby>p:not(:has(button)){max-width:850px;color:#b8c9df;font-size:13px;line-height:1.6}
+    .ks-difficulty-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0 22px}
+    .ks-difficulty-card{margin:0!important;min-width:0;padding:14px;border-radius:15px;background:linear-gradient(145deg,#15284a,#0a1428);border:1px solid #2e496f;box-shadow:0 12px 24px #0004;color:#eaf3ff;font-size:12px;line-height:1.55}
+    .ks-difficulty-card:before{content:"MATCH ENTRY";display:block;margin-bottom:6px;font-size:9px;letter-spacing:.15em;color:#89ddcc;font-weight:900}
+    .ks-difficulty-card button{display:block;width:100%;margin:0 0 8px;padding:12px 10px;border-radius:10px;background:linear-gradient(110deg,#00d69b,#8cf0d5);color:#05271e;font-weight:1000}
+    #matchView{display:none;max-width:1320px;width:100%;margin:0 auto;padding:8px 0 26px;position:relative}
+    .ks-match-topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:8px 0 12px;padding:13px 16px;border-radius:15px;background:linear-gradient(110deg,#111f3a,#1b3157);border:1px solid #3a5478;box-shadow:0 12px 24px #0005}
+    .ks-match-kicker{font-size:9px;font-weight:1000;letter-spacing:.18em;color:#83e8d0}
+    .ks-match-title{font-size:clamp(17px,2vw,24px);font-weight:1000;letter-spacing:.01em;color:#fff;margin-top:3px}
+    .ks-match-subtitle{font-size:11px;color:#9eb4d0;margin-top:3px}
+    .ks-match-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .ks-match-actions button{min-width:108px;padding:10px 13px;border:1px solid #6381a8;border-radius:10px;background:linear-gradient(145deg,#243e62,#142843);color:#fff;font-weight:900}
+    .ks-match-actions .ks-pause-button{background:linear-gradient(120deg,#00d99d,#7debd0);color:#05251d;border-color:#b5ffea}
+    #stage{width:100%;max-width:none;height:clamp(420px,67vh,760px);border-radius:17px;border:1px solid #55779c;box-shadow:0 20px 44px #0009,0 0 22px #6cbbe522;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#193d32,#050b16 80%)}
+    #stage canvas:not(#v5mini){width:100%!important;height:100%!important;display:block}
+    #hud{left:50%;transform:translateX(-50%);top:12px;max-width:calc(100% - 24px);justify-content:center;background:#061426eF;border:1px solid #6687a6;border-radius:12px;box-shadow:0 8px 20px #0007;font-size:clamp(11px,1.2vw,16px);white-space:nowrap}
+    #banner{font-size:clamp(28px,5vw,54px)}
+    .ks-control-deck{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr);gap:10px;margin:12px 0}
+    .ks-control-help{margin:0;padding:11px 14px;border-radius:12px;background:#0c1a2e;border:1px solid #2b4669;color:#c7d7e9;font-size:11px}
+    .ks-control-help summary{cursor:pointer;list-style:none;font-weight:900;color:#eaf4ff}
+    .ks-control-help summary::-webkit-details-marker{display:none}
+    .ks-control-help[open] summary{margin-bottom:8px;color:#83e8d0}
+    .ks-control-help p{margin:5px 0;line-height:1.5}
+    #mobileControls{max-width:none;width:100%;margin:0;padding:10px 14px;border-radius:12px;background:linear-gradient(145deg,#101f37,#091426);border:1px solid #304e70;box-shadow:0 8px 20px #0004}
+    #playerStatus{margin:4px 0 0;padding:0 3px;color:#a6bed5;font-size:10px}
+    #shotAimPanel{margin:0;padding:10px 13px;border:1px solid #334f71;border-radius:12px;background:#0c1a2e;color:#d9e8f9;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    #shotAimPanel label{display:flex;justify-content:space-between;gap:10px;width:100%;font-size:10px}
+    #shotAimPanel small{width:100%;font-size:9px;color:#91a8c2}
+    #shotAimRange{flex:1;min-width:150px}
+    #endBox{max-width:none;border:1px solid #3c5a7e;border-radius:14px;background:linear-gradient(140deg,#132645,#0a1529);font-size:15px}
+    .ks-pause-overlay{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;padding:20px;border-radius:18px;background:rgba(2,7,16,.76);backdrop-filter:blur(12px)}
+    .ks-pause-overlay.show{display:flex}
+    .ks-pause-card{width:min(440px,94%);padding:26px;border-radius:20px;border:1px solid #6386ad;background:linear-gradient(145deg,#1a3155,#0b172d);box-shadow:0 28px 80px #000b;text-align:center}
+    .ks-pause-card .ks-pause-eyebrow{font-size:10px;letter-spacing:.2em;font-weight:1000;color:#83e8d0}
+    .ks-pause-card h2{font-size:34px;margin:8px 0 4px;color:#fff}
+    .ks-pause-card p{font-size:12px;line-height:1.55;color:#b5c8df;margin:8px 0 18px}
+    .ks-pause-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .ks-pause-actions button{padding:12px;border-radius:10px}
+    .ks-pause-actions .ks-resume{grid-column:1/-1;background:linear-gradient(110deg,#00d69b,#8cf0d5);color:#05271e;font-weight:1000}
+    #matchView.ks-fallback-fullscreen:fullscreen{position:fixed;inset:0;max-width:none;width:100%;height:100%;overflow:auto;padding:12px 20px;background:#050b16;z-index:99999}
+    #matchView.ks-fallback-fullscreen:fullscreen #stage{height:calc(100vh - 190px);max-height:none}
+    @media(max-width:860px){.ks-difficulty-grid{grid-template-columns:1fr}.ks-control-deck{grid-template-columns:1fr}#stage{height:58vh;min-height:330px}.ks-match-topbar{align-items:flex-start}.ks-match-actions{width:100%}.ks-match-actions button{flex:1}}
+    @media(max-width:560px){#play.tab{padding-left:10px;padding-right:10px}.ks-match-title{font-size:18px}#stage{height:52vh;min-height:300px}.ks-pause-actions{grid-template-columns:1fr}.ks-pause-actions .ks-resume{grid-column:auto}#hud{font-size:10px;padding:7px 9px;gap:5px}}
+    @media(prefers-reduced-motion:reduce){.ks-pause-card,.ks-match-topbar{animation:none!important}}
+  `;
+  document.head.appendChild(style);
+
+  function enhanceLobby() {
+    const lobby = $("lobby");
+    if (!lobby || lobby.dataset.ksStyled === "1") return;
+    lobby.dataset.ksStyled = "1";
+    const intro = Array.from(lobby.children).find(el => el.tagName === "P" && !el.querySelector("button"));
+    if (intro) intro.classList.add("ks-play-intro-copy");
+    const options = Array.from(lobby.children).filter(el => el.tagName === "P" && el.querySelector("button"));
+    if (!options.length) return;
+    const grid = document.createElement("div");
+    grid.className = "ks-difficulty-grid";
+    options.forEach(option => {
+      option.classList.add("ks-difficulty-card");
+      grid.appendChild(option);
+    });
+    (intro || lobby.lastElementChild || lobby).insertAdjacentElement(intro ? "afterend" : "beforeend", grid);
+  }
+  const baseRenderPlay = renderPlay;
+  renderPlay = function() {
+    const result = baseRenderPlay.apply(this, arguments);
+    const lobby = $("lobby"); if (lobby) lobby.dataset.ksStyled = "";
+    enhanceLobby();
+    return result;
+  };
+
+  function buildMatchChrome() {
+    const match = $("matchView");
+    const stage = $("stage");
+    if (!match || !stage) return;
+    if (!$ ("ksMatchTopbar")) {
+      const header = document.createElement("div");
+      header.id = "ksMatchTopbar";
+      header.className = "ks-match-topbar";
+      header.innerHTML = '<div><div class="ks-match-kicker">KIKSTART · MATCHDAY</div><div class="ks-match-title">LIVE MATCH</div><div class="ks-match-subtitle">Your club · '+(S && S.mode === "fs" ? "Futsal" : "Football")+' · Keyboard and touch controls</div></div><div class="ks-match-actions"><button class="ks-pause-button" id="ksPauseButton" type="button">Ⅱ PAUSE</button><button id="ksFullscreenButton" type="button">⛶ FULL SCREEN</button></div>';
+      match.insertBefore(header, stage);
+      $("ksPauseButton").addEventListener("click", KS_togglePause);
+      $("ksFullscreenButton").addEventListener("click", KS_toggleFullscreen);
+    }
+    if (!$ ("ksPauseOverlay")) {
+      const overlay = document.createElement("div");
+      overlay.id = "ksPauseOverlay";
+      overlay.className = "ks-pause-overlay";
+      overlay.innerHTML = '<div class="ks-pause-card"><div class="ks-pause-eyebrow">MATCH PAUSED</div><h2>TAKE A BREATHER</h2><p>Your match clock and gameplay are paused. Resume when you are ready.</p><div class="ks-pause-actions"><button class="ks-resume" type="button" onclick="KS_togglePause(false)">▶ RESUME MATCH</button><button type="button" class="alt" onclick="KS_toggleFullscreen()">⛶ FULL SCREEN</button><button type="button" class="alt" onclick="forfeit()">FORFEIT</button></div></div>';
+      match.appendChild(overlay);
+    }
+    const mobile = $("mobileControls"), status = $("playerStatus"), aim = $("shotAimPanel");
+    let deck = $("ksControlDeck");
+    if (!deck) {
+      deck = document.createElement("div"); deck.id = "ksControlDeck"; deck.className = "ks-control-deck";
+      const instructions = Array.from(match.querySelectorAll("p")).find(p => /Move: WASD|Move:.*arrows/i.test(p.textContent));
+      if (instructions) {
+        const details = document.createElement("details"); details.className = "ks-control-help";
+        details.innerHTML = '<summary>⌨ CONTROLS & TIPS</summary><p><b>Move:</b> W A S D or arrow keys</p><p><b>Pass / tackle:</b> Space · <b>Shoot:</b> F · <b>Sprint:</b> Shift</p><p><b>Switch player:</b> C · <b>Pause:</b> Escape or P · <b>Shot height:</b> Q / E while charging or use the slider</p><p>On touch screens, use the joystick and action buttons below the pitch.</p>';
+        instructions.replaceWith(details);
+      }
+      if (mobile) deck.appendChild(mobile);
+      if (status) deck.appendChild(status);
+      if (aim) deck.appendChild(aim);
+      const help = match.querySelector(".ks-control-help");
+      if (help) deck.appendChild(help);
+      match.insertBefore(deck, $("endBox") || null);
+    }
+    const sub = headerSubtitle();
+    const subEl = $("ksMatchTopbar")?.querySelector(".ks-match-subtitle");
+    if (subEl) subEl.textContent = sub;
+    const paused = !!(M && M.userPaused);
+    const overlayEl = $("ksPauseOverlay"); if (overlayEl) overlayEl.classList.toggle("show", paused);
+    const pauseButton = $("ksPauseButton"); if (pauseButton) pauseButton.textContent = paused ? "▶ RESUME" : "Ⅱ PAUSE";
+    const fsButton = $("ksFullscreenButton"); if (fsButton) fsButton.textContent = (document.fullscreenElement || window.__kikstartNativeFullscreen) ? "⛶ EXIT FULL SCREEN" : "⛶ FULL SCREEN";
+  }
+  function headerSubtitle() {
+    const club = S && CL[S.club] ? CL[S.club].n : "Your club";
+    const opponent = M && M.team ? M.team.n : "Opponent";
+    return club + " vs " + opponent + " · " + (S && S.mode === "fs" ? "Futsal" : "Football");
+  }
+  window.KS_togglePause = function(force) {
+    if (!M || M.over) return;
+    const next = typeof force === "boolean" ? force : !M.userPaused;
+    M.userPaused = next;
+    if (next) ["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space","KeyF","KeyC","KeyQ","KeyE","ShiftLeft","ShiftRight"].forEach(k => K[k] = 0);
+    buildMatchChrome();
+    if (typeof sfx !== "undefined" && sfx.click) sfx.click();
+  };
+  window.KS_toggleFullscreen = function() {
+    const match = $("matchView");
+    if (!match) return;
+    match.classList.toggle("ks-fallback-fullscreen");
+    const bridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.kikstartNative;
+    if (bridge) {
+      window.__kikstartNativeFullscreen = !window.__kikstartNativeFullscreen;
+      bridge.postMessage({ action: "toggleFullscreen" });
+    } else if (document.fullscreenElement) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) exit.call(document);
+    } else {
+      const request = match.requestFullscreen || match.webkitRequestFullscreen;
+      if (request) {
+        const pending = request.call(match);
+        if (pending && typeof pending.catch === "function") pending.catch(() => match.classList.add("ks-fallback-fullscreen"));
+      } else match.classList.add("ks-fallback-fullscreen");
+    }
+    setTimeout(buildMatchChrome, 80);
+  };
+  document.addEventListener("fullscreenchange", buildMatchChrome);
+
+  const previousStep = stepMatch;
+  stepMatch = function(dt) {
+    if (M && M.userPaused) return;
+    return previousStep.apply(this, arguments);
+  };
+  const previousStartMatch = startMatch;
+  startMatch = function() {
+    const result = previousStartMatch.apply(this, arguments);
+    if (M && !M.over) {
+      M.userPaused = false;
+      requestAnimationFrame(buildMatchChrome);
+    }
+    return result;
+  };
+  const previousFinish = finishMatch;
+  finishMatch = function() {
+    if (M) M.userPaused = false;
+    const result = previousFinish.apply(this, arguments);
+    const overlay = $("ksPauseOverlay"); if (overlay) overlay.classList.remove("show");
+    return result;
+  };
+  const previousBackToLobby = backToLobby;
+  backToLobby = function() {
+    const result = previousBackToLobby.apply(this, arguments);
+    const overlay = $("ksPauseOverlay"); if (overlay) overlay.classList.remove("show");
+    return result;
+  };
+  if (S) { try { renderPlay(); } catch (_) {} }
+
+  const allTimeStyle = document.createElement("style");
+  allTimeStyle.id = "kikstartV28AllTimeStyle";
+  allTimeStyle.textContent = `
+    .ks-at-card{position:relative;isolation:isolate;overflow:hidden!important;color:#fff!important;border:1.5px solid #fff!important;transform-style:preserve-3d;box-shadow:0 0 16px #fff8,0 0 30px var(--at-glow,#8bdcff),0 0 48px #6e4bff66,inset 0 0 22px #fff4!important;animation:ksAtAura 2.8s ease-in-out infinite alternate}
+    .ks-at-card:before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.82;background:repeating-linear-gradient(135deg,transparent 0 8px,#ffffff55 8px 9px,transparent 9px 17px),repeating-linear-gradient(45deg,transparent 0 13px,#ffffff30 13px 15px,transparent 15px 27px),radial-gradient(circle at 10% 16%,#ffffffd9 0 1.2px,transparent 3px),radial-gradient(circle at 88% 25%,#ffffffdf 0 1.6px,transparent 3.5px),radial-gradient(circle at 21% 82%,#ffffffd9 0 1px,transparent 3px),radial-gradient(circle at 82% 86%,#ffffffd9 0 1.3px,transparent 3px);mix-blend-mode:screen}
+    .ks-at-card:after{content:"";position:absolute;inset:-95% -130%;z-index:2;pointer-events:none;background:repeating-conic-gradient(from 0deg at 50% 50%,#ffffff00 0 8deg,#ffffffa8 8deg 9deg,#ffffff00 9deg 18deg),linear-gradient(112deg,transparent 37%,#ffffff16 44%,#ffffffff 50%,#b7f4ffcc 53%,transparent 64%);mix-blend-mode:screen;animation:ksAtSweep 2.2s linear infinite}
+    .ks-at-card>*{position:relative;z-index:3}.ks-at-card .ovr{color:#fff!important;text-shadow:0 0 9px #fff,0 0 18px var(--at-glow),0 2px 5px #000!important}.ks-at-card .nm{color:#fff!important;text-shadow:0 0 9px #fff,0 0 15px var(--at-glow)}.ks-at-card .rar,.ks-at-card .pos{color:#fff!important;text-shadow:0 1px 4px #000,0 0 10px #fff8}
+    .ks-at-ribbon{margin:4px 0 5px;padding:4px 2px;border-radius:6px;text-align:center;font-size:7px;font-weight:1000;letter-spacing:.1em;color:#fff;background:linear-gradient(90deg,#0c2b56,#8c2bb7,#d3a738,#0c2b56);border:1px solid #ffffffb5;box-shadow:0 0 12px var(--at-glow)}
+    .ks-at-exclusive-note{margin:6px 0 2px;padding:5px 3px;border-radius:7px;text-align:center;font-size:7px;font-weight:1000;color:#fff;background:#081729bb;border:1px solid #fff;box-shadow:0 0 12px var(--at-glow)}
+    .ks-at-messi{--at-glow:#8fe5ff;background:repeating-linear-gradient(135deg,#6cc9ed 0 8px,#ffffff 8px 17px,#a50044 17px 25px,#173d82 25px 35px,#73c9ee 35px 44px)!important}
+    .ks-at-ronaldo{--at-glow:#f4d36d;background:repeating-linear-gradient(135deg,#a80e2a 0 9px,#f7f2df 9px 17px,#08764a 17px 24px,#d9b64e 24px 30px,#7d0921 30px 40px)!important}
+    .ks-at-neymar{--at-glow:#f9e56e;background:repeating-linear-gradient(135deg,#f6dc36 0 10px,#168a45 10px 20px,#1642a1 20px 29px,#fff 29px 35px,#f6dc36 35px 45px)!important}
+    .ks-at-iniesta{--at-glow:#dc92ff;background:repeating-linear-gradient(135deg,#74224c 0 10px,#16498d 10px 20px,#e4c56b 20px 25px,#9a2448 25px 34px,#243d8d 34px 44px)!important}
+    .ks-at-xavi{--at-glow:#83dfff;background:repeating-linear-gradient(45deg,#143e83 0 9px,#8e1d4d 9px 19px,#f7d56b 19px 24px,#1e5593 24px 34px)!important}
+    .ks-at-busquets{--at-glow:#8dc8ff;background:repeating-linear-gradient(135deg,#102e69 0 11px,#76214b 11px 20px,#ffffff 20px 24px,#254e99 24px 34px)!important}
+    .ks-at-danialves{--at-glow:#a9fa83;background:repeating-linear-gradient(135deg,#f5d82c 0 9px,#148348 9px 18px,#1d4f9c 18px 27px,#f5d82c 27px 36px)!important}
+    .ks-at-ramos{--at-glow:#ffcf73;background:repeating-linear-gradient(135deg,#c91f32 0 10px,#f8d65d 10px 17px,#fff 17px 24px,#b80d2b 24px 34px)!important}
+    .ks-at-puyol{--at-glow:#ff9a8e;background:repeating-linear-gradient(45deg,#a80f33 0 10px,#e8c95f 10px 16px,#1b4b8d 16px 27px,#9f1c42 27px 37px)!important}
+    .ks-at-cafu{--at-glow:#9dffb5;background:repeating-linear-gradient(135deg,#f4dc3d 0 10px,#138749 10px 21px,#1a4caa 21px 30px,#fff 30px 35px)!important}
+    .ks-at-yashin{--at-glow:#ffe08b;background:repeating-linear-gradient(135deg,#101b2c 0 12px,#293b56 12px 22px,#c6a64d 22px 26px,#7b1e2c 26px 34px,#101b2c 34px 45px)!important}
+    .ks-at-card:hover{transform:translateY(-8px) perspective(900px) rotateY(5deg) rotateX(4deg) scale(1.045);filter:brightness(1.25) saturate(1.35);box-shadow:0 0 23px #fff,0 0 44px var(--at-glow),0 0 64px #ffffff55,inset 0 0 25px #fff!important}
+    @keyframes ksAtSweep{0%{transform:translate(-12%,-9%) rotate(0deg)}100%{transform:translate(12%,9%) rotate(360deg)}}@keyframes ksAtAura{from{filter:saturate(1.08) brightness(1.02)}to{filter:saturate(1.45) brightness(1.16)}}
+    @media(prefers-reduced-motion:reduce){.ks-at-card,.ks-at-card:before,.ks-at-card:after{animation:none!important}}
+  `;
+  document.head.appendChild(allTimeStyle);
+  document.title = "KIKSTART v28 — Mac Gameplay + All-Time XI";
+  window.KIKSTART_GAME_VERSION = "28";
+  window.KIKSTART_V28_READY = true;
+
+/* KIKSTART v30.1 — Mac WebKit match-start and renderer recovery */
+(function(){
+  const showMatchEngineError = (message) => {
+    const lobby = document.getElementById('lobby');
+    const match = document.getElementById('matchView');
+    if (match) match.style.display = 'none';
+    if (lobby) lobby.style.display = 'block';
+    const msg = document.getElementById('lobbyMsg');
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.padding = '14px';
+      msg.style.margin = '12px 0';
+      msg.style.border = '1px solid #e6a23c';
+      msg.style.borderRadius = '10px';
+      msg.style.background = '#2a1c0b';
+      msg.style.color = '#ffe0a3';
+      msg.textContent = message;
+    }
+    console.error('[KIKSTART] Match renderer could not start:', message);
+  };
+
+  // A hidden match container can report a zero-size stage in WKWebView on the
+  // first frame. Re-measure after layout and keep the renderer fitted to it.
+  const oldInit3D = init3D;
+  init3D = function(){
+    try {
+      const stage = document.getElementById('stage');
+      if (stage) stage.getBoundingClientRect();
+      const ok = oldInit3D.apply(this, arguments);
+      if (!ok) return false;
+      const resize = () => {
+        try {
+          const el = document.getElementById('stage');
+          if (!el || !renderer || !camera) return;
+          const rect = el.getBoundingClientRect();
+          const w = Math.max(320, Math.round(rect.width || el.clientWidth || 0));
+          const h = Math.max(300, Math.round(rect.height || el.clientHeight || 0));
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        } catch (e) { console.warn('[KIKSTART] Renderer resize:', e); }
+      };
+      requestAnimationFrame(() => requestAnimationFrame(resize));
+      if (!window.__ksStageResizeObserver && window.ResizeObserver && stage) {
+        window.__ksStageResizeObserver = new ResizeObserver(resize);
+        window.__ksStageResizeObserver.observe(stage);
+      }
+      return true;
+    } catch (e) {
+      console.error('[KIKSTART] WebGL initialisation failed:', e);
+      return false;
+    }
+  };
+
+  // The Three.js CDN loader is asynchronous. Wait for it before calling the
+  // original synchronous match-start routine; otherwise fast clicks can fail.
+  const originalStartMatch = startMatch;
+  let waitingForEngine = false;
+  startMatch = function(key){
+    if (window.THREE) {
+      try {
+        const result = originalStartMatch.apply(this, arguments);
+        requestAnimationFrame(() => {
+          const stage = document.getElementById('stage');
+          if (stage && renderer && camera) {
+            const r = stage.getBoundingClientRect();
+            const w = Math.max(320, Math.round(r.width || stage.clientWidth || 0));
+            const h = Math.max(300, Math.round(r.height || stage.clientHeight || 0));
+            renderer.setSize(w, h, false);
+            camera.aspect = w / h;

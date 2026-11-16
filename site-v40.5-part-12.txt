@@ -1,0 +1,1000 @@
+  const LEGACY_PUBLIC_CODES = new Set(['KIKSTARTALL','EVERYCARD','SHREK100','SWAMPROYAL']);
+
+  function playerByShrek(mode){
+    const pool = (window.POOL && POOL[mode]) || [];
+    return pool.find(p => p && (p.shrekCard || String(p.n || '').toLowerCase() === 'shrek')) || null;
+  }
+  function setCodeMessage(kind, text){
+    const msg = $('v27CodeMsg');
+    if(msg){ msg.className = kind === 'success' ? 'v27-code-success' : 'v27-code-error'; msg.textContent = text; }
+  }
+  function removeOldPublicShrekPanels(){
+    document.querySelectorAll('#ks338ShrekCodePanel,.ks338-shrek-code-panel,.ks337-public-shrek-code').forEach(el => el.remove());
+  }
+  // Revoke Shrek grants caused by the old public all-cards aliases. He remains
+  // available only after the new private code is redeemed on this save.
+  function enforceShrekPrivacy(){
+    if(typeof S === 'undefined' || !S) return;
+    S.owned = S.owned || {fb:{},fs:{}};
+    S.stock = S.stock || {fb:{},fs:{}};
+    S.redeemed = S.redeemed || {};
+    if(!S.redeemed.ksShrekSecret339){
+      modes.forEach(mode => {
+        S.owned[mode] = S.owned[mode] || {};
+        S.stock[mode] = S.stock[mode] || {};
+        const p = playerByShrek(mode);
+        if(p){ delete S.owned[mode][p.id]; S.stock[mode][p.id] = 0; }
+      });
+      delete S.redeemed.shrek100;
+      delete S.redeemed.swamproyal;
+      S.shrekClaimed = false;
+    } else if(typeof window.KS338_ownShrek === 'function') {
+      window.KS338_ownShrek();
+    }
+  }
+  function grantFullCollection(){
+    if(typeof S === 'undefined' || !S) return false;
+    S.owned = S.owned || {fb:{},fs:{}};
+    S.stock = S.stock || {fb:{},fs:{}};
+    S.got = S.got || {fb:0,fs:0};
+    S.owm = S.owm || {};
+    S.redeemed = S.redeemed || {};
+    modes.forEach(mode => {
+      S.owned[mode] = S.owned[mode] || {};
+      S.stock[mode] = S.stock[mode] || {};
+      ((POOL && POOL[mode]) || []).forEach(p => {
+        if(!p || p.shrekCard || String(p.n || '').toLowerCase() === 'shrek') return;
+        S.owned[mode][p.id] = Math.max(1, Number(S.owned[mode][p.id]) || 0);
+        S.stock[mode][p.id] = 0;
+      });
+      S.got[mode] = 1;
+    });
+    if(typeof MGRS !== 'undefined' && Array.isArray(MGRS)) MGRS.forEach(m => { if(m) S.owm[m.id] = Math.max(1, Number(S.owm[m.id]) || 0); });
+    S.unlockedSecret = true;
+    S.allCardsUnlocked = true;
+    S.redeemed.ksFullCollection339 = true;
+    save();
+    if(typeof refresh === 'function') refresh();
+    setCodeMessage('success','FULL COLLECTION UNLOCKED — all current Football and Futsal players, code cards, secret cards, event cards and managers added. Shrek remains private.');
+    if(window.sfx && sfx.coin) sfx.coin();
+    return true;
+  }
+  function grantPrivateShrek(){
+    if(typeof S === 'undefined' || !S) return false;
+    if(S.redeemed && S.redeemed.ksShrekSecret339){
+      setCodeMessage('error','The private Shrek card has already been claimed on this save.');
+      return false;
+    }
+    if(typeof window.KS338_ownShrek !== 'function' || !window.KS338_ownShrek()){
+      setCodeMessage('error','The secret player could not be added. Refresh KIKSTART and try again.');
+      return false;
+    }
+    S.redeemed = S.redeemed || {};
+    S.redeemed.ksShrekSecret339 = true;
+    S.redeemed.shrek100 = true;
+    save();
+    if(typeof refresh === 'function') refresh();
+    setCodeMessage('success','SECRET PLAYER UNLOCKED — Shrek 100 OVR has been added to Football and Futsal.');
+    const p = playerByShrek(S.mode || 'fb');
+    if(p && window.KS_openPlayerProfile) setTimeout(() => window.KS_openPlayerProfile(S.mode || 'fb', p.id), 120);
+    if(window.sfx && sfx.coin) sfx.coin();
+    return true;
+  }
+
+  const previousRedeem339 = window.redeemCode || (typeof redeemCode === 'function' ? redeemCode : null);
+  window.redeemCode = function(){
+    const input = $('v27CodeInput');
+    const raw = input && input.value ? input.value : '';
+    const typed = normalise(raw);
+    if(LEGACY_PUBLIC_CODES.has(typed)){
+      if(input) input.value = '';
+      setCodeMessage('error','That old public code has been retired. Use the new private code you were given.');
+      if(window.sfx && sfx.err) sfx.err();
+      return false;
+    }
+    if(typed === FULL_COLLECTION_CODE){
+      if(!S || !input){ setCodeMessage('error','Choose your club first, then redeem this code.'); return false; }
+      if(S.redeemed && S.redeemed.ksFullCollection339){ setCodeMessage('error','The full collection code has already been claimed on this save.'); return false; }
+      input.value = '';
+      return grantFullCollection();
+    }
+    if(typed === PRIVATE_SHREK_CODE){
+      if(!S || !input){ setCodeMessage('error','Choose your club first, then redeem the private code.'); return false; }
+      input.value = '';
+      return grantPrivateShrek();
+    }
+    return previousRedeem339 ? previousRedeem339.apply(this, arguments) : false;
+  };
+  try { redeemCode = window.redeemCode; } catch(_) {}
+  // Retire the old dedicated public button function as well.
+  window.KS338_claimShrek = function(){
+    const input = $('v27CodeInput');
+    if(input){ input.value = $('ks338ShrekCodeInput')?.value || ''; window.redeemCode(); }
+    return false;
+  };
+
+  // Prevent the older renderHome wrapper from re-inserting its public Shrek panel.
+  const previousHomeRender339 = typeof renderHome === 'function' ? renderHome : null;
+  if(previousHomeRender339){
+    renderHome = function(){
+      const result = previousHomeRender339.apply(this, arguments);
+      removeOldPublicShrekPanels();
+      return result;
+    };
+  }
+  enforceShrekPrivacy();
+  removeOldPublicShrekPanels();
+  if(typeof save === 'function' && typeof S !== 'undefined' && S) save();
+
+  // Final release label wins over older appended v33.6–v33.8 version setters.
+  document.title = 'KIKSTART v33.9 — Blue Edition';
+  const meta = document.querySelector('meta[name="kikstart-game-version"]');
+  if(meta) meta.content = '33.9';
+  window.KIKSTART_GAME_VERSION = '33.9';
+  const badge = $('#top .ks-build-version');
+  if(badge) badge.textContent = 'KIKSTART v33.9';
+  const bootFooter = $('.ks-boot-footer');
+  if(bootFooter) bootFooter.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v33.9';
+  const bootWord = $('.ks-boot-wordmark');
+  if(bootWord) bootWord.textContent = 'KIKSTART';
+  const bootMark = $('.ks-boot-mark');
+  if(bootMark) bootMark.innerHTML = '<svg viewBox="0 0 80 88" aria-hidden="true"><path d="M40 3 73 15v27c0 22-12 35-33 43C19 77 7 64 7 42V15Z" fill="#287dff" stroke="#e2f8ff" stroke-width="4"/><circle cx="40" cy="25" r="7" fill="none" stroke="#fff" stroke-width="2"/><path d="M31 38v25l18-25v25" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  document.querySelectorAll('#top .ks-build-version').forEach(el => el.textContent = 'KIKSTART v33.9');
+  const cleanupStyle = document.createElement('style');
+  cleanupStyle.id = 'ks339-secret-code-cleanup';
+  cleanupStyle.textContent = '#ks338ShrekCodePanel,.ks338-shrek-code-panel,.ks337-public-shrek-code{display:none!important}';
+  document.head.appendChild(cleanupStyle);
+})();
+</script>
+
+
+<script>
+/* KIKSTART v34.0 — single-path private Shrek redemption repair. */
+(function KIKSTART_V340_SHREK_FIX(){
+  'use strict';
+  if (window.__KIKSTART_V340_SHREK_FIX__) return;
+  window.__KIKSTART_V340_SHREK_FIX__ = true;
+  const modes = ['fb','fs'];
+  const normalise = value => String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '');
+  const PRIVATE_CODE = '__KS404_SHREK__';
+  const findOrCreateShrek = mode => {
+    if (typeof POOL === 'undefined' || !Array.isArray(POOL[mode])) return null;
+    const pool = POOL[mode];
+    let player = pool.find(p => p && (p.shrekCard || String(p.n || '').toLowerCase() === 'shrek'));
+    if (!player) {
+      const ids = pool.map(p => Number(p && p.id)).filter(Number.isFinite);
+      player = {id: ids.length ? Math.max(...ids) + 1 : pool.length, n:'Shrek', pos:'FWD', o:100, f:'🧌', look:'3330', r:'diamond', kind:'hero', country:'Fantasy', traits:['Swamp Strength','Bog Sprint','Muddy Footwork','Ogre Power','Swamp Guardian']};
+      pool.push(player);
+    }
+    Object.assign(player, {shrekCard:true, secret:true, o:100, r:'diamond', kind:'hero', launchEvent:true, launchEventKey:'swamp_ogre_'+mode});
+    return player;
+  };
+  function claimShrek(){
+    if (typeof S === 'undefined' || !S || S.club === undefined || S.club === null) {
+      const msg = document.getElementById('v27CodeMsg');
+      if (msg) { msg.className='v27-code-error'; msg.textContent='Choose your club first, then enter the private Shrek code.'; }
+      return false;
+    }
+    S.owned = S.owned || {fb:{},fs:{}};
+    S.stock = S.stock || {fb:{},fs:{}};
+    S.redeemed = S.redeemed || {};
+    let ok = true;
+    for (const mode of modes) {
+      S.owned[mode] = S.owned[mode] || {};
+      S.stock[mode] = S.stock[mode] || {};
+      const player = findOrCreateShrek(mode);
+      if (!player) { ok = false; continue; }
+      S.owned[mode][player.id] = Math.max(1, Number(S.owned[mode][player.id]) || 0);
+      S.stock[mode][player.id] = 0;
+    }
+    if (!ok) {
+      const msg = document.getElementById('v27CodeMsg');
+      if (msg) { msg.className='v27-code-error'; msg.textContent='Shrek could not be added to both game modes. Please reload the game and try again.'; }
+      return false;
+    }
+    S.redeemed.ksShrekSecret339 = true;
+    S.redeemed.shrek100 = true;
+    S.shrekClaimed = true;
+    S.unlockedSecret = true;
+    if (typeof save === 'function') save();
+    if (typeof refresh === 'function') { try { refresh(); } catch (e) { console.error('Shrek refresh failed:', e); } }
+    const input = document.getElementById('v27CodeInput');
+    if (input) input.value = '';
+    const msg = document.getElementById('v27CodeMsg');
+    if (msg) { msg.className='v27-code-success'; msg.textContent='✓ SECRET PLAYER UNLOCKED — Shrek 100 OVR is now in your Football and Futsal collections.'; }
+    const selectedMode = S.mode === 'fs' ? 'fs' : 'fb';
+    const selectedPlayer = findOrCreateShrek(selectedMode);
+    if (selectedPlayer && typeof window.KS_openPlayerProfile === 'function') {
+      setTimeout(() => window.KS_openPlayerProfile(selectedMode, selectedPlayer.id), 120);
+    }
+    if (window.sfx && typeof sfx.coin === 'function') sfx.coin();
+    return true;
+  }
+  window.KIKSTART_claimPrivateShrek = claimShrek;
+  const previousRedeem340 = window.redeemCode || redeemCode;
+  window.redeemCode = redeemCode = function(){
+    const input = document.getElementById('v27CodeInput');
+    const typed = normalise(input && input.value);
+    if (typed === PRIVATE_CODE) return claimShrek();
+    if (['SHREK100','SWAMPROYAL'].includes(typed)) {
+      if (input) input.value = '';
+      const msg = document.getElementById('v27CodeMsg');
+      if (msg) { msg.className='v27-code-error'; msg.textContent='That old public code is retired. Enter the private Shrek code you were given.'; }
+      return false;
+    }
+    return previousRedeem340 ? previousRedeem340.apply(this, arguments) : false;
+  };
+  document.querySelectorAll('#ks338ShrekCodePanel,.ks338-shrek-code-panel,.ks337-public-shrek-code').forEach(el => el.remove());
+  const style = document.createElement('style');
+  style.id = 'ks340-shrek-private-only';
+  style.textContent = '#ks338ShrekCodePanel,.ks338-shrek-code-panel,.ks337-public-shrek-code{display:none!important}';
+  document.head.appendChild(style);
+  document.title = 'KIKSTART v34.0 — Blue Edition';
+  const meta = document.querySelector('meta[name="kikstart-game-version"]'); if (meta) meta.content = '34.0';
+  window.KIKSTART_GAME_VERSION = '34.0';
+  document.querySelectorAll('#top .ks-build-version').forEach(el => el.textContent = 'KIKSTART v34.0');
+  const footer = document.querySelector('.ks-boot-footer'); if (footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v34.0';
+})();
+</script>
+
+
+<!-- KIKSTART v34.1 reliability patch: verified save writes, single fullscreen mode, aligned profile close control. -->
+<style id="kikstart-v341-reliability-style">
+  /* Keep the profile close control anchored to the panel, not the scrolling content. */
+  #ksPlayerProfile .ks-profile-shell{position:relative!important;padding-top:68px!important;}
+  #ksPlayerProfile .ks-profile-close{
+    position:absolute!important;top:12px!important;right:12px!important;float:none!important;
+    display:grid!important;place-items:center!important;width:42px!important;height:42px!important;
+    margin:0!important;padding:0!important;line-height:1!important;font-size:26px!important;
+    z-index:30!important;transform:none!important;
+  }
+
+  /* One predictable in-window fullscreen layout for browser and Mac app builds. */
+  #matchView.v33-game-fullscreen{
+    position:fixed!important;inset:0!important;z-index:2147483000!important;
+    display:flex!important;flex-direction:column!important;gap:8px!important;
+    width:100vw!important;height:100vh!important;height:100dvh!important;
+    max-width:none!important;max-height:none!important;margin:0!important;
+    padding:8px max(10px,env(safe-area-inset-right)) 12px max(10px,env(safe-area-inset-left))!important;
+    overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;
+    box-sizing:border-box!important;border-radius:0!important;background:#030812!important;
+  }
+  #matchView.v33-game-fullscreen #ksMatchTopbar{
+    position:relative!important;top:auto!important;flex:0 0 auto!important;
+    width:100%!important;margin:0!important;
+  }
+  #matchView.v33-game-fullscreen #stage{
+    flex:1 1 auto!important;width:100%!important;height:calc(100dvh - 225px)!important;
+    min-height:260px!important;max-height:none!important;margin:0!important;
+  }
+  #matchView.v33-game-fullscreen #stage canvas:not(#v5mini){display:block!important;width:100%!important;height:100%!important;}
+  #matchView.v33-game-fullscreen #ksControlDeck{flex:0 0 auto!important;width:100%!important;max-width:none!important;margin:0!important;}
+  #matchView.v33-game-fullscreen #endBox{flex:0 0 auto!important;width:100%!important;}
+  html.v33-fullscreen-active,body.v33-lock-scroll{height:100%!important;overflow:hidden!important;}
+  @media(max-width:760px){
+    #matchView.v33-game-fullscreen{padding:6px max(8px,env(safe-area-inset-right)) 10px max(8px,env(safe-area-inset-left))!important;}
+    #matchView.v33-game-fullscreen #stage{height:calc(100dvh - 380px)!important;min-height:220px!important;}
+    #matchView.v33-game-fullscreen #mobileControls{min-height:120px!important;}
+  }
+  #ksSaveStatus{display:inline-flex;align-items:center;gap:5px;margin-left:auto;padding:5px 8px;border-radius:7px;font:800 10px system-ui,sans-serif;letter-spacing:.04em;color:#91f0c6;background:#0b2b26;border:1px solid #246c59;white-space:nowrap;}
+  #ksSaveStatus.error{color:#ffb2bd;background:#35151d;border-color:#8c3847;}
+</style>
+<script>
+(function KIKSTART_V341_RELIABILITY(){
+  'use strict';
+  if(window.__KIKSTART_V341_RELIABILITY__)return;
+  window.__KIKSTART_V341_RELIABILITY__=true;
+  const KEY='kikstartV2';
+  const oldSave=save;
+  let lastRaw='',saveBusy=false;
+
+  function showSaveStatus(ok,message){
+    let el=document.getElementById('ksSaveStatus');
+    if(!el){
+      const top=document.getElementById('top');
+      if(!top)return;
+      el=document.createElement('span');el.id='ksSaveStatus';el.setAttribute('role','status');el.setAttribute('aria-live','polite');
+      top.appendChild(el);
+    }
+    el.classList.toggle('error',!ok);
+    el.textContent=ok?'✓ SAVED':('⚠ '+(message||'SAVE FAILED'));
+    el.title=ok?'Your KIKSTART progress is saved in this browser.':(message||'Your progress could not be saved. Export a save code before closing.');
+  }
+  function writeVerified(raw){
+    localStorage.setItem(KEY,raw);
+    if(localStorage.getItem(KEY)!==raw)throw new Error('Save verification failed');
+    lastRaw=raw;
+    showSaveStatus(true);
+    return true;
+  }
+  function forcePersist(){
+    if(saveBusy||typeof S==='undefined'||!S||S.club===undefined)return false;
+    // Never persist the temporary line-up/state borrowed by the live match engine.
+    if(typeof M!=='undefined'&&M&&!M.over)return false;
+    saveBusy=true;
+    try{
+      const raw=JSON.stringify(S);
+      if(raw===lastRaw&&localStorage.getItem(KEY)===raw){showSaveStatus(true);return true;}
+      try{return writeVerified(raw);}catch(firstError){
+        // Reclaim only disposable automatic backups. Never delete the active save or manual slots.
+        ['kikstartV22_backup_3','kikstartV22_backup_2','kikstartV22_backup_meta','kikstartV22_backup_1'].forEach(k=>{try{localStorage.removeItem(k);}catch(_){}});
+        try{return writeVerified(raw);}catch(secondError){
+          // Replay footage is optional; preserve the club, coins, players, career and settings.
+          if(Array.isArray(S.v22Replays)&&S.v22Replays.length){
+            const compact=JSON.stringify(Object.assign({},S,{v22Replays:[]}));
+            try{return writeVerified(compact);}catch(thirdError){showSaveStatus(false,'SAVE FAILED — EXPORT SAVE CODE');console.error('KIKSTART save failed:',thirdError);return false;}
+          }
+          showSaveStatus(false,'SAVE FAILED — EXPORT SAVE CODE');console.error('KIKSTART save failed:',secondError);return false;
+        }
+      }
+    }catch(error){showSaveStatus(false,'SAVE FAILED — EXPORT SAVE CODE');console.error('KIKSTART save could not be serialised:',error);return false;}
+    finally{saveBusy=false;}
+  }
+  // Keep all existing save hooks/backups, then independently verify the primary save key.
+  save=function(){
+    let result;
+    try{if(typeof oldSave==='function')result=oldSave.apply(this,arguments);}catch(error){console.warn('Existing KIKSTART save hook failed:',error);}
+    if(typeof M!=='undefined'&&M&&!M.over)return result;
+    forcePersist();
+    return result;
+  };
+  window.KIKSTART_forceSave=forcePersist;
+  window.addEventListener('pagehide',()=>forcePersist());
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')forcePersist();});
+  window.addEventListener('beforeunload',()=>forcePersist());
+  window.setInterval(()=>forcePersist(),15000);
+
+  // Replace the stacked legacy fullscreen handlers with one consistent CSS state.
+  window.KS_toggleFullscreen=function(force){
+    const match=document.getElementById('matchView');if(!match)return false;
+    const active=match.classList.contains('v33-game-fullscreen');
+    const next=typeof force==='boolean'?force:!active;
+    match.classList.toggle('v33-game-fullscreen',next);
+    match.classList.remove('v32-web-fullscreen','ks-fallback-fullscreen');
+    document.documentElement.classList.toggle('v33-fullscreen-active',next);
+    document.body.classList.toggle('v33-lock-scroll',next);
+    if(next)window.scrollTo(0,0);
+    const button=document.getElementById('ksFullscreenButton');
+    if(button){button.textContent=next?'⛶ EXIT FULL SCREEN':'⛶ FULL SCREEN';button.setAttribute('aria-pressed',next?'true':'false');}
+    const resize=()=>{
+      try{
+        const st=document.getElementById('stage');
+        if(typeof renderer!=='undefined'&&renderer&&st&&typeof camera!=='undefined'&&camera){
+          const w=Math.max(1,Math.round(st.clientWidth)),h=Math.max(1,Math.round(st.clientHeight));
+          renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+        }
+      }catch(error){console.warn('KIKSTART fullscreen resize:',error);}
+      window.dispatchEvent(new Event('resize'));
+    };
+    requestAnimationFrame(()=>requestAnimationFrame(resize));
+    return true;
+  };
+  window.KS_nativeFullscreenChanged=function(active){window.KS_toggleFullscreen(!!active);};
+
+  // Align the close cross in the player detail overlay with the panel's top-right corner.
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&document.getElementById('ksPlayerProfile'))window.KS_closePlayerProfile?.();
+  });
+  document.title='KIKSTART v34.1 — Blue Edition';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content='34.1';
+  window.KIKSTART_GAME_VERSION='34.1';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v34.1');
+  const footer=document.querySelector('.ks-boot-footer');if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v34.1';
+  if(typeof S!=='undefined'&&S){try{forcePersist();}catch(_){}}
+})();
+</script>
+
+<script>
+/* KIKSTART v36.0 — real stadium construction progression, matchday visual pass,
+   public release history and a clearly marked future roadmap. */
+(function KIKSTART_V350(){
+  'use strict';
+  if(window.__KIKSTART_V350__) return;
+  window.__KIKSTART_V350__ = true;
+
+  const V35_stages = [
+    {name:'Groundworks',note:'A cleared site, temporary access roads, pitch works and construction fencing. The permanent stands have not been built yet.'},
+    {name:'Foundations',note:'Foundation pads, retaining bases and the first lower-terrace supports are added.'},
+    {name:'Lower structure',note:'The first seating rows and concrete terrace sections begin to take shape.'},
+    {name:'Lower bowl',note:'More lower-tier seating, access aisles and the first structural supports are installed.'},
+    {name:'Lower stand complete',note:'The lower bowl reaches its planned capacity. The upper tier and exterior concourse are still unfinished.'},
+    {name:'Concourse and exterior',note:'The outer concourse, entry portals, façade panels and glazing are built around the lower stand.'},
+    {name:'Upper tier',note:'The upper seating deck grows, with additional structure and matchday lighting supports.'},
+    {name:'Roof frame',note:'The main steel roof ring, trusses and support columns are installed. The roof is still open.'},
+    {name:'Partial canopy',note:'Roof panels are installed in sections, leaving visible areas of the structure exposed.'},
+    {name:'Exterior finishing',note:'Most roof panels, stadium cladding, scoreboards and matchday lighting are installed.'},
+    {name:'Stadium complete',note:'The finished venue has full seating, roof, club-specific architecture, signage and matchday details.'}
+  ];
+
+  // Milestone summaries, not a claim that every minor maintenance build is listed.
+  // Only public game features are described; private rewards and identities are omitted.
+  const V35_publicHistory = [
+    ['v13','Friend matches','Introduced online 1v1 friend matches.'],
+    ['v14','Club stadium identities','Added club-inspired 3D stadium profiles and camera views.'],
+    ['v17','Career modes','Added separate player and manager career progression using the match engine.'],
+    ['v22','Career and club systems','Expanded career activities, transfers, youth development, tactics, match presentation, statistics and save options.'],
+    ['v22.1','Save reliability','Hardened career and generated-player save restoration.'],
+    ['v23','Player Career control','Expanded Player Career to support controlling the full team.'],
+    ['v24','Assisted shooting','Added assisted shooting options to make shots easier to aim.'],
+    ['v25','Match Lab and club development','Expanded training activities, player development, injuries, AI behaviour, club tools and competition systems.'],
+    ['v26','Stadium architecture rebuild','Reworked club-specific stadium structures, exterior details and inspection cameras.'],
+    ['v27','Stadium progression','Expanded the ten-level stand upgrade path and added more club and competition features.'],
+    ['v28','Mac gameplay polish','Improved Mac gameplay controls, pause handling and fullscreen behaviour.'],
+    ['v30.1','WebKit compatibility','Improved match startup and renderer recovery for the Mac app environment.'],
+    ['v31','Match presentation','Added a refreshed loading presentation, player-name indicators and skill-move support.'],
+    ['v32','Controls and match settings','Expanded control customisation, match options, weather and crowd settings.'],
+    ['v33','Gameplay and interface reliability','Continued fixes to fullscreen, input handling, player data and platform behaviour.'],
+    ['v33.6','Squad management','Added manual squad swaps, automatic squad building and player collection maintenance.'],
+    ['v33.7–v33.9','Event and collection maintenance','Refined event presentation, collection handling and redemption reliability. Private rewards are not listed.'],
+    ['v34.0','Collection maintenance','Further repairs to player collection and redemption handling.'],
+    ['v34.1','Browser reliability','Added save-write verification and improved fullscreen and profile-close behaviour.'],
+    ['v35.0','Stadium evolution and matchday visuals','Introduces staged stadium construction, more detailed club-specific stadium progression, improved matchday stands and a public update log.']
+  ];
+  const V35_roadmap = [
+    ['Next · Planned','Mac app online updates','Investigate a safe way for the installed Mac app to load the hosted game and receive updates without downloading a full replacement app each time.'],
+    ['Future · Planned','Matchday animation polish','Continue refining player movement, ball contact, celebrations, crowd reactions and camera presentation.'],
+    ['Future · Ideas','More stadium and club detail','Consider additional venue details, club presentation options and stadium progression improvements.']
+  ];
+
+  document.title='KIKSTART v36.0 — Stadium Evolution';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content='35.0';
+  window.KIKSTART_GAME_VERSION='35.0';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v36.0');
+  document.querySelectorAll('.ks-boot-footer').forEach(el=>el.textContent='KIKSTART · FOOTBALL EXPERIENCE · v36.0');
+
+  // -----------------------------------------------------------------------
+  // Public update log.
+  // -----------------------------------------------------------------------
+  const main=document.getElementById('main');
+  if(main&&!document.getElementById('updates')){const tab=document.createElement('div');tab.id='updates';tab.className='tab';main.appendChild(tab);}
+  const sideItems=document.querySelector('#side .sitems');
+  if(sideItems&&!document.getElementById('nav-updates')){const b=document.createElement('button');b.id='nav-updates';b.type='button';b.textContent='Update Log';b.onclick=()=>showTab('updates');sideItems.appendChild(b);}
+  const startItems=document.querySelector('#start .sitems');
+  if(startItems&&!startItems.querySelector('[data-t="updates"]')){const b=document.createElement('button');b.type='button';b.dataset.t='updates';b.textContent='Update Log';b.onclick=()=>menuGo('updates');startItems.appendChild(b);}
+  function renderUpdates(){
+    const root=document.getElementById('updates');if(!root)return;
+    const h=V35_publicHistory.slice().reverse().map((item,i)=>'<article class="v35-release '+(i===0?'current':'')+'"><div class="v35-release-dot"></div><div class="v35-release-top"><b>'+item[0]+'</b><span>'+(i===0?'LATEST RELEASE':'RELEASE MILESTONE')+'</span></div><h3>'+item[1]+'</h3><p>'+item[2]+'</p></article>').join('');
+    const r=V35_roadmap.map(item=>'<article class="v35-roadmap-card"><span>'+item[0]+'</span><h3>'+item[1]+'</h3><p>'+item[2]+'</p></article>').join('');
+    root.innerHTML='<section class="v35-update-hero"><div class="v35-eyebrow">KIKSTART · PUBLIC RELEASE NOTES</div><div class="v35-hero-row"><div><h1>Update Log</h1><p>Public features, improvements and what is being considered next.</p></div><span class="v35-version-pill">CURRENT · v35.0</span></div></section>'+
+      '<section class="v35-update-section"><div class="v35-section-head"><div><div class="v35-eyebrow">RELEASED BUILDS</div><h2>Past update milestones</h2></div><span class="v35-status">Released</span></div><p class="v35-update-note">This is a milestone history reconstructed from the game project and earlier releases. It covers the main public changes; not every small bug-fix build is listed. Private reward content is intentionally excluded.</p><div class="v35-timeline">'+h+'</div></section>'+ 
+      '<section class="v35-update-section"><div class="v35-section-head"><div><div class="v35-eyebrow">NOT RELEASED YET</div><h2>Future roadmap</h2></div><span class="v35-status planned">Planned / ideas</span></div><p class="v35-update-note">These are intentions, not released features or guaranteed dates. Scope and version numbers may change.</p><div class="v35-roadmap">'+r+'</div></section><div class="v35-update-foot">Public notes cover public game features only.</div>';
+  }
+  window.KIKSTART_renderUpdateLog=renderUpdates;
+  const previousShowTab=showTab;
+  showTab=function(name){
+    if(name==='updates'){
+      if(typeof M!=='undefined'&&M&&!M.over)return;
+      tabOn='updates';renderUpdates();
+      document.querySelectorAll('#main > .tab').forEach(el=>el.classList.toggle('on',el.id==='updates'));
+      document.querySelectorAll('#side .sitems button').forEach(el=>el.classList.toggle('on',el.id==='nav-updates'));
+      document.querySelectorAll('#start .sitems button').forEach(el=>el.classList.toggle('sel',el.dataset.t==='updates'));
+      return true;
+    }
+    const root=document.getElementById('updates');if(root)root.classList.remove('on');
+    const nav=document.getElementById('nav-updates');if(nav)nav.classList.remove('on');
+    return previousShowTab.apply(this,arguments);
+  };
+  const previousMenuGo=menuGo;
+  menuGo=function(name){
+    if(name==='updates'){
+      if(typeof S!=='undefined'&&S){previousMenuGo.call(this,'home');showTab('updates');return true;}
+      pending='updates';if(typeof openPick==='function')openPick();return true;
+    }
+    return previousMenuGo.apply(this,arguments);
+  };
+
+  // -----------------------------------------------------------------------
+  // Construction-site details added on top of the existing club-specific
+  // stadium model. The underlying profile model remains intact.
+  // -----------------------------------------------------------------------
+  function disposeV35(group){
+    if(!group)return;group.traverse(o=>{if(o.geometry&&o.geometry.dispose)o.geometry.dispose();if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m){if(m.map&&m.map.dispose)m.map.dispose();if(m.dispose)m.dispose();}});});
+  }
+  function addConstructionSite(level){
+    if(!sw||typeof THREE==='undefined')return;
+    const old=sw.getObjectByName('KIKSTART_V35_CONSTRUCTION_SITE');if(old){sw.remove(old);disposeV35(old);}
+    if(level>=10)return;
+    const g=new THREE.Group();g.name='KIKSTART_V35_CONSTRUCTION_SITE';sw.add(g);
+    const steel=new THREE.MeshStandardMaterial({color:0x8495a5,roughness:.52,metalness:.62});
+    const darkSteel=new THREE.MeshStandardMaterial({color:0x354553,roughness:.7,metalness:.36});
+    const yellow=new THREE.MeshStandardMaterial({color:0xf0c34a,roughness:.78});
+    const concrete=new THREE.MeshStandardMaterial({color:0x777e84,roughness:.94});
+    const white=new THREE.MeshStandardMaterial({color:0xe9eef1,roughness:.65});
+    const box=(w,h,d,x,y,z,mat)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;g.add(o);return o;};
+    const beam=(a,b,r,mat)=>{const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),v=B.clone().sub(A);const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,v.length(),7),mat);o.position.copy(A.add(B).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());o.castShadow=true;g.add(o);return o;};
+    // Temporary perimeter barriers are removed progressively as the venue nears completion.
+    if(level<9){
+      const gap=level<5?12:20;
+      for(let x=-126;x<=126;x+=gap){box(gap-.45,1.15,.32,x,.58,-116,yellow);box(gap-.45,.12,.36,x,1.18,-116,darkSteel);box(gap-.45,1.15,.32,x,.58,116,yellow);box(gap-.45,.12,.36,x,1.18,116,darkSteel);}
+      for(let z=-104;z<=104;z+=gap){box(.32,1.15,gap-.45,-132,.58,z,yellow);box(.36,.12,gap-.45,-132,1.18,z,darkSteel);box(.32,1.15,gap-.45,132,.58,z,yellow);box(.36,.12,gap-.45,132,1.18,z,darkSteel);}
+    }
+    // Concrete foundation pads and materials are visible during the early construction stages.
+    if(level<5){
+      for(const [x,z] of [[-112,-92],[112,-92],[-112,92],[112,92]]){
+        box(12,.7,10,x,.05,z,concrete);
+        for(let dx=-4;dx<=4;dx+=4)beam([x+dx,.4,z-4],[x+dx,8+level*1.2,z-4],.12,steel);
+      }
+      for(let i=0;i<5;i++){const x=-54+i*27;box(16,2.3,10,x,1.15,128,concrete);box(16.4,.2,10.4,x,2.4,128,yellow);}
+    }
+    // Scaffolding grows with the lower and upper structures, and is removed near completion.
+    if(level>=1&&level<9){
+      const height=12+level*2.3;
+      for(const [x,z] of [[-112,-94],[112,-94],[-112,94],[112,94]]){
+        for(const dx of [-2.2,2.2])for(const dz of [-2.2,2.2])beam([x+dx,.8,z+dz],[x+dx,height,z+dz],.13,steel);
+        for(let y=3;y<height;y+=3){beam([x-2.2,y,z-2.2],[x+2.2,y,z-2.2],.11,darkSteel);beam([x+2.2,y,z-2.2],[x+2.2,y,z+2.2],.11,darkSteel);beam([x-2.2,y,z+2.2],[x+2.2,y+2,z-2.2],.09,steel);}
+      }
+    }
+    // A tower crane is removed when the permanent roof and exterior approach completion.
+    if(level<8){
+      const x=145,z=-105,top=59;
+      box(2.3,top,2.3,x,top/2,z,steel);
+      for(let y=8;y<top;y+=8)box(3,.28,3,x,y,z,darkSteel);
+      box(61,.85,1.35,x-28,top,z,darkSteel);box(14,1.2,2,x+32,top,z,concrete);
+      beam([x-57,top,z],[x-6,top+7,z],.16,steel);beam([x-57,top,z],[x-57,top-18,z],.13,steel);beam([x-7,top,z],[x-7,top-15,z],.12,steel);
+      beam([x-21,top-2,z],[x-21,top-29,z],.07,darkSteel);box(1.5,1.5,1.5,x-21,top-30,z,yellow);
+    }
+    // Site cabins and delivery materials make the outside feel like a real live worksite.
+    if(level<7){
+      for(let i=0;i<3;i++){
+        const x=-88+i*30,z=132;
+        box(22,7,10,x,3.5,z,i===1?steel:darkSteel);
+        box(22.2,.35,10.2,x,7.15,z,yellow);
+        for(let w=-7;w<=7;w+=7)box(.2,3,.2,x+w,3.3,z-5.1,white);
+      }
+    }
+  }
+
+  // Preserve the most recent v26 club-profile builder after its asynchronous Three.js setup.
+  let v35BaseBuildStad=null, v35BaseRenderStadium=null;
+  function installV35Stadium(){
+    if(typeof THREE==='undefined'||typeof buildStad!=='function')return;
+    if(!window.__KIKSTART_V35_STADIUM_BUILDER__){
+      v35BaseBuildStad=buildStad;
+      buildStad=function(){
+        const result=v35BaseBuildStad.apply(this,arguments);
+        if(result!==false&&S&&sw)addConstructionSite(Math.max(0,Math.min(10,Number(S.st&&S.st.a)||0)));
+        return result;
+      };
+      window.__KIKSTART_V35_STADIUM_BUILDER__=true;
+    }
+    // Wrap renderStadium only after the older asynchronous profile installer has
+    // finished, otherwise its delayed callback could overwrite this UI wrapper.
+    if(!window.__KIKSTART_V35_STADIUM_RENDER__&&typeof renderStadium==='function'){
+      v35BaseRenderStadium=renderStadium;
+      renderStadium=function(){
+        const result=v35BaseRenderStadium.apply(this,arguments);
+        if(!S||!CL[S.club])return result;
+        const root=$('stadP');if(!root)return result;
+        root.querySelector('.v35-stadium-progress')?.remove();
+        const level=Math.max(0,Math.min(10,Number(S.st&&S.st.a)||0)),stage=V35_stages[level];
+        const panel=document.createElement('section');panel.className='panel v35-stadium-progress';
+        panel.innerHTML='<div class="v35-eyebrow">STADIUM DEVELOPMENT · LEVEL '+level+'/10</div><div class="v35-stage-row"><div><h2>'+stage.name+'</h2><p>'+stage.note+'</p></div><b>'+Math.round(level*10)+'% BUILT</b></div><div class="v35-progress"><i style="width:'+(level*10)+'%"></i></div><p class="v35-stage-hint">Stand upgrades change the actual stadium model. A new club starts with an unfinished site; your existing stadium progress is preserved.</p>';
+        root.insertBefore(panel,root.firstChild);
+        if(typeof buildStad==='function')buildStad();
+        return result;
+      };
+      window.__KIKSTART_V35_STADIUM_RENDER__=true;
+    }
+    if(S&&typeof renderStadium==='function')try{renderStadium();}catch(e){console.warn('KIKSTART v35 stadium refresh:',e);}
+  }
+  if(typeof THREE!=='undefined')installV35Stadium();
+  else if(window.__kikThreePromise&&typeof window.__kikThreePromise.then==='function')window.__kikThreePromise.then(installV35Stadium).catch(e=>console.warn('KIKSTART v35 stadium engine:',e));
+
+  // -----------------------------------------------------------------------
+  // Matchday environment: club-coloured terraces, visible spectator forms,
+  // pitch detail, concourse shell and staged canopy.
+  // -----------------------------------------------------------------------
+  const previousBuildWorld=buildWorld;
+  buildWorld=function(F,club){
+    if(typeof THREE==='undefined'||!scene)return previousBuildWorld.apply(this,arguments);
+    if(world&&world.parent)scene.remove(world);
+    world=new THREE.Group();world.name='KIKSTART_V35_MATCHDAY';scene.add(world);
+    const level=Math.max(0,Math.min(10,Number(S.st&&S.st.a)||0)),mode=S.mode||'fb',small=mode==='fs',L=F.L,W=F.W;
+    const profile=window.KIKSTART_getStadiumProfile?window.KIKSTART_getStadiumProfile():null,style=profile&&profile.style||'';
+    const mat=(color,rough=.8,metal=.03,opacity=1)=>new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,transparent:opacity<1,opacity,side:THREE.DoubleSide});
+    const turf=mat(small?0x986a43:(S.st&&S.st.b>=3?0x23864b:0x176e3e),.98),stripe=mat(small?0xad7b4d:0x1d8249,.98),base=mat(0x263443,.94),white=new THREE.MeshBasicMaterial({color:0xf5f8fa,side:THREE.DoubleSide}),steel=mat(0x73869a,.38,.72),concrete=mat(0x4c5964,.92),dark=mat(0x182736,.86),roof=mat(0x263d54,.42,.52),glass=mat(0x75b4d0,.22,.18,.72);
+    const box=(w,h,d,material,x,y,z,rx=0,ry=0,rz=0)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);o.castShadow=true;o.receiveShadow=true;world.add(o);return o;};
+    const beam=(a,b,r,material)=>{const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),v=B.clone().sub(A);const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,v.length(),8),material);o.position.copy(A.add(B).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());o.castShadow=true;world.add(o);return o;};
+    const line=(w,d,x,z)=>box(w,.055,d,white,x,.065,z);
+    const outside=new THREE.Mesh(new THREE.PlaneGeometry(L+100,W+100),mat(0x183f2d,.99));outside.rotation.x=-Math.PI/2;outside.position.y=-.42;world.add(outside);
+    box(L+34,.42,W+34,base,0,-.2,0);
+    for(let i=0;i<14;i++)box(L/14,.026,W,(i%2?stripe:turf),-L/2+L/28+i*L/14,.035,0);
+    // Accurate field markings and centre spot.
+    line(L,.22,0,-W/2);line(L,.22,0,W/2);line(.22,W,-L/2,0);line(.22,W,L/2,0);line(.22,W,0,0);
+    const boxDepth=small?6:16,boxWidth=small?6:20;
+    [-1,1].forEach(side=>{const x=side*(L/2-(small?4:16));line(.2,boxWidth*2,x,0);line(boxDepth,.2,side*(L/2-(small?1:8)),-boxWidth);line(boxDepth,.2,side*(L/2-(small?1:8)),boxWidth);});
+    const centre=new THREE.Mesh(new THREE.RingGeometry(small?3.2:9,small?3.38:9.22,64),white);centre.rotation.x=-Math.PI/2;centre.position.y=.09;world.add(centre);
+    const spot=new THREE.Mesh(new THREE.CircleGeometry(.32,18),white);spot.rotation.x=-Math.PI/2;spot.position.y=.09;world.add(spot);
+    const gw=F.gw,gh=small?2:2.6;
+    [-1,1].forEach(side=>{
+      const x=side*(L/2+.25);box(.16,gh,.16,white,x,gh/2,-gw/2);box(.16,gh,.16,white,x,gh/2,gw/2);box(.16,.16,gw,white,x,gh,0);
+      const net=new THREE.Mesh(new THREE.BoxGeometry(2.5,gh,gw),new THREE.MeshBasicMaterial({color:0xe8f2f8,wireframe:true,transparent:true,opacity:.27}));net.position.set(x+side*1.25,gh/2,0);net.castShadow=false;world.add(net);
+    });
+    // Technical areas and advertisement boards around the touchlines.
+    [-1,1].forEach(side=>{box(L+16,.8,.48,dark,0,.75,side*(W/2+3));box(L+14,.18,.1,new THREE.MeshBasicMaterial({color:club.a||0x267c73}),0,1.2,side*(W/2+3.26));});
+    // Construction barriers at early levels; there is no completed grandstand at level zero.
+    if(level<3){
+      for(const side of [-1,1]){
+        box(L+38,.85,.34,mat(0xe1b43e),0,.45,side*(W/2+19));
+        for(let x=-L/2;x<=L/2;x+=14)box(5,1.1,2,concrete,x,.55,side*(W/2+13));
+      }
+    }
+    const tierCount=level===0?0:level<4?1:level<7?2:level<9?3:4;
+    const rows=level===0?0:Math.min(9,2+Math.ceil(level*0.72)),seatData=[],crowd=[];
+    if(tierCount>0){
+      const standConcrete=mat(0x46535e,.91),seatGeo=new THREE.BoxGeometry(1.05,.4,.62),seatMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.82});
+      for(const side of [-1,1]){
+        for(let tier=0;tier<tierCount;tier++){
+          const tierRows=Math.max(2,rows-tier*2);
+          for(let r=0;r<tierRows;r++){
+            const y=2.5+tier*6+r*.54,z=side*(W/2+4+tier*6+r*.78);
+            box(L+22+tier*8,.65,2.1,standConcrete,0,y-.45,z);
+            for(let x=-L/2-5;x<=L/2+5;x+=2.25){seatData.push({x,y,z,rot:0,c:((Math.floor((x+L/2)/13)+r+tier)%2)});if(level>=4)crowd.push([x,y+.82,z]);}
+          }
+        }
+      }
+      for(const side of [-1,1]){
+        for(let tier=0;tier<tierCount;tier++){
+          const tierRows=Math.max(2,rows-tier*2);
+          for(let r=0;r<tierRows;r++){
+            const y=2.5+tier*6+r*.54,x=side*(L/2+4+tier*6+r*.78);
+            box(2.1,.65,W+22+tier*8,standConcrete,x,y-.45,0);
+            for(let z=-W/2-5;z<=W/2+5;z+=2.25){seatData.push({x,y,z,rot:side*Math.PI/2,c:((Math.floor((z+W/2)/13)+r+tier)%2)});if(level>=4)crowd.push([x,y+.82,z]);}
+          }
+        }
+      }
+      const seats=new THREE.InstancedMesh(seatGeo,seatMat,seatData.length),dummy=new THREE.Object3D(),colourA=new THREE.Color(club.a),colourB=new THREE.Color(club.b);
+      seatData.forEach((q,i)=>{dummy.position.set(q.x,q.y,q.z);dummy.rotation.set(0,q.rot,0);dummy.updateMatrix();seats.setMatrixAt(i,dummy.matrix);seats.setColorAt(i,q.c?colourA:colourB);});seats.instanceMatrix.needsUpdate=true;if(seats.instanceColor)seats.instanceColor.needsUpdate=true;seats.receiveShadow=true;world.add(seats);
+      // Low-cost instanced spectator silhouettes instead of flat dots.
+      if(crowd.length){
+        const chosen=crowd.filter((_,i)=>i%2===0).slice(0,1300),bodyGeo=new THREE.CylinderGeometry(.13,.17,.48,6),headGeo=new THREE.SphereGeometry(.13,7,5);
+        const bodies=new THREE.InstancedMesh(bodyGeo,new THREE.MeshStandardMaterial({color:0xffffff,roughness:.9}),chosen.length),heads=new THREE.InstancedMesh(headGeo,new THREE.MeshStandardMaterial({color:0xd6ad8b,roughness:.95}),chosen.length),obj=new THREE.Object3D(),palette=[colourA,colourB,new THREE.Color(0xe8edf2),new THREE.Color(0x263443)];
+        chosen.forEach((p,i)=>{obj.position.set(p[0],p[1]+.12,p[2]);obj.rotation.set(0,((i%5)-2)*.12,0);obj.updateMatrix();bodies.setMatrixAt(i,obj.matrix);bodies.setColorAt(i,palette[i%palette.length]);obj.position.set(p[0],p[1]+.43,p[2]);obj.scale.setScalar(.82);obj.updateMatrix();heads.setMatrixAt(i,obj.matrix);obj.scale.setScalar(1);});
+        bodies.instanceMatrix.needsUpdate=true;heads.instanceMatrix.needsUpdate=true;if(bodies.instanceColor)bodies.instanceColor.needsUpdate=true;if(heads.instanceColor)heads.instanceColor.needsUpdate=true;world.add(bodies,heads);
+      }
+    }else{
+      // Small temporary work platforms are the only spectator structures at level zero.
+      for(const side of [-1,1])for(let x=-L/2;x<=L/2;x+=13)box(5,.8,1.8,concrete,x,.8,side*(W/2+10));
+    }
+    // Exterior concourse shell and visible glazing appear after the lower bowl is built.
+    if(level>=5){
+      const wallY=level>=6?18:11,wallZ=W/2+13;
+      for(const side of [-1,1]){
+        box(L+28,wallY,2.2,concrete,0,wallY/2,side*wallZ);
+        box(L+26,1.2,2.5,mat(club.a),0,wallY+.6,side*wallZ);
+        for(let x=-L/2-7;x<=L/2+7;x+=9)box(3.8,4,.12,glass,x,5.5,side*(wallZ+1.18));
+      }
+      if(profile&&profile.style==='waterfrontBrick')for(let x=-L/2;x<=L/2;x+=16)beam([x,1,W/2+13],[x+7,wallY,W/2+15],.2,steel);
+    }
+    // Roof frame at level seven; the panels are added progressively afterwards.
+    if(level>=7 && club.k!=="MCI"){
+      const roofY=25,depth=level>=10?15:level===9?10:level===8?5:1.2,edge=W/2+rows*.85+10;
+      for(const side of [-1,1]){
+        for(let x=-L/2-5;x<=L/2+5;x+=Math.max(14,L/6))beam([x,level>=6?14:10,side*(W/2+rows*.8+5)],[x,roofY,side*(edge+depth)],.34,steel);
+        box(L+30,.55,depth,roof,0,roofY,side*(edge+depth/2));
+      }
+      for(const side of [-1,1])for(let z=-W/2;z<=W/2;z+=Math.max(14,W/4))beam([side*(L/2+rows*.8+5),14,z],[side*(L/2+rows*.8+depth+10),roofY,z],.32,steel);
+      // Early roof frame stays visibly open; level eight adds narrow panels, level nine more cover, level ten full canopy.
+      const roofProgress=level>=10?1:level===9?.72:level===8?.32:0;
+      if(roofProgress>0){
+        const panels=Math.max(1,Math.round(10*roofProgress));
+        for(const side of [-1,1])for(let i=0;i<panels;i++){
+          const z=side*(W/2+rows*.85+7+i*.75);
+          box(L+26,.18,.68,mat(level>=10?0x9aafc1:0x61788b,.43,.48,.5),0,roofY-1.2,z);
+        }
+      }
+    }
+    // Club-specific roof silhouettes echo the detailed profile model in the stadium viewer.
+    if(level>=9&&profile){
+      if(/waveCanopy|archedOpen/i.test(profile.style||''))for(let x=-L/2;x<=L/2;x+=Math.max(12,L/6))beam([x,17,-W/2-8],[x,27,0],.28,steel);
+      if(/sanSiroTowers|cornerMasts|marathonTower/i.test(profile.style||''))for(const sx of [-1,1])for(const sz of [-1,1])beam([sx*(L/2+14),1,sz*(W/2+14)],[sx*(L/2+18),36,sz*(W/2+18)],.48,steel);
+    }
+    if(level>=6){
+      box(15,4,.8,dark,0,18,-W/2-24);box(13,2.8,.12,new THREE.MeshBasicMaterial({color:0x0d506e}),0,18,-W/2-23.55);
+    }
+    if(level>=7&&S.st.c>0){
+      for(const sx of [-1,1])for(const sz of [-1,1]){const x=sx*(L/2+16),z=sz*(W/2+15);box(.55,19,.55,steel,x,9.5,z);box(5,.6,1.5,white,x,19.2,z);const light=new THREE.PointLight(0xfff0ce,.25*S.st.c,90);light.position.set(x,20,z);world.add(light);}
+    }
+    if(level>=9){
+      for(const side of [-1,1])box(L+16,.7,.28,new THREE.MeshBasicMaterial({color:club.b}),0,1.35,side*(W/2+3.35));
+      for(const sx of [-1,1])for(const sz of [-1,1]){const x=sx*(L/2+17),z=sz*(W/2+15);box(.75,22,.75,steel,x,11,z);box(6,.6,1.5,white,x,22.3,z);}
+    }
+  };
+
+  const previousInit3D=init3D;
+  init3D=function(){
+    const result=previousInit3D.apply(this,arguments);
+    if(result&&renderer&&THREE){
+      renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));
+      renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+      if(THREE.ACESFilmicToneMapping!==undefined)renderer.toneMapping=THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure=1.06;
+      if(scene){scene.background=new THREE.Color(0x8ea7ba);scene.fog=new THREE.Fog(0x8ea7ba,165,380);scene.children.forEach(o=>{if(o.isDirectionalLight){o.castShadow=true;o.shadow.mapSize.set(1024,1024);o.shadow.camera.left=-100;o.shadow.camera.right=100;o.shadow.camera.top=100;o.shadow.camera.bottom=-100;}});}
+    }
+    return result;
+  };
+
+  const style=document.createElement('style');style.id='kikstart-v35-style';style.textContent=`
+    .v35-update-hero,.v35-update-section,.v35-stadium-progress{border:1px solid #314b68;border-radius:19px;background:linear-gradient(145deg,#152943,#091526);box-shadow:0 16px 34px #0005,inset 0 1px #ffffff12}
+    .v35-update-hero{padding:24px;margin:4px 0 18px;background:radial-gradient(circle at 92% 0,#2b9b9a33,transparent 42%),linear-gradient(145deg,#152b46,#0a1628)}
+    .v35-eyebrow{font-size:10px;letter-spacing:.18em;font-weight:1000;color:#7de8d8}.v35-hero-row,.v35-section-head,.v35-stage-row{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+    .v35-update-hero h1{font-size:clamp(32px,5vw,48px);letter-spacing:-.04em;margin:7px 0}.v35-update-hero p,.v35-update-note{color:#a9bfd4;line-height:1.6;font-size:13px}.v35-version-pill,.v35-status{padding:7px 11px;border-radius:99px;border:1px solid #347d78;background:#0c3432;color:#91f3db;font-size:10px;font-weight:1000;letter-spacing:.09em}.v35-status.planned{border-color:#9a7940;background:#332817;color:#ffdb91}
+    .v35-update-section{padding:20px;margin-bottom:16px}.v35-section-head h2{font-size:23px;margin:5px 0 10px}.v35-timeline{display:grid;gap:0;margin-top:15px}.v35-release{position:relative;padding:0 0 20px 24px;border-left:2px solid #2f4b67;margin-left:6px}.v35-release:last-child{padding-bottom:0;border-left-color:transparent}.v35-release-dot{position:absolute;left:-6px;top:4px;width:10px;height:10px;border-radius:50%;background:#65839d;box-shadow:0 0 0 4px #233b55}.v35-release.current .v35-release-dot{background:#64efd0;box-shadow:0 0 0 4px #174b48,0 0 16px #4df0ca}.v35-release-top{display:flex;gap:10px;align-items:center}.v35-release-top b{font-size:12px;color:#94e8df}.v35-release-top span{font-size:9px;letter-spacing:.1em;color:#829bb4}.v35-release h3,.v35-roadmap-card h3{margin:5px 0;color:#f3f8ff;font-size:16px}.v35-release p,.v35-roadmap-card p{margin:4px 0;color:#a9bfd4;font-size:12px;line-height:1.55}.v35-roadmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:11px;margin-top:14px}.v35-roadmap-card{padding:14px;border:1px solid #334d69;border-radius:13px;background:linear-gradient(145deg,#12253d,#0a1728)}.v35-roadmap-card>span{font-size:10px;font-weight:1000;color:#f0cb81;letter-spacing:.08em}.v35-update-foot{padding:10px 3px;color:#829cb6;font-size:11px;text-align:center}
+    .v35-stadium-progress{padding:17px;margin:4px 0 14px;background:radial-gradient(circle at 100% 0,#2a9b8b22,transparent 40%),linear-gradient(145deg,#142942,#091627)}.v35-stage-row h2{margin:4px 0;font-size:22px}.v35-stage-row p{margin:3px 0;color:#abc0d4;font-size:12px;line-height:1.5;max-width:700px}.v35-stage-row>b{font-size:12px;color:#9bf1de;white-space:nowrap}.v35-progress{height:9px;background:#06101c;border:1px solid #314c68;border-radius:99px;overflow:hidden;margin:13px 0}.v35-progress i{display:block;height:100%;background:linear-gradient(90deg,#0bb58c,#80f1d7);box-shadow:0 0 15px #39dfbe88;border-radius:99px;transition:width .35s}.v35-stage-hint{color:#819cb4;font-size:11px;line-height:1.5;margin:9px 0 0}
+    #nav-updates{color:#a8e8dd!important}#nav-updates.on{background:linear-gradient(110deg,#075b51,#14354a)!important;color:#fff!important}
+    #stad3d{height:min(78vh,720px)!important;min-height:410px!important;border-radius:16px;overflow:hidden}#stad3d canvas{display:block;width:100%!important;height:100%!important}
+    #stage{background:linear-gradient(180deg,#8fa9bc 0%,#c6d0d1 42%,#1b4d31 100%);border:1px solid #6e8b9f!important}#stage canvas{filter:saturate(1.1) contrast(1.06)}#hud{backdrop-filter:blur(8px);border:1px solid #ffffff30}
+    @media(max-width:760px){.v35-update-hero,.v35-update-section{padding:15px}#stad3d{height:60vh!important;min-height:320px!important}}
+  `;document.head.appendChild(style);
+  try{if(typeof refresh==='function'&&typeof S!=='undefined'&&S)refresh();}catch(e){console.warn('KIKSTART v35 startup refresh:',e);}
+})();
+
+</script>
+<script>
+/* KIKSTART v36.0 — club-specific stadium architecture, save restoration,
+   top-bar controls and known v35 match-scene fixes. */
+(function KIKSTART_V360(){
+  'use strict';
+  if(window.__KIKSTART_V360__) return;
+  window.__KIKSTART_V360__ = true;
+
+  const v36Modes=['fb','fs'];
+  const v36Escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const v36ClubKey=()=>{try{return S&&CL[S.club]?CL[S.club].k:'';}catch(_){return '';}};
+
+  // Facts are explicitly separated into existing venue features and announced future projects.
+  // Future concepts are not rendered as completed buildings.
+  const V36_PROJECT_NOTES={
+    MCI:{status:'North Stand expansion plan',detail:'Manchester City’s published North Stand expansion uses a taller single upper tier with more than 7,000 additional general-admission seats. The model gives this end a distinct expanded stand and cable-supported roof edge; construction and opening status should be checked against the club’s latest updates.',type:'announced project'},
+    TOT:{status:'Existing stadium design',detail:'The South Stand is a single tier holding about 17,500 supporters and rises more than 34 metres. The model exaggerates this end as one continuous steep stand, with the roofline landmark and retractable-pitch arena concept.',type:'built venue'},
+    LIV:{status:'Anfield Road Stand expansion',detail:'The completed Anfield Road Stand added roughly 7,000 places and brought capacity above 61,000. The model distinguishes the steep Kop from the expanded multi-level stand opposite.',type:'completed project'},
+    RMA:{status:'Bernabéu modernisation',detail:'The renovated ground features a stainless-steel wraparound façade, retractable roof and continuous 360-degree video scoreboard. These are represented as separate outer louvres, roof tracks and an inner screen ribbon.',type:'completed project'},
+    BAR:{status:'Espai Barça redevelopment',detail:'The published Camp Nou design targets approximately 105,000 seats and a large cable-supported roof. This is shown as a three-tier bowl with a broad roof ring; project status and opening stages can change.',type:'published project design'},
+    AVL:{status:'Villa Park North Stand redevelopment',detail:'Aston Villa announced an accelerated North Stand redevelopment adding more than 5,500 seats and taking Villa Park beyond 50,000. The stand is closed during 2026/27, with the new facilities planned to open for the 2027/28 season. The model marks this end as the principal asymmetric expansion zone.',type:'announced project'},
+    EVE:{status:'Hill Dickinson Stadium',detail:'Everton’s new ground sits on the Liverpool waterfront. Its brick-and-glass exterior, roof structure and large public plaza are reflected in the outside model.',type:'opened venue'},
+    MUN:{status:'Old Trafford regeneration proposal',detail:'Manchester United’s proposed new 100,000-seat stadium remains a proposal in design development and supporter consultation. This model depicts the existing Old Trafford, including its asymmetric stand profile, not an unapproved future design.',type:'proposal — not final'},
+    ARS:{status:'Emirates Stadium design',detail:'The Emirates is represented with an oval two-tier bowl, continuous roof trusses, open corner concourses, corner screens and the red-and-white seating identity. This is the current venue profile rather than a future stadium proposal.',type:'existing venue design'},
+    NEW:{status:'St James’ Park silhouette',detail:'The model highlights the ground’s distinctive asymmetric high stands and the way the large east-side structure rises above the surrounding city blocks.',type:'existing venue design'},
+    PSG:{status:'Parc des Princes concrete structure',detail:'The model adds the stadium’s sculptural exposed concrete ribs, compact enclosed bowl and distinctive low roofline rather than a generic fully glazed arena.',type:'existing venue design'},
+    FUL:{status:'Craven Cottage heritage pavilion',detail:'The model emphasises the historic brick pavilion and traditional close-to-pitch stands, not a generic modern outer shell.',type:'existing venue design'},
+    INT:{status:'Future Generali Stadium',detail:'Inter and AC Milan unveiled a future 71,500-seat stadium concept with an exposed-concrete X-frame façade, double-curved roof and two steep Curvas. Construction is expected to begin in 2028, with a 2031/32 first-match target, subject to approvals. The playable model remains the current San Siro.',type:'future project — not built'},
+    MIL:{status:'Future Generali Stadium',detail:'Inter and AC Milan unveiled a future 71,500-seat stadium concept with an exposed-concrete X-frame façade, double-curved roof and two steep Curvas. Construction is expected to begin in 2028, with a 2031/32 first-match target, subject to approvals. The playable model remains the current San Siro.',type:'future project — not built'},
+    BVB:{status:'Signal Iduna Park identity',detail:'The model gives the south end a much taller, steep single-tier Yellow Wall, with its own yellow fascia and roof supports rather than four identical stands.',type:'existing venue identity'},
+    FCB:{status:'Allianz Arena identity',detail:'The model focuses on the stadium’s illuminated ETFE diamond-panel outer skin, rounded exterior shell and continuous roof edge.',type:'existing venue identity'}
+  };
+
+  // --------------------------------------------------------------------
+  // Save recovery. The older releases stored ownership by numeric pool ID,
+  // but code-only cards are appended during boot and several never restored
+  // from their redeemed flags. Recover claimed rewards first, then maintain
+  // a stable-key ownership map for future database changes.
+  // --------------------------------------------------------------------
+  function v36PlayerKey(p){
+    if(!p)return '';
+    if(p.allTimeXI&&p.allTimeKey)return 'alltime:'+String(p.allTimeKey);
+    if(p.daniyal)return 'secret:daniyal';
+    if(p.khizargive)return 'secret:khizar';
+    if(p.messiExclusive)return 'secret:messi100';
+    if(p.shrekCard)return 'private:shrek';
+    if(p.launchEventKey)return 'event:'+String(p.launchEventKey);
+    const clean=s=>String(s??'').trim().toLowerCase().replace(/\s+/g,' ');
+    return 'player:'+[clean(p.n),clean(p.pos),clean(p.f),clean(p.look),clean(p.country)].join('|');
+  }
+  function v36MapByKey(mode){
+    const map=new Map(),counts=new Map();
+    (Array.isArray(POOL&&POOL[mode])?POOL[mode]:[]).forEach(p=>{
+      const base=v36PlayerKey(p);if(!base)return;
+      const n=counts.get(base)||0;counts.set(base,n+1);map.set(base+'#'+n,p);
+    });
+    return map;
+  }
+  function v36CaptureStableOwnership(){
+    if(!S||!POOL)return;
+    S.ksV36Ownership=S.ksV36Ownership||{version:1,fb:{},fs:{}};
+    S.ksV36Ownership.version=1;
+    v36Modes.forEach(mode=>{
+      const pool=Array.isArray(POOL[mode])?POOL[mode]:[],owned=S.owned&&S.owned[mode]||{},counts=new Map(),snapshot={};
+      pool.forEach(p=>{
+        const base=v36PlayerKey(p);if(!base)return;
+        const n=counts.get(base)||0;counts.set(base,n+1);
+        const amount=Math.max(0,Number(owned[p.id])||0);
+        if(amount>0)snapshot[base+'#'+n]=amount;
+      });
+      S.ksV36Ownership[mode]=snapshot;
+    });
+  }
+  function v36RemapStableOwnership(){
+    if(!S||!S.ksV36Ownership||Number(S.ksV36Ownership.version)!==1)return;
+    S.owned=S.owned||{fb:{},fs:{}};
+    v36Modes.forEach(mode=>{
+      const previous=S.ksV36Ownership[mode];if(!previous||typeof previous!=='object')return;
+      const remapped={},lookup=v36MapByKey(mode);
+      Object.keys(previous).forEach(key=>{const p=lookup.get(key);if(p)remapped[p.id]=Math.max(1,Number(previous[key])||1);});
+      S.owned[mode]=remapped;
+    });
+  }
+  function v36Grant(mode,p){
+    if(!S||!p||!v36Modes.includes(mode))return false;
+    S.owned=S.owned||{fb:{},fs:{}};S.stock=S.stock||{fb:{},fs:{}};
+    S.owned[mode]=S.owned[mode]||{};S.stock[mode]=S.stock[mode]||{};
+    S.owned[mode][p.id]=Math.max(1,Number(S.owned[mode][p.id])||0);S.stock[mode][p.id]=0;
+    return true;
+  }
+  function v36RestoreClaimedRewards(){
+    if(!S||!Array.isArray(POOL&&POOL.fb)||!Array.isArray(POOL&&POOL.fs))return {restored:0};
+    S.redeemed=S.redeemed||{};
+    let restored=0;
+    const full=!!(S.allCardsUnlocked||S.redeemed.ksFullCollection339||S.redeemed.kikstartall||S.redeemed.everycard);
+    const allTime=!!(S.allTimeXIClaimed||S.redeemed.alltimelegends||(Array.isArray(S.allTimeXIPlayerKeys)&&S.allTimeXIPlayerKeys.length));
+    const daniyal=!!(S.daniyalSecretClaimed||S.redeemed.daniyalsveryown);
+    const khizar=!!(S.khizargiveClaimed||S.redeemed.khizarspecialcardonly);
+    const messi=!!(S.messi100Claimed||S.redeemed.messi100legend);
+    const shrek=!!(S.redeemed.ksShrekSecret339&&S.redeemed.shrek100);
+    const legacyAcademy=!!S.akFullCollectionUnlockedV10;
+    const eventClaims=S.launchEvent&&S.launchEvent.claimed||{},hardClaims=S.ksLaunch337&&S.ksLaunch337.claimed||{};
+    const eventAwards={
+      launch_mid_1:!!(eventClaims.matches||hardClaims.hardMatches),
+      launch_mid_2:!!(eventClaims.goals||hardClaims.goals),
+      launch_high_1:!!(eventClaims.wins||hardClaims.hardWins),
+      launch_high_2:!!(eventClaims.subs||hardClaims.hardClean),
+      launch_high_3:!!(eventClaims.clean||hardClaims.subs)
+    };
+    v36Modes.forEach(mode=>{
+      (POOL[mode]||[]).forEach(p=>{
+        let grant=false;
+        if(full&&!p.shrekCard&&String(p.n||'').toLowerCase()!=='shrek')grant=true;
+        if(allTime&&p.allTimeXI)grant=true;
+        if(daniyal&&p.daniyal)grant=true;
+        if(khizar&&p.khizargive)grant=true;
+        if(messi&&p.messiExclusive)grant=true;
+        if(shrek&&p.shrekCard)grant=true;
+        if(legacyAcademy&&p.academy)grant=true;
+        if(p.launchEventKey&&eventAwards[p.launchEventKey])grant=true;
+        if(grant&&v36Grant(mode,p))restored++;
+      });
+    });
+    if(full){
+      S.got=S.got||{fb:0,fs:0};S.got.fb=1;S.got.fs=1;
+      S.owm=S.owm||{};
+      if(Array.isArray(MGRS))MGRS.forEach(m=>{if(m)S.owm[m.id]=Math.max(1,Number(S.owm[m.id])||0);});
+      S.unlockedSecret=true;
+    }
+    if(allTime){S.allTimeXIClaimed=true;S.redeemed.alltimelegends=true;}
+    if(daniyal)S.daniyalSecretClaimed=true;
+    if(khizar)S.khizargiveClaimed=true;
+    if(messi)S.messi100Claimed=true;
+    if(shrek)S.shrekClaimed=true;
+    return {restored,full,allTime,daniyal,khizar,messi,privateShrek:shrek};
+  }
+  let v36SaveRecovery={restored:0};
+  if(S){
+    try{
+      v36RemapStableOwnership();
+      v36SaveRecovery=v36RestoreClaimedRewards();
+      v36CaptureStableOwnership();
+      S.ksV36SaveVersion=1;
+      if(typeof save==='function')save();
+    }catch(e){console.warn('KIKSTART v36 save recovery:',e);}
+  }
+  const v36PreviousSave=save;
+  save=function(){
+    try{if(S){v36CaptureStableOwnership();S.ksV36SaveVersion=1;}}catch(e){console.warn('KIKSTART v36 stable save map:',e);}
+    return v36PreviousSave.apply(this,arguments);
+  };
+  window.KIKSTART_V36_SAVE_RECOVERY=v36SaveRecovery;
+
+  // --------------------------------------------------------------------
+  // Distinct stadium architecture. Existing club profiles provide the 90
+  // club-to-venue/style mapping. This adds recognizable club-specific
+  // structures and an exterior skin in both the inspection model and match.
+  // --------------------------------------------------------------------
+  function v36MakeMaterials(){
+    return {
+      steel:new THREE.MeshStandardMaterial({color:0x9eacb8,roughness:.38,metalness:.72}),
+      silver:new THREE.MeshStandardMaterial({color:0xcbd4dc,roughness:.28,metalness:.82}),
+      darkSteel:new THREE.MeshStandardMaterial({color:0x263849,roughness:.48,metalness:.64}),
+      concrete:new THREE.MeshStandardMaterial({color:0x697680,roughness:.94,metalness:.04}),
+      brick:new THREE.MeshStandardMaterial({color:0x8b5b49,roughness:.92,metalness:.02}),
+      glass:new THREE.MeshStandardMaterial({color:0x78b9d4,roughness:.19,metalness:.22,transparent:true,opacity:.42,side:THREE.DoubleSide}),
+      clubA:new THREE.MeshStandardMaterial({color:CL[S.club].a,roughness:.72,metalness:.1}),
+      clubB:new THREE.MeshStandardMaterial({color:CL[S.club].b,roughness:.72,metalness:.1}),
+      yellow:new THREE.MeshStandardMaterial({color:0xf2d51d,roughness:.72}),
+      white:new THREE.MeshStandardMaterial({color:0xdfe7ed,roughness:.48,metalness:.18}),
+      dark:new THREE.MeshStandardMaterial({color:0x101e2b,roughness:.82}),
+      screen:new THREE.MeshBasicMaterial({color:0x0c263d,side:THREE.DoubleSide})
+    };
+  }
+  function v36AddClubArchitecture(target,mode){
+    if(!target||typeof THREE==='undefined'||!S||!CL[S.club])return;
+    const club=CL[S.club],key=club.k,profile=window.KIKSTART_getStadiumProfile?window.KIKSTART_getStadiumProfile():{},style=profile.style||'compactStand';
+    const level=Math.max(0,Math.min(10,Number(S.st&&S.st.a)||0));
+    const old=target.getObjectByName('KIKSTART_V36_CLUB_ARCHITECTURE');
+    if(old){target.remove(old);old.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m&&m.dispose&&m.dispose());});}
+    if(level<2)return;
+    const g=new THREE.Group();g.name='KIKSTART_V36_CLUB_ARCHITECTURE';target.add(g);
+    const mats=v36MakeMaterials();
+    const addBox=(w,h,d,x,y,z,material,rx=0,ry=0,rz=0)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);o.castShadow=true;o.receiveShadow=true;g.add(o);return o;};
+    const beam=(a,b,r,material,r2)=>{const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),v=B.clone().sub(A);const o=new THREE.Mesh(new THREE.CylinderGeometry(r2===undefined?r:r2,r,v.length(),8),material);o.position.copy(A.add(B).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());o.castShadow=true;g.add(o);return o;};
+    const tube=(points,r,material,segments=64)=>{const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));const o=new THREE.Mesh(new THREE.TubeGeometry(curve,segments,r,7,false),material);o.castShadow=true;g.add(o);return o;};
+    const cylinder=(r,h,x,y,z,material,segments=12)=>{const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),material);o.position.set(x,y,z);o.castShadow=true;g.add(o);return o;};
+    const dims=mode==='match'?{L:105,W:68,outerX:94,outerZ:74,roofY:32}:{L:110,W:72,outerX:104,outerZ:90,roofY:38};
+    const {L,W,outerX,outerZ,roofY}=dims;
+    const levelGate=n=>level>=n;
+    const ellipse=(rx,rz,y,mat,r=.45)=>{const pts=[];for(let i=0;i<=96;i++){const a=i/96*Math.PI*2;pts.push([Math.cos(a)*rx,y+Math.sin(a*2)*.7,Math.sin(a)*rz]);}return tube(pts,r,mat,120);};
+    // A real outer envelope: separate structure, concourse glazing, repeated entrance bays and roof ring.
+    if(levelGate(3)){
+      for(const side of [-1,1]){
+        const z=side*(mode==='match'?W/2+35:outerZ+5);
+        for(let x=-L/2-7;x<=L/2+7;x+=13){
+          beam([x,1,z],[x,levelGate(6)?17:10,z],.34,mats.steel);
+          if(levelGate(5)){
+            addBox(7.1,5,.18,x,7,z+side*.28,mats.glass);
+            addBox(7.6,.55,.4,x,3.5,z+side*.42,mats.darkSteel);
+            if((Math.round(x/13)%3)!==0)addBox(1.05,8,.5,x,4.5,z+side*.5,mats.darkSteel);
+          }
+        }
+        if(levelGate(5)){addBox(L+26,1.1,2.1,0,17,z,mats.clubA);addBox(L+22,.42,2.5,0,1.1,z+side*.3,mats.darkSteel);}
+      }
+      for(const side of [-1,1]){
+        const x=side*(mode==='match'?L/2+38:outerX+5);
+        for(let z=-W/2;z<=W/2;z+=12){
+          beam([x,1,z],[x,levelGate(6)?16:9,z],.32,mats.steel);
+          if(levelGate(5))addBox(.18,5,6.4,x+side*.28,7,z,mats.glass);
+        }
+        if(levelGate(5))addBox(2.2,1.1,W+14,x,16,0,mats.clubB);
+      }
+    }
+    // Distinct upper roof ring and radial steelwork only appear once upgrades reach roof construction.
+    if(levelGate(7)){
+      ellipse(outerX,outerZ,roofY,mats.darkSteel,.8);
+      ellipse(outerX-7,outerZ-6,roofY+1.1,mats.steel,.48);
+      const count=style==='radialCanopy'||style==='cableBowl'||style==='waveCanopy'?28:20;
+      for(let i=0;i<count;i++){
+        const a=i/count*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);
+        beam([ca*(outerX-8),18,sa*(outerZ-7)],[ca*outerX,roofY,sa*outerZ],.22,mats.steel);
+      }
+      if(levelGate(8)){
+        const material=new THREE.MeshStandardMaterial({color:0x9fb8c6,roughness:.3,metalness:.32,transparent:true,opacity:level>=10?.78:.35,side:THREE.DoubleSide});
+        const roofMesh=new THREE.Mesh(new THREE.RingGeometry(outerX-15,outerX-1,64),material);roofMesh.rotation.x=-Math.PI/2;roofMesh.scale.set(1,outerZ/outerX,1);roofMesh.position.y=roofY-.5;g.add(roofMesh);
+      }
+    }
+    // Entry portals and concourse signs turn a simple outer block into a legible venue exterior.
+    if(levelGate(5)){
+      for(let x=-48;x<=48;x+=24){
+        const z=- (mode==='match'?W/2+20:61);
+        addBox(1.1,9,1.1,x-5,4.5,z,mats.steel);addBox(1.1,9,1.1,x+5,4.5,z,mats.steel);addBox(11,1.1,1.3,x,9,z,mats.clubA);
+        addBox(7.6,5.8,.16,x,3.1,z-.7,mats.glass);
+      }
+      // Exposed external concourse deck and access stair flights.
+      addBox(L+56,.8,12,0,1.5,-(mode==='match'?W/2+52:outerZ+20),mats.concrete);
+      for(let x=-40;x<=40;x+=20){beam([x,1.8,-(mode==='match'?W/2+48:outerZ+16)],[x,8,-(mode==='match'?W/2+58:outerZ+26)],.25,mats.darkSteel);}
+    }
+    // Style-led landmarks: these change the silhouette, not only the colour.
+    if(style==='singleSouth'&&levelGate(4)){
+      const x=mode==='match'?L/2+10:66,span=mode==='match'?W+32:104;
+      const rows=level>=8?25:level>=6?18:10;
+      for(let r=0;r<rows;r++){
+        const xRow=x+r*.65,y=3+r*.72;
+        addBox(.72,.44,span+r*.28,xRow,y,0,key==='TOT'?mats.clubB:mats.clubA);
+      }
+      if(levelGate(7)){
+        beam([x-5,15,-span/2],[x+rows*.65+9,roofY,0],.48,mats.steel);
+        beam([x-5,15,span/2],[x+rows*.65+9,roofY,0],.48,mats.steel);
+      }
+      // A simple roofline cockerel silhouette marks Tottenham's signature skyline feature.
+      if(key==='TOT'&&levelGate(9)){
+        beam([x+rows*.65+10,roofY,0],[x+rows*.65+10,roofY+5,0],.18,mats.white);
+        cylinder(.65,1.2,x+rows*.65+10,roofY+5.5,0,mats.white,10);
+        beam([x+rows*.65+10,roofY+6,0],[x+rows*.65+14,roofY+8,0],.16,mats.white);
+      }
+    }
+    if((style==='kop'||style==='yellowWall'||key==='BVB')&&levelGate(4)){
+      const x=mode==='match'?-L/2-12:-67,span=mode==='match'?W+34:106,rows=key==='BVB'?27:22;
+      for(let r=0;r<rows;r++){
+        const h=2.6+r*.72;
+        addBox(1.2,.48,span+r*.35,x-r*.56,h,0,key==='BVB'?mats.yellow:(key==='LIV'?mats.clubA:mats.clubB));
+      }
+      if(levelGate(7))for(let z=-span/2;z<=span/2;z+=span/4)beam([x-4,13,z],[x-rows*.56-8,roofY,z],.28,mats.steel);
+      if(key==='BVB')addBox(1.5,3,span*.45,x-rows*.56-2,22,0,mats.yellow);
+    }
+    if(key==='MCI'&&levelGate(4)){
