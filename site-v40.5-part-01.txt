@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="kikstart-game-version" content="35.0">
+<meta name="kikstart-game-version" content="40.6">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KIKSTART v36.0 — Stadium Evolution</title>
