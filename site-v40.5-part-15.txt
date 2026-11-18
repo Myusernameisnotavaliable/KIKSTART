@@ -1049,7 +1049,7 @@
       background:radial-gradient(ellipse at 50% 0%,rgba(29,89,135,.28),transparent 58%),linear-gradient(145deg,#081426,#050a13 75%)!important;
       box-shadow:0 24px 70px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.06)!important;
     }
-    #matchView.ks-v416-live #stage{
+    #matchView.ks-v416-live:not(.ks-v404-fullscreen) #stage{
       position:relative!important;width:100%!important;height:clamp(390px,66vh,760px)!important;
       min-height:360px!important;max-height:none!important;margin:0!important;
       overflow:hidden!important;border:1px solid rgba(120,190,221,.35)!important;border-radius:20px!important;
@@ -1134,7 +1134,7 @@
     #matchView.ks-v416-live #mobileControls button:active{transform:scale(.97)!important;filter:brightness(1.2)!important}
     @media(max-width:760px){
       #matchView.ks-v416-live:not(.ks-v404-fullscreen){width:calc(100vw - 12px)!important;margin:8px auto 16px!important;padding:6px!important;gap:8px!important;border-radius:17px!important}
-      #matchView.ks-v416-live #stage{height:58vh!important;min-height:300px!important;border-radius:14px!important}
+      #matchView.ks-v416-live:not(.ks-v404-fullscreen) #stage{height:58vh!important;min-height:300px!important;border-radius:14px!important}
       #matchView.ks-v416-live #hud{top:7px!important;min-height:40px!important;padding:6px 9px!important;gap:6px!important;border-radius:12px!important;font-size:10px!important}
       #matchView.ks-v416-live #hud svg{width:22px!important;height:22px!important}
       #matchView.ks-v416-live #banner{top:20%!important;padding:8px 13px!important}
