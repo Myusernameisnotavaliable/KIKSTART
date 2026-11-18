@@ -312,9 +312,37 @@
     clipboardPromptFallback(target); return true;
   };
 
+  // Jon Wei · secret 100 OVR shiny CDM card, created in both modes and excluded from normal packs.
+  const jonWeiCards={fb:null,fs:null};
+  ["fb","fs"].forEach(mode=>{
+    const pool=POOL[mode];
+    let player=pool.find(p=>p&&p.jonWeiSecret);
+    if(!player){player={id:pool.length,n:"Jon Wei",pos:"CDM",o:100,f:"✦",look:"7777",r:"diamond",kind:"secret",secret:true,codeExclusive:true,jonWeiSecret:true,traits:["Elite Ball Winner","Press Resistant","Line-Breaking Pass","Tactical Anchor","Endless Engine"]};pool.push(player);}
+    Object.assign(player,{n:"Jon Wei",pos:"CDM",o:100,secret:true,codeExclusive:true,jonWeiSecret:true,r:"diamond"});
+    jonWeiCards[mode]=player;
+    if(S&&S.stock&&S.stock[mode])S.stock[mode][player.id]=0;
+  });
+  const jonWeiBaseStats=V27_stats;
+  V27_stats=function(player){
+    if(player&&player.jonWeiSecret)return {pace:98,shooting:94,passing:100,dribbling:98,defending:100,physical:100};
+    return jonWeiBaseStats(player);
+  };
+  const jonWeiBaseTraits=V27_traits;
+  V27_traits=function(player){if(player&&player.jonWeiSecret)return player.traits.slice();return jonWeiBaseTraits(player);};
+  const jonWeiBaseCardHTML=cardHTML;
+  cardHTML=function(player,extra,id,pop){
+    let html=jonWeiBaseCardHTML.apply(this,arguments);
+    if(!player||!player.jonWeiSecret)return html;
+    html=html.replace(/class="card ([^"]*)"/,(m,classes)=>'class="card '+classes+' ks-jonwei-card"');
+    html=html.replace(/(<div class="rar">[\\s\\S]*?<\\/div>)/,'$1<div class="ks-jonwei-ribbon">✦ JON WEI · 100 OVR · SECRET CDM ✦</div>');
+    return html;
+  };
+  const jonWeiStyle=document.createElement("style");
+  jonWeiStyle.textContent='.ks-jonwei-card{position:relative!important;overflow:hidden!important;border:1px solid #b9f8ff!important;background:radial-gradient(circle at 50% 18%,#fff 0,#b8ffff 5%,#795cff 22%,#111a48 52%,#050916 100%)!important;box-shadow:0 0 10px #a9ffff,0 0 24px #8e63ff,0 0 42px #4fffe0!important;animation:ksJonWeiShine 2.8s ease-in-out infinite alternate}.ks-jonwei-card:before{content:"";position:absolute;inset:-80%;pointer-events:none;background:linear-gradient(115deg,transparent 42%,#ffffffaa 49%,#8fffff88 52%,transparent 60%);transform:translateX(-45%) rotate(12deg);animation:ksJonWeiSweep 3.4s linear infinite}.ks-jonwei-card .ovr{color:#fff!important;text-shadow:0 0 8px #fff,0 0 18px #7ff!important}.ks-jonwei-card .nm,.ks-jonwei-card .pos,.ks-jonwei-card .rar{color:#fff!important;text-shadow:0 0 8px #7ff,0 1px 4px #000!important}.ks-jonwei-ribbon{position:relative;z-index:2;margin:5px 2px;padding:4px 2px;text-align:center;border-radius:6px;color:#fff;background:linear-gradient(90deg,#15265e,#6e39bc,#08a8ad,#6e39bc,#15265e);font-size:8px;font-weight:1000;letter-spacing:.07em;text-shadow:0 0 7px #fff;box-shadow:0 0 12px #78ffff}@keyframes ksJonWeiShine{from{filter:brightness(1) saturate(1.2)}to{filter:brightness(1.28) saturate(1.8)}}@keyframes ksJonWeiSweep{0%{transform:translateX(-70%) rotate(12deg)}100%{transform:translateX(70%) rotate(12deg)}}@media(prefers-reduced-motion:reduce){.ks-jonwei-card,.ks-jonwei-card:before{animation:none!important}}';
+  document.head.appendChild(jonWeiStyle);
   // ---------- High-entropy secret reward codes ----------
   // Only one-way SHA-256 digests are stored in the shipped app/web source.
-  const rewardDigests = {"be3c0445f116a23dc12268539f6bac3f7ee0b4012180648a712a98b32795e2e8":"__ks404_daniyal__","82d519ec30a9ccba11503d33699fc739edbc0f4c939cc8afdb1d3892d4554a51":"__ks404_khizar__","e7293c93942353cf08040825a4ebbd794f892636f9cdb8238929f29f472b65c8":"__ks404_messi__","9e70c6effdeededa3e0be4ef65a45d9ee50c241bad95f5d188194ea1c107f91d":"__ks404_alltime__","d288a3b00843f79afda323ae039b526ff84e60003a8dfafadcbef72f58ced7d4":"__KS404_SHREK__","9121c2e897c69ea70361aa7076214aec73797ddec29f4b6e893fef1a72d03947":"__KS404_FULL_COLLECTION__","48ca1e1031e5ed6be525d8c345cb10f540fec532cef45def014efe9bc6d36ebd":"__ks404_alamanda__","7ead43aed3abdebcf757887cd0f87fb6aaa8b4f1233f6071151de02a21fb9f9f":"__ks404_johndork__","347d6a099f502e40fc3eb42d41f90c5676ada744c98c1f8ceb07d11a14340489":"__ks404_alamanda_admin__"};
+  const rewardDigests = {"78acc7b0e8865721ceeb3783d0a798643472807f858bdd2a2b36a67eb184b0dd":"__ks404_daniyal__","24a7555d05dbfadc8d7c341aff1db996c1bf6d5a6aebc595205def5d0d03a10a":"__ks404_khizar__","8957e8974461d6b5ffe65c27a2d6445e9aac4f04871490d612314d2664ed851d":"__ks404_messi__","ce56528499b238fe87e206286f97391e7d25112863a641aee9736269f6bac584":"__ks404_alltime__","463782274ec0385c3befd9167704426117235085b62671a5dbbb992880e72cc0":"__KS404_SHREK__","e18091970cd95d4cee623180bb80082747240d82a4d525fabee5483e6d8a3916":"__KS404_FULL_COLLECTION__","bf262bef1c0a00f59320a983b31034655658960af3e370a09ba22dc20a945dae":"__ks404_alamanda__","06389bd714a451c848be5b0fd6e53b9dea5ffb040537bd51740609448841c160":"__ks404_johndork__","ec3d5a6a9373c709c1b3e2e9026a00f6d90544557735f2fa7881f44ca83cafb9":"__ks404_alamanda_admin__","9e4d63a843a781cea441d38f0f06eea134f9dbe238ca278fab8d917be34c1267":"__ks404_jonwei__"};
   function sha256Hex(ascii){
     const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
     const H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
@@ -338,7 +366,7 @@
     '__ks404_daniyal__':'daniyal','__ks404_khizar__':'khizar','__ks404_messi__':'messi',
     '__ks404_alltime__':'alltime','__KS404_SHREK__':'shrek',
     '__KS404_FULL_COLLECTION__':'fullcollection','__ks404_alamanda__':'alamanda',
-    '__ks404_johndork__':'johndork','__ks404_alamanda_admin__':'alamanda_admin'
+    '__ks404_johndork__':'johndork','__ks404_alamanda_admin__':'alamanda_admin','__ks404_jonwei__':'jonwei'
   };
   const alreadyClaimed = type => {
     if(!S) return false;
@@ -351,6 +379,7 @@
     if(type==='alamanda') return !!S.akFullCollectionUnlockedV10;
     if(type==='johndork') return !!S.unlockedSecret;
     if(type==='alamanda_admin') return !!(S.alamandaAdminAccess || S.redeemed?.__ks404_alamanda_admin__);
+    if(type==='jonwei') return !!(S.jonWeiClaimed || S.redeemed?.__ks404_jonwei__);
     return false;
   };
   function codeMessage(kind,text){const el=document.getElementById('v27CodeMsg');if(el){el.className=kind==='success'?'v27-code-success':'v27-code-error';el.textContent=text;}}
@@ -369,6 +398,15 @@
     const type=legacyKeys[sentinel];
     if(!type){codeMessage('error','That reward code is not valid.');return false;}
     if(alreadyClaimed(type)){input.value='';codeMessage('error','This special reward has already been claimed on this save.');if(window.sfx&&sfx.err)sfx.err();return false;}
+    if(type==='jonwei'){
+      S.owned=S.owned||{fb:{},fs:{}};
+      ["fb","fs"].forEach(mode=>{S.owned[mode]=S.owned[mode]||{};const player=jonWeiCards[mode];if(player)S.owned[mode][player.id]=Math.max(1,Number(S.owned[mode][player.id])||0);if(S.stock&&S.stock[mode]&&player)S.stock[mode][player.id]=0;});
+      S.jonWeiClaimed=true;S.redeemed=S.redeemed||{};S.redeemed.__ks404_jonwei__=true;
+      input.value='';save();if(window.sfx&&sfx.coin)sfx.coin();if(typeof refresh==='function')refresh();
+      codeMessage('success','✦ JON WEI · 100 OVR shiny CDM added to your Football and Futsal squads!');
+      try{if(window.KS_openPlayerProfile)window.KS_openPlayerProfile(S.mode,jonWeiCards[S.mode].id);}catch(_){}
+      return true;
+    }
     if(!previousRedeem){codeMessage('error','The reward system is unavailable in this build.');return false;}
     input.value=sentinel;
     let result=false;
@@ -389,7 +427,7 @@
 
 
 <script>
-/* KIKSTART v41.2 — realistic tunnel walkout and consistent second-half controls. */
+/* KIKSTART v41.3 — realistic tunnel walkout and consistent second-half controls. */
 (function KIKSTART_V41_MATCH_FLOW(){
   'use strict';
   if(window.__KIKSTART_V41_MATCH_FLOW__) return;
@@ -465,7 +503,7 @@
   window.KIKSTART_GAME_VERSION = '41.2';
   document.querySelectorAll('#top .ks-build-version').forEach(el => el.textContent = 'KIKSTART v41.2');
   const footer = document.querySelector('.ks-boot-footer');
-  if(footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v41.2';
+  if(footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v41.3';
   console.info('KIKSTART v41.2 ready: match walkout announcement and guarded halftime restart.');
 })();
 </script>
