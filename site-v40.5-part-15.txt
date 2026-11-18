@@ -994,5 +994,175 @@
 })();
 </script>
 
+<script>
+/* KIKSTART v41.6 — free match entry, refined match HUD and presentation. */
+(function KIKSTART_V416_PLAY_AREA(){
+  'use strict';
+  if(window.__KIKSTART_V416__)return;
+  window.__KIKSTART_V416__=true;
+
+  // Every standard match difficulty is free. Rewards remain unchanged.
+  if(typeof LV!=='undefined'&&LV){
+    Object.keys(LV).forEach(key=>{
+      if(LV[key]&&Number.isFinite(Number(LV[key].fee)))LV[key].fee=0;
+    });
+  }
+  const v416Match=document.getElementById('matchView');
+  const v416OldStart=window.startMatch||startMatch;
+  window.startMatch=startMatch=function(){
+    if(typeof LV!=='undefined'&&LV)Object.keys(LV).forEach(key=>{if(LV[key])LV[key].fee=0;});
+    const result=v416OldStart.apply(this,arguments);
+    if(M&&!M.over){
+      if(M.L)M.L=Object.assign({},M.L,{fee:0});
+      if(v416Match)v416Match.classList.add('ks-v416-live');
+    }
+    return result;
+  };
+  const v416OldForfeit=window.forfeit||forfeit;
+  window.forfeit=forfeit=function(){
+    if(M&&!M.over)ask('Forfeit this match? There is no entry fee.',()=>finishMatch(true));
+    else return v416OldForfeit.apply(this,arguments);
+  };
+  const v416OldFinish=window.finishMatch||finishMatch;
+  window.finishMatch=finishMatch=function(){
+    const match=M;
+    const result=v416OldFinish.apply(this,arguments);
+    const end=document.getElementById('endBox');
+    if(match&&match.L&&Number(match.L.fee)===0&&end){
+      end.innerHTML=end.innerHTML
+        .replace(/−0 coins \(entry fee lost\)/g,'No entry fee charged')
+        .replace(/Entry fee refunded\./g,'No entry fee charged.');
+    }
+    return result;
+  };
+
+  // Keep the match focused on the pitch, with a broadcast-style scoreboard
+  // and a compact lower control tray. Existing controls and game logic remain.
+  const style=document.createElement('style');
+  style.id='kikstart-v416-match-ui';
+  style.textContent=`
+    #matchView.ks-v416-live:not(.ks-v404-fullscreen){
+      width:min(1500px,calc(100vw - 28px))!important;max-width:1500px!important;
+      margin:18px auto 28px!important;padding:14px!important;box-sizing:border-box!important;
+      display:flex!important;flex-direction:column!important;gap:13px!important;
+      border:1px solid rgba(110,174,221,.3)!important;border-radius:26px!important;
+      background:radial-gradient(ellipse at 50% 0%,rgba(29,89,135,.28),transparent 58%),linear-gradient(145deg,#081426,#050a13 75%)!important;
+      box-shadow:0 24px 70px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.06)!important;
+    }
+    #matchView.ks-v416-live #stage{
+      position:relative!important;width:100%!important;height:clamp(390px,66vh,760px)!important;
+      min-height:360px!important;max-height:none!important;margin:0!important;
+      overflow:hidden!important;border:1px solid rgba(120,190,221,.35)!important;border-radius:20px!important;
+      background:radial-gradient(ellipse at 50% 48%,#153c35,#081d20 76%)!important;
+      box-shadow:0 18px 44px rgba(0,0,0,.4),inset 0 0 50px rgba(0,0,0,.22)!important;
+    }
+    #matchView.ks-v416-live #stage>canvas:not(#v5mini){
+      display:block!important;width:100%!important;height:100%!important;
+    }
+    #matchView.ks-v416-live #hud{
+      position:absolute!important;z-index:40!important;top:12px!important;left:50%!important;
+      transform:translateX(-50%)!important;width:max-content!important;max-width:calc(100% - 26px)!important;
+      min-height:52px!important;box-sizing:border-box!important;display:flex!important;
+      align-items:center!important;justify-content:center!important;gap:clamp(7px,1.6vw,18px)!important;
+      padding:8px 15px!important;border:1px solid rgba(152,218,255,.42)!important;
+      border-radius:17px!important;background:rgba(3,12,24,.88)!important;
+      color:#f3f8ff!important;font-size:clamp(11px,1.2vw,14px)!important;font-weight:900!important;
+      white-space:nowrap!important;backdrop-filter:blur(14px)!important;
+      box-shadow:0 10px 32px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.12)!important;
+    }
+    #matchView.ks-v416-live #hud svg{width:clamp(24px,3vw,34px)!important;height:clamp(24px,3vw,34px)!important;flex:0 0 auto!important}
+    #matchView.ks-v416-live #hud b{line-height:1.15!important}
+    #matchView.ks-v416-live #banner{
+      position:absolute!important;z-index:42!important;left:50%!important;top:22%!important;
+      transform:translateX(-50%)!important;width:max-content!important;max-width:90%!important;
+      padding:10px 20px!important;border:1px solid rgba(255,255,255,.24)!important;
+      border-radius:999px!important;background:rgba(4,13,25,.78)!important;
+      color:#fff!important;font-size:clamp(20px,4vw,42px)!important;font-weight:1000!important;
+      letter-spacing:.06em!important;text-align:center!important;text-shadow:0 3px 18px #000!important;
+      box-shadow:0 12px 35px #0007!important;backdrop-filter:blur(10px)!important;
+    }
+    #matchView.ks-v416-live #chgW{
+      position:absolute!important;z-index:42!important;left:50%!important;bottom:16px!important;
+      transform:translateX(-50%)!important;width:min(300px,42vw)!important;height:9px!important;
+      border:1px solid rgba(255,255,255,.55)!important;border-radius:99px!important;
+      overflow:hidden!important;background:rgba(2,8,17,.78)!important;
+      box-shadow:0 3px 14px #0009!important;
+    }
+    #matchView.ks-v416-live #chg{height:100%!important;border-radius:99px!important;background:linear-gradient(90deg,#38d9a7,#ffe36e,#ff7c73)!important}
+    #matchView.ks-v416-live>p:first-of-type{
+      margin:0!important;padding:10px 14px!important;border:1px solid rgba(104,151,193,.22)!important;
+      border-radius:13px!important;background:rgba(13,28,47,.86)!important;
+      color:#b9cbdf!important;font-size:12px!important;line-height:1.6!important;
+      text-align:center!important;
+    }
+    #matchView.ks-v416-live>p:last-of-type{
+      display:flex!important;justify-content:flex-end!important;margin:0!important;padding:0 2px!important;
+    }
+    #matchView.ks-v416-live>p:last-of-type button{
+      min-height:36px!important;padding:8px 14px!important;border-radius:11px!important;
+      border:1px solid rgba(143,177,209,.3)!important;background:#13243a!important;color:#cbd9e9!important;
+      font-size:11px!important;font-weight:800!important;
+    }
+    #matchView.ks-v416-live #endBox{
+      margin:4px auto!important;width:min(760px,100%)!important;box-sizing:border-box!important;
+      padding:22px!important;border:1px solid rgba(126,202,234,.38)!important;border-radius:20px!important;
+      background:linear-gradient(145deg,rgba(15,37,61,.98),rgba(5,13,27,.98))!important;
+      color:#f4f8ff!important;text-align:center!important;font-size:clamp(15px,2vw,20px)!important;
+      line-height:1.6!important;box-shadow:0 18px 55px #0008!important;
+    }
+    #matchView.ks-v416-live #endBox button{
+      min-height:42px!important;padding:10px 16px!important;border-radius:12px!important;
+      font-weight:900!important;letter-spacing:.02em!important;
+    }
+    #matchView.ks-v416-live #ksControlDeck,
+    #matchView.ks-v416-live #v22LiveMatchTools.active,
+    #matchView.ks-v416-live #ksSkillDock,
+    #matchView.ks-v416-live #mobileControls{
+      box-sizing:border-box!important;border:1px solid rgba(108,159,203,.28)!important;
+      border-radius:16px!important;background:linear-gradient(145deg,rgba(13,30,51,.96),rgba(5,14,26,.96))!important;
+      box-shadow:0 12px 30px rgba(0,0,0,.25)!important;backdrop-filter:blur(12px)!important;
+    }
+    #matchView.ks-v416-live #ksControlDeck{padding:11px!important;gap:9px!important}
+    #matchView.ks-v416-live #ksControlDeck button,
+    #matchView.ks-v416-live #v22LiveMatchTools button,
+    #matchView.ks-v416-live #ksSkillDock button,
+    #matchView.ks-v416-live #mobileControls button{
+      border-radius:11px!important;font-weight:850!important;transition:filter .15s ease,transform .15s ease!important;
+    }
+    #matchView.ks-v416-live #ksControlDeck button:active,
+    #matchView.ks-v416-live #ksSkillDock button:active,
+    #matchView.ks-v416-live #mobileControls button:active{transform:scale(.97)!important;filter:brightness(1.2)!important}
+    @media(max-width:760px){
+      #matchView.ks-v416-live:not(.ks-v404-fullscreen){width:calc(100vw - 12px)!important;margin:8px auto 16px!important;padding:6px!important;gap:8px!important;border-radius:17px!important}
+      #matchView.ks-v416-live #stage{height:58vh!important;min-height:300px!important;border-radius:14px!important}
+      #matchView.ks-v416-live #hud{top:7px!important;min-height:40px!important;padding:6px 9px!important;gap:6px!important;border-radius:12px!important;font-size:10px!important}
+      #matchView.ks-v416-live #hud svg{width:22px!important;height:22px!important}
+      #matchView.ks-v416-live #banner{top:20%!important;padding:8px 13px!important}
+      #matchView.ks-v416-live #chgW{bottom:10px!important;width:min(220px,55vw)!important}
+      #matchView.ks-v416-live>p:first-of-type{font-size:10px!important;padding:8px!important}
+      #matchView.ks-v416-live #ksControlDeck{padding:7px!important;gap:6px!important}
+    }
+    @media(prefers-reduced-motion:reduce){
+      #matchView.ks-v416-live *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+    }
+  `;
+  document.head.appendChild(style);
+
+  const v416OldBack=window.backToLobby||backToLobby;
+  window.backToLobby=backToLobby=function(){
+    if(v416Match)v416Match.classList.remove('ks-v416-live');
+    return v416OldBack.apply(this,arguments);
+  };
+  document.title='KIKSTART v41.6 — Free Matches, 1v1 Fixes & Match UI';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');
+  if(meta)meta.content='41.6';
+  window.KIKSTART_GAME_VERSION='41.6';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v41.6');
+  const footer=document.querySelector('.ks-boot-footer');
+  if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v41.6';
+  console.info('KIKSTART v41.6 ready: free match entry, upgraded match HUD and friend-match connection improvements.');
+})();
+</script>
+
 </body>
 </html>
