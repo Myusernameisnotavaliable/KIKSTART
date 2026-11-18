@@ -579,5 +579,236 @@
 })();
 </script>
 
+<script>
+/* KIKSTART v41.4 — clean pitch-only fullscreen, corner match menu and team-relative shooting. */
+(function KIKSTART_V414_MATCH_FIXES(){
+  'use strict';
+  if(window.__KIKSTART_V414_MATCH_FIXES__) return;
+  window.__KIKSTART_V414_MATCH_FIXES__ = true;
+
+  const match = document.getElementById('matchView');
+  const stage = document.getElementById('stage');
+  if(!match || !stage) return;
+
+  const panel = document.createElement('section');
+  panel.id = 'ksFullscreenMenuPanel';
+  panel.setAttribute('aria-label','Match controls');
+  panel.innerHTML = '<div class="ks-fs-menu-head"><b>MATCH CONTROLS</b><button type="button" id="ksFsMenuClose" aria-label="Close menu">×</button></div><div id="ksFsMenuContent"></div><div class="ks-fs-menu-actions"></div>';
+  match.appendChild(panel);
+  const content = panel.querySelector('#ksFsMenuContent');
+  const actions = panel.querySelector('.ks-fs-menu-actions');
+
+  const menuButton = document.createElement('button');
+  menuButton.id = 'ksFullscreenMenuButton';
+  menuButton.type = 'button';
+  menuButton.textContent = '⚙';
+  menuButton.setAttribute('aria-label','Open match controls');
+  menuButton.setAttribute('aria-expanded','false');
+  match.appendChild(menuButton);
+
+  const parked = new Map();
+  function parkInMenu(id){
+    const node = document.getElementById(id);
+    if(!node || node === panel || node.parentNode === content) return;
+    if(!parked.has(node)){
+      const marker = document.createComment('KIKSTART fullscreen return point: '+id);
+      if(node.parentNode) node.parentNode.insertBefore(marker,node);
+      parked.set(node,marker);
+    }
+    content.appendChild(node);
+  }
+  function restoreControls(){
+    for(const [node,marker] of parked.entries()){
+      if(marker.parentNode) marker.parentNode.insertBefore(node,marker);
+      marker.remove();
+      parked.delete(node);
+    }
+  }
+  function fullscreenIsActive(){
+    return match.classList.contains('ks-v404-fullscreen') ||
+      match.classList.contains('v33-game-fullscreen') ||
+      document.fullscreenElement === match ||
+      document.webkitFullscreenElement === match;
+  }
+  function setMenuOpen(open){
+    match.classList.toggle('ks-fs-menu-open',!!open);
+    menuButton.setAttribute('aria-expanded',open?'true':'false');
+    menuButton.setAttribute('aria-label',open?'Close match controls':'Open match controls');
+  }
+  function resizePitch(){
+    try{
+      const r = stage.getBoundingClientRect();
+      const w = Math.max(1,Math.round(r.width)), h = Math.max(1,Math.round(r.height));
+      if(typeof renderer !== 'undefined' && renderer && typeof camera !== 'undefined' && camera && w>1 && h>1){
+        renderer.setSize(w,h,false);
+        camera.aspect = w/h;
+        camera.updateProjectionMatrix();
+      }
+    }catch(err){ console.warn('[KIKSTART v41.4] pitch resize skipped',err); }
+  }
+  function syncFullscreenMenu(){
+    const active = fullscreenIsActive();
+    menuButton.style.display = active ? 'grid' : 'none';
+    if(active){
+      parkInMenu('v22LiveMatchTools');
+      parkInMenu('ksControlDeck');
+    }else{
+      setMenuOpen(false);
+      restoreControls();
+    }
+    requestAnimationFrame(resizePitch);
+  }
+
+  function addMenuAction(label,callback,kind){
+    const b = document.createElement('button');
+    b.type='button'; b.textContent=label;
+    if(kind) b.className=kind;
+    b.addEventListener('click',()=>{ callback(); });
+    actions.appendChild(b);
+  }
+  addMenuAction('Ⅱ PAUSE / RESUME',()=>{
+    if(typeof window.KS_togglePause==='function') window.KS_togglePause();
+    setMenuOpen(false);
+  });
+  addMenuAction('FORFEIT MATCH',()=>{
+    if(typeof window.forfeit==='function') window.forfeit();
+    setMenuOpen(false);
+  },'alt');
+  addMenuAction('EXIT FULL SCREEN',()=>{
+    setMenuOpen(false);
+    if(typeof window.KS_toggleFullscreen==='function') window.KS_toggleFullscreen(false);
+  },'alt');
+
+  menuButton.addEventListener('click',e=>{
+    e.preventDefault(); e.stopPropagation();
+    setMenuOpen(!match.classList.contains('ks-fs-menu-open'));
+  });
+  panel.querySelector('#ksFsMenuClose').addEventListener('click',()=>setMenuOpen(false));
+  document.addEventListener('pointerdown',e=>{
+    if(match.classList.contains('ks-fs-menu-open') &&
+       !panel.contains(e.target) && e.target !== menuButton && !menuButton.contains(e.target)){
+      setMenuOpen(false);
+    }
+  },true);
+
+  const menuObserver = new MutationObserver(()=>{
+    if(fullscreenIsActive()) syncFullscreenMenu();
+  });
+  menuObserver.observe(match,{childList:true,subtree:true});
+  document.addEventListener('fullscreenchange',syncFullscreenMenu);
+  document.addEventListener('webkitfullscreenchange',syncFullscreenMenu);
+  window.addEventListener('resize',syncFullscreenMenu);
+  window.addEventListener('orientationchange',()=>requestAnimationFrame(syncFullscreenMenu));
+  if(window.visualViewport) window.visualViewport.addEventListener('resize',syncFullscreenMenu);
+
+  if(typeof window.KS_toggleFullscreen==='function' && !window.KS_toggleFullscreen.__ksV414Wrapped){
+    const previousToggle=window.KS_toggleFullscreen;
+    const wrappedToggle=async function(){
+      const result=await previousToggle.apply(this,arguments);
+      requestAnimationFrame(syncFullscreenMenu);
+      return result;
+    };
+    wrappedToggle.__ksV414Wrapped=true;
+    window.KS_toggleFullscreen=wrappedToggle;
+  }
+
+  const fullscreenStyle=document.createElement('style');
+  fullscreenStyle.id='kikstart-v414-pitch-only-fullscreen-style';
+  fullscreenStyle.textContent=[
+    'html.ks-v404-fullscreen-active,body.ks-v404-fullscreen-active{width:100%!important;height:100%!important;min-height:100%!important;margin:0!important;padding:0!important;overflow:hidden!important;overscroll-behavior:none!important}',
+    '#matchView.ks-v404-fullscreen{position:fixed!important;inset:0!important;top:0!important;right:0!important;bottom:0!important;left:0!important;width:var(--ks-v404-vw,100vw)!important;height:var(--ks-v404-vh,100dvh)!important;min-width:100%!important;min-height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;box-sizing:border-box!important;overflow:hidden!important;z-index:2147483647!important;display:block!important;background:#02050b!important}',
+    '#matchView.ks-v404-fullscreen #stage{position:absolute!important;inset:0!important;top:0!important;right:0!important;bottom:0!important;left:0!important;display:block!important;flex:none!important;width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;overflow:hidden!important}',
+    '#matchView.ks-v404-fullscreen #stage>canvas:not(#v5mini){position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0!important}',
+    '#matchView.ks-v404-fullscreen #stage>canvas#v5mini{position:absolute!important;top:12px!important;right:12px!important;left:auto!important;bottom:auto!important;width:clamp(88px,11vw,142px)!important;height:auto!important;aspect-ratio:168/104!important;max-width:25%!important;max-height:20%!important;z-index:35!important}',
+    '#matchView.ks-v404-fullscreen #ksMatchTopbar,#matchView.ks-v404-fullscreen .ks-match-topbar,#matchView.ks-v404-fullscreen>p{display:none!important}',
+    '#matchView.ks-v404-fullscreen #ksControlDeck,#matchView.ks-v404-fullscreen #v22LiveMatchTools{box-sizing:border-box!important;width:100%!important;max-width:100%!important;margin:0!important}',
+    '#matchView.ks-v404-fullscreen #ksControlDeck{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:12px!important;padding:4px!important;background:transparent!important;border:0!important;box-shadow:none!important}',
+    '#matchView.ks-v404-fullscreen #v22LiveMatchTools.active{position:relative!important;inset:auto!important;transform:none!important;display:flex!important;flex-wrap:wrap!important;justify-content:flex-start!important;align-items:center!important;gap:8px!important;padding:10px!important;border:1px solid #42658c!important;border-radius:12px!important;background:rgba(5,14,29,.98)!important;box-shadow:none!important}',
+    '#matchView.ks-v404-fullscreen #v22LiveMatchTools select{min-width:0!important;max-width:100%!important;flex:1 1 120px!important}',
+    '#ksFullscreenMenuButton{display:none;position:absolute;top:12px;right:12px;z-index:2147483647;width:42px;height:42px;padding:0;border:1px solid rgba(190,225,255,.8);border-radius:50%;background:rgba(5,14,29,.84);color:#fff;font-size:21px;line-height:1;place-items:center;box-shadow:0 4px 18px #0009;backdrop-filter:blur(12px);cursor:pointer}',
+    '#ksFullscreenMenuPanel{display:none;position:absolute;top:62px;right:12px;z-index:2147483646;width:min(390px,calc(100vw - 24px));max-height:calc(100% - 78px);overflow:auto;overscroll-behavior:contain;box-sizing:border-box;padding:14px;border:1px solid rgba(126,187,235,.7);border-radius:16px;background:rgba(4,12,25,.97);color:#f5f9ff;box-shadow:0 18px 60px #000d;backdrop-filter:blur(16px)}',
+    '#matchView.ks-v404-fullscreen.ks-fs-menu-open #ksFullscreenMenuPanel{display:block!important}',
+    '.ks-fs-menu-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;color:#a9eaff;font-size:11px;letter-spacing:.16em;font-weight:900}',
+    '.ks-fs-menu-head button{width:30px;height:30px;padding:0;border-radius:9px;font-size:20px}',
+    '.ks-fs-menu-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid #ffffff24}',
+    '.ks-fs-menu-actions button{flex:1 1 105px;min-height:36px;padding:8px 10px;font-size:10px;letter-spacing:.04em}',
+    '#matchView.ks-v404-fullscreen #endBox[style*="display: block"]{position:absolute!important;inset:0!important;z-index:2147483644!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:auto!important;padding:18px!important;box-sizing:border-box!important;margin:0!important;max-width:none!important;background:rgba(2,7,17,.92)!important;backdrop-filter:blur(12px)!important}',
+    '#matchView.ks-v404-fullscreen #ksPauseOverlay{z-index:2147483644!important}',
+    '@media(max-width:700px){#ksFullscreenMenuButton{top:8px;right:8px;width:38px;height:38px}#ksFullscreenMenuPanel{top:54px;right:8px;width:min(360px,calc(100vw - 16px));max-height:calc(100% - 62px)}#matchView.ks-v404-fullscreen #stage>canvas#v5mini{top:8px!important;right:8px!important;width:92px!important}}',
+    '@media(prefers-reduced-motion:reduce){#ksFullscreenMenuButton,#ksFullscreenMenuPanel{backdrop-filter:none!important}}'
+  ].join('\n');
+  document.head.appendChild(fullscreenStyle);
+
+  const previousKickoff=kickoff;
+  kickoff=function(team){
+    const result=previousKickoff.apply(this,arguments);
+    const m=M;
+    if(m && !m.v412WalkoutActive && Array.isArray(m.pl)){
+      const directions={};
+      [0,1].forEach(t=>{
+        const keeper=m.pl.find(p=>p && p.t===t && p.gk);
+        if(keeper && Number.isFinite(keeper.x) && Math.abs(keeper.x)>1){
+          directions[t]=-Math.sign(keeper.x);
+        }
+      });
+      m.ksAttackDirectionByTeam=directions;
+    }
+    return result;
+  };
+
+  const previousShoot=shoot;
+  shoot=function(player,power,aimZ,shotHeight){
+    const m=M;
+    if(!m || !player || !m.F || !Array.isArray(m.pl)){
+      return previousShoot.apply(this,arguments);
+    }
+    const keeper=m.pl.find(p=>p && p.t===player.t && p.gk);
+    let attackDir=m.ksAttackDirectionByTeam && m.ksAttackDirectionByTeam[player.t];
+    if(attackDir!==1 && attackDir!==-1){
+      attackDir=keeper && Number.isFinite(keeper.x) && Math.abs(keeper.x)>1
+        ? -Math.sign(keeper.x)
+        : (player.t?-1:1)*(m.half?-1:1);
+    }
+    const F=m.F;
+    const targetX=attackDir*F.L/2;
+    const targetZ=aimZ!==undefined?aimZ:(rnd()*2-1)*F.gw*.42;
+    const angle=Math.atan2(targetZ-player.z,targetX-player.x)+
+      (rnd()-.5)*(1.25-player.o/100)*.3/player.sk;
+    const speed=24+power*14;
+    const height=cl(Number.isFinite(shotHeight)?shotHeight:(player.t?.35:(m.aimHeight??.35)),0,1);
+    const lift=.4+height*4.8+power*.35;
+    kick(player,Math.cos(angle)*speed,Math.sin(angle)*speed,lift);
+  };
+
+  const jonShine=document.createElement('style');
+  jonShine.id='kikstart-v414-jon-wei-extra-shine';
+  jonShine.textContent=[
+    '.ks-jonwei-card{border:1px solid #f4ffff!important;background:radial-gradient(circle at 48% 15%,#fff 0,#e7ffff 4%,#8cfaff 10%,#b47dff 23%,#263a9a 45%,#07122b 75%,#030711 100%)!important;box-shadow:0 0 12px #fff,0 0 26px #a8ffff,0 0 48px #a66cff,0 0 72px #26ffe0!important;animation:ksJonWeiUltraPulse 1.35s ease-in-out infinite alternate!important}',
+    '.ks-jonwei-card:before{background:linear-gradient(112deg,transparent 31%,#ffffff00 40%,#ffffffed 48%,#b5ffffed 51%,#f5d7ffcc 54%,transparent 63%)!important;animation:ksJonWeiUltraSweep 1.8s linear infinite!important}',
+    '.ks-jonwei-card:after{content:"✦   ✧";position:absolute;top:7px;right:7px;z-index:3;color:#fff;font-size:18px;letter-spacing:7px;text-shadow:0 0 5px #fff,0 0 14px #8ff,0 0 24px #b8f;pointer-events:none;animation:ksJonWeiSparkle 1.1s ease-in-out infinite alternate}',
+    '.ks-jonwei-card .ovr{color:#fff!important;text-shadow:0 0 3px #fff,0 0 12px #fff,0 0 22px #60f7ff!important}',
+    '.ks-jonwei-card .nm,.ks-jonwei-card .pos,.ks-jonwei-card .rar{color:#fff!important;text-shadow:0 0 4px #fff,0 0 12px #9ff,0 1px 4px #000!important}',
+    '.ks-jonwei-ribbon{background:linear-gradient(90deg,#182d8a,#9a4eff,#00eaff,#f5e5ff,#00c8bb,#9a4eff,#182d8a)!important;background-size:250% 100%!important;animation:ksJonWeiRibbon 2.2s linear infinite!important;box-shadow:0 0 14px #fff,0 0 28px #65efff!important}',
+    '@keyframes ksJonWeiUltraPulse{from{filter:brightness(1.2) saturate(1.45)}to{filter:brightness(1.75) saturate(2.2)}}',
+    '@keyframes ksJonWeiUltraSweep{0%{transform:translateX(-85%) rotate(12deg)}100%{transform:translateX(85%) rotate(12deg)}}',
+    '@keyframes ksJonWeiSparkle{from{opacity:.6;transform:scale(.9) rotate(-8deg)}to{opacity:1;transform:scale(1.18) rotate(8deg)}}',
+    '@keyframes ksJonWeiRibbon{0%{background-position:0 0}100%{background-position:250% 0}}',
+    '@media(prefers-reduced-motion:reduce){.ks-jonwei-card,.ks-jonwei-card:before,.ks-jonwei-card:after,.ks-jonwei-ribbon{animation:none!important}}'
+  ].join('\n');
+  document.head.appendChild(jonShine);
+
+  document.title='KIKSTART v41.4 — Matchday Fullscreen Fix';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');
+  if(meta) meta.content='41.4';
+  window.KIKSTART_GAME_VERSION='41.4';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v41.4');
+  const footer=document.querySelector('.ks-boot-footer');
+  if(footer) footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v41.4';
+
+  syncFullscreenMenu();
+  console.info('KIKSTART v41.4 ready: pitch-only fullscreen, corner match controls, keeper-relative shot direction and brighter Jon Wei.');
+})();
+</script>
+
 </body>
 </html>
