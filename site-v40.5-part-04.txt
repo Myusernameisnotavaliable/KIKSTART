@@ -175,6 +175,7 @@
     localProfile:null, remoteProfile:null, hostProfile:null, guestProfile:null,
     remoteKeys:Object.create(null), latestSnapshot:null, lastAppliedSeq:0,
     snapshotTimer:null, inputTimer:null, peerTimer:null, connTimer:null, helloTimer:null,
+    startTimer:null, startAck:false, guestReady:false,
     snapshotSeq:0, lastInputAt:0, started:false, pendingEnd:null, mode:null, reconnecting:false
   };
   const NET_KEYS = ["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space","KeyF","KeyJ","KeyQ","KeyE","KeyC","ShiftLeft","ShiftRight"];
@@ -228,14 +229,20 @@
     if(NET.snapshotTimer){clearInterval(NET.snapshotTimer);NET.snapshotTimer=null;}
     if(NET.inputTimer){clearInterval(NET.inputTimer);NET.inputTimer=null;}
     ["peerTimer","connTimer","helloTimer"].forEach(k=>{if(NET[k]){clearTimeout(NET[k]);NET[k]=null;}});
+    if(NET.startTimer){clearInterval(NET.startTimer);NET.startTimer=null;}
   }
   const NET_PEER_OPTIONS={
-    host:"0.peerjs.com",port:443,path:"/",secure:true,debug:1,
-    // PeerJS Cloud's documented ICE relay pair supplements STUN. TURN relays
-    // help friends whose routers/firewalls cannot establish a direct data path.
+    host:"0.peerjs.com",port:443,path:"/",secure:true,debug:2,
+    // Use several STUN routes plus a public TURN fallback for networks where
+    // direct WebRTC paths are blocked. TURN traffic remains WebRTC-encrypted.
     config:{iceServers:[
       {urls:"stun:stun.l.google.com:19302"},
-      {urls:["turn:eu-0.turn.peerjs.com:3478","turn:us-0.turn.peerjs.com:3478"],username:"peerjs",credential:"peerjsp"}
+      {urls:"stun:stun1.l.google.com:19302"},
+      {urls:"turn:eu-0.turn.peerjs.com:3478",username:"peerjs",credential:"peerjsp"},
+      {urls:"turn:us-0.turn.peerjs.com:3478",username:"peerjs",credential:"peerjsp"},
+      {urls:"turn:openrelay.metered.ca:80",username:"openrelayproject",credential:"openrelayproject"},
+      {urls:"turn:openrelay.metered.ca:443",username:"openrelayproject",credential:"openrelayproject"},
+      {urls:"turn:openrelay.metered.ca:443?transport=tcp",username:"openrelayproject",credential:"openrelayproject"}
     ],sdpSemantics:"unified-plan"}
   };
   function NET_resetSession(closePeer){
@@ -243,7 +250,7 @@
     try { if(NET.conn){NET.conn.close();} } catch(e){}
     try { if(closePeer && NET.peer){NET.peer.destroy();} } catch(e){}
     NET.peer=null;NET.conn=null;NET.role=null;NET.peerId="";NET.roomCode="";NET.localProfile=null;NET.remoteProfile=null;NET.hostProfile=null;NET.guestProfile=null;
-    NET.remoteKeys=Object.create(null);NET.latestSnapshot=null;NET.lastAppliedSeq=0;NET.snapshotSeq=0;NET.started=false;NET.pendingEnd=null;NET.mode=null;
+    NET.remoteKeys=Object.create(null);NET.latestSnapshot=null;NET.lastAppliedSeq=0;NET.snapshotSeq=0;NET.started=false;NET.pendingEnd=null;NET.mode=null;NET.startAck=false;NET.guestReady=false;
   }
   function NET_copyRoom(){
     const input=document.getElementById("netRoomDisplay"); if(!input || !NET.roomCode)return;
@@ -290,11 +297,25 @@
   }
   function NET_receive(data){
     if (!data || typeof data!=="object" || typeof data.type!=="string") return;
+    if (data.type==="ready" && NET.role==="host"){
+      NET.guestReady=true;NET_status("Your friend is ready. You can start the 1v1 match.");NET_render();return;
+    }
+    if (data.type==="start-ack" && NET.role==="host"){
+      NET.startAck=true;
+      if(NET.startTimer){clearInterval(NET.startTimer);NET.startTimer=null;}
+      NET_status("Both players are in the match. Live connection established.");
+      NET_startSnapshotTimer();return;
+    }
+    if (data.type==="start-error" && NET.role==="host"){
+      if(NET.startTimer){clearInterval(NET.startTimer);NET.startTimer=null;}
+      NET_status("Your friend could not load the match: "+NET_safeName(data.reason,"unknown error"));
+      NET.started=false;NET_render();return;
+    }
     if (data.type==="hello" && NET.role==="host"){
       if(NET.helloTimer){clearTimeout(NET.helloTimer);NET.helloTimer=null;}
       const profile=NET_sanitizeProfile(data.profile); if(!profile){NET_send({type:"deny",reason:"Invalid team profile."});return;}
       if (NET.remoteProfile){NET_send({type:"deny",reason:"This room already has a player."});return;}
-      NET.remoteProfile=profile;NET.guestProfile=profile;NET.localProfile=NET_profile();
+      NET.remoteProfile=profile;NET.guestProfile=profile;NET.localProfile=NET_profile();NET.guestReady=false;
       NET_send({type:"welcome",profile:NET.localProfile,mode:S.mode});
       NET_status(profile.name+" joined with "+profile.rating+" OVR. "+(profile.mode===S.mode?"Ready to play.":"Choose the same mode first."));
       NET_render();return;
@@ -303,6 +324,7 @@
       if(NET.helloTimer){clearTimeout(NET.helloTimer);NET.helloTimer=null;}
       const profile=NET_sanitizeProfile(data.profile);if(!profile){NET_status("The host sent an invalid team profile.");return;}
       NET.hostProfile=profile;NET.remoteProfile=profile;NET.localProfile=NET_profile();
+      NET_send({type:"ready",mode:S.mode,version:String(window.KIKSTART_GAME_VERSION||"")});
       NET_status("Connected to "+profile.name+". "+(profile.mode===S.mode?"Waiting for the host to start.":"Switch to the same mode as the host."));NET_render();return;
     }
     if (data.type==="deny"){NET_status(String(data.reason||"Room connection was declined."));return;}
@@ -312,8 +334,9 @@
       return;
     }
     if (data.type==="start" && NET.role==="guest"){
+      if(NET.started&&M&&M.onlineRole==="guest"&&!M.over){NET_send({type:"start-ack"});return;}
       const host=NET_sanitizeProfile(data.hostProfile),guest=NET_sanitizeProfile(data.guestProfile);
-      if(!host||!guest){NET_status("The match setup was invalid. Reconnect and try again.");return;}
+      if(!host||!guest){NET_status("The match setup was invalid. Reconnect and try again.");NET_send({type:"start-error",reason:"Invalid match setup"});return;}
       NET.hostProfile=host;NET.guestProfile=guest;NET.remoteProfile=host;NET_startGuest(data.mode||host.mode);return;
     }
     if (data.type==="snapshot" && NET.role==="guest") { NET.latestSnapshot=data; return; }
@@ -365,10 +388,11 @@
     try{
       const PeerClass=await NET_loadPeerJS();const peer=new PeerClass(NET_PEER_OPTIONS);NET.peer=peer;
       NET.peerTimer=setTimeout(()=>{if(NET.peer===peer){NET_status("Could not reach the room service. Check your internet connection and try again.");NET_resetSession(true);NET_render();}},18000);
-      peer.on("open",()=>{
+      peer.on("open",id=>{
         if(NET.peerTimer){clearTimeout(NET.peerTimer);NET.peerTimer=null;}
         NET.reconnecting=false;
-        const conn=peer.connect(roomId,{reliable:true});NET_bindConnection(conn,false);
+        NET.peerId=id;
+        const conn=peer.connect(roomId,{reliable:true,serialization:"json",metadata:{game:"KIKSTART",protocol:1}});NET_bindConnection(conn,false);
         NET.connTimer=setTimeout(()=>{if(NET.conn===conn&&!conn.open){NET_status("The friend room did not accept the connection. Check the code or ask for a new one.");try{conn.close();}catch(_){}NET_render();}},22000);
       });
       peer.on("error",err=>{
@@ -399,7 +423,7 @@
     h+='</section><section class="panel net-panel"><h3>🔗 Join a friend</h3><p>Enter the party code chosen by the leader.</p><input id="netJoinInput" maxlength="10" minlength="4" autocomplete="off" autocapitalize="characters" placeholder="ENTER PARTY CODE"><button onclick="NET_joinRoom()" '+(connected?'disabled':'')+'>JOIN PARTY</button></section></div>';
     h+='<section class="panel net-panel net-match-panel"><div class="net-eyebrow">MATCH LOBBY</div><div class="net-teams">'+profileCard(local)+'<div class="net-vs">VS</div>'+profileCard(remote)+'</div>';
     h+='<div class="net-status" id="netStatus" aria-live="polite">'+esc(NET.status)+'</div>';
-    if(host)h+='<button class="net-start" onclick="NET_hostStart()" '+(!connected||!remote||!sameMode||NET.started||!S.got[S.mode]?'disabled':'')+'>⚽ START 1V1 MATCH</button><p class="net-help">Both players must use the same mode. The host starts the match.</p>';
+    if(host)h+='<button class="net-start" onclick="NET_hostStart()" '+(!connected||!remote||!sameMode||!NET.guestReady||NET.started||!S.got[S.mode]?'disabled':'')+'>⚽ START 1V1 MATCH</button><p class="net-help">'+(NET.guestReady?'Both clubs are ready. Start when you are.':'Waiting for your friend to finish connecting…')+'</p>';
     else if(guest)h+='<p class="net-help">You are the challenger. The host will start when both clubs are ready.</p>';
     else h+='<p class="net-help">Create a room or join a friend to begin.</p>';
     if(connected)h+='<button class="alt" onclick="NET_leaveRoom()">Leave room</button>';
@@ -411,7 +435,7 @@
   function NET_canStart(){
     if(NET.role!=="host"||!NET.conn||!NET.conn.open||!NET.remoteProfile)return false;
     if(NET.remoteProfile.mode!==S.mode)return false;
-    if(!S.got[S.mode])return false;
+    if(!S.got[S.mode]||!NET.guestReady)return false;
     return !NET.started;
   }
   async function NET_startLocal(role,hostProfile,guestProfile){
@@ -426,7 +450,7 @@
     LV.online={n:"Online 1v1",fee:0,win:120,sk:1};NX.online=NET_team(enemy);
     startMatch("online");
     if(!M||M.over)throw new Error("The match could not start. Return to the Online lobby and try again.");
-    M.onlineRole=role;M.onlineMode=true;M.remoteAimHeight=.38;M.remoteChg=0;M.remoteKeys=Object.create(null);
+    M.onlineRole=role;M.onlineMode=true;M.remoteAimHeight=.38;M.remoteChg=0;M.remoteKeys=Object.create(null);M.L=Object.assign({},M.L,{fee:0});
     const ownLine=own.squad||[],enemyLine=enemy.squad||[];
     M.pl.filter(p=>p.t===0).forEach((p,i)=>{const d=ownLine[i];if(d)p.playerName=d.name;});
     M.pl.filter(p=>p.t===1).forEach((p,i)=>{const d=enemyLine[i];if(d){p.playerName=d.name;p.o=cl(Number(d.o)||40,1,99);p.spd=(6.2+(p.o-40)/60*3)*M.F.sp0;p.pos=d.pos||"MID";}});
@@ -439,13 +463,25 @@
     return true;
   }
   async function NET_hostStart(){
-    if(!NET_canStart()){NET_status("Connect one friend, choose the same mode, and claim your starter squad first.");NET_render();return;}
+    if(!NET_canStart()){NET_status("Connect a ready friend, choose the same mode, and claim your starter squad first.");NET_render();return;}
     try{
-      NET.status="Starting match…";NET_render();
+      NET.status="Starting match on both devices…";NET_render();
       const host=NET_profile(),guest=NET.remoteProfile;
       await NET_startLocal("host",host,guest);
-      NET_send({type:"start",mode:S.mode,hostProfile:host,guestProfile:guest});
-      NET_startSnapshotTimer();
+      const packet={type:"start",mode:S.mode,hostProfile:host,guestProfile:guest};
+      NET.startAck=false;NET_send(packet);
+      if(NET.startTimer)clearInterval(NET.startTimer);
+      let attempts=0;
+      NET.startTimer=setInterval(()=>{
+        if(NET.startAck||!NET.conn||!NET.conn.open||!M||M.over){
+          clearInterval(NET.startTimer);NET.startTimer=null;return;
+        }
+        if(attempts++<10)NET_send(packet);
+        else{
+          clearInterval(NET.startTimer);NET.startTimer=null;
+          NET_status("The match is running on your device, but your friend has not confirmed loading it. Reconnect and try again.");NET_render();
+        }
+      },700);
     }catch(err){NET.started=false;NET_status(err.message||"Could not start the online match.");NET_render();}
   }
   window.NET_hostStart=NET_hostStart;
@@ -455,9 +491,10 @@
     try{
       NET_status("Loading the 3D pitch…");
       await NET_startLocal("guest",NET.hostProfile,NET.guestProfile);
+      NET_send({type:"start-ack"});
       if(NET.pendingEnd){const end=NET.pendingEnd;NET.pendingEnd=null;NET_endGuest(end);}
       else if(NET.latestSnapshot)NET_applySnapshot(NET.latestSnapshot,0.016);
-    }catch(err){NET_status(err.message||"Could not join the match.");NET.started=false;NET_render();}
+    }catch(err){const reason=err&&err.message?err.message:"Could not join the match.";NET_send({type:"start-error",reason:reason});NET_status(reason);NET.started=false;NET_render();}
   }
 
   // Guest inputs are sent at 25 Hz. No chat, microphone, camera, or personal data is sent.
@@ -478,7 +515,7 @@
       wait:!!m.wait,intro:m.intro||0,pause:m.pause||0,half:m.half||0,chg:m.chg||0,remoteChg:m.remoteChg||0,aim:m.aimHeight||.38,remoteAim:m.remoteAimHeight||.38,
       cel:m.cel||"",celT:m.celT||0,scorer:NET_playerIndex(m.scorer)});
   }
-  function NET_startSnapshotTimer(){NET_clearTimers();NET.snapshotTimer=setInterval(NET_snapshot,33);}
+  function NET_startSnapshotTimer(){NET_clearTimers();NET_snapshot();NET.snapshotTimer=setInterval(NET_snapshot,50);}
 
   // The host selects one live guest-controlled outfield player. All other players retain the existing AI.
   function NET_pickRemoteCtrl(){
