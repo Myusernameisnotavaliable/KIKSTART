@@ -416,12 +416,12 @@
   };
 
   // Final version markers override all historical appended version labels.
-  document.title='KIKSTART v40.6 — Mac Gameplay';
-  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content='40.6';
-  window.KIKSTART_GAME_VERSION='40.6';
-  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v40.6');
-  const footer=document.querySelector('.ks-boot-footer');if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v40.6';
-  console.info('KIKSTART v40.6 ready: fullscreen, clipboard shortcuts and hashed special reward codes.');
+  document.title='KIKSTART v41.3 — Mac Gameplay';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');if(meta)meta.content='41.3';
+  window.KIKSTART_GAME_VERSION='41.3';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v41.3');
+  const footer=document.querySelector('.ks-boot-footer');if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v41.3';
+  console.info('KIKSTART v41.3 ready: fullscreen, clipboard shortcuts and hashed special reward codes.');
 })();
 </script>
 
@@ -488,29 +488,29 @@
       if(timeline && !timeline.querySelector('.v41-release')){
         const item = document.createElement('article');
         item.className = 'v35-release current v41-release';
-        item.innerHTML = '<div class="v35-release-dot"></div><div class="v35-release-top"><b>v41.2</b><span>LATEST RELEASE</span></div><h3>Matchday walkouts and halftime stability</h3><p>Improved the match entrance announcement, protected the halftime intermission against early or duplicate kickoffs, and retained host-authoritative timing for online matches.</p>';
+        item.innerHTML = '<div class="v35-release-dot"></div><div class="v35-release-top"><b>v41.3</b><span>LATEST RELEASE</span></div><h3>Matchday walkouts and halftime stability</h3><p>Improved the match entrance announcement, protected the halftime intermission against early or duplicate kickoffs, and retained host-authoritative timing for online matches.</p>';
         timeline.prepend(item);
       }
       const pill = root && root.querySelector('.v35-version-pill');
-      if(pill) pill.textContent = 'CURRENT · v41.2';
+      if(pill) pill.textContent = 'CURRENT · v41.3';
     }
     return result;
   };
 
-  document.title = 'KIKSTART v41.2 — Matchday Stability Update';
+  document.title = 'KIKSTART v41.3 — Matchday Stability Update';
   const meta = document.querySelector('meta[name="kikstart-game-version"]');
-  if(meta) meta.content = '41.2';
-  window.KIKSTART_GAME_VERSION = '41.2';
-  document.querySelectorAll('#top .ks-build-version').forEach(el => el.textContent = 'KIKSTART v41.2');
+  if(meta) meta.content = '41.3';
+  window.KIKSTART_GAME_VERSION = '41.3';
+  document.querySelectorAll('#top .ks-build-version').forEach(el => el.textContent = 'KIKSTART v41.3');
   const footer = document.querySelector('.ks-boot-footer');
   if(footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v41.3';
-  console.info('KIKSTART v41.2 ready: match walkout announcement and guarded halftime restart.');
+  console.info('KIKSTART v41.3 ready: match walkout announcement and guarded halftime restart.');
 })();
 </script>
 
 
 <script>
-/* KIKSTART v41.2 — second-half tunnel restart, full-time presentation and touchline controls. */
+/* KIKSTART v41.3 — second-half tunnel restart, full-time presentation and touchline controls. */
 (function KIKSTART_V412_MATCH_FIXES(){
   'use strict';
   if(window.__KIKSTART_V412__) return;
@@ -571,7 +571,7 @@
     renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
   };
   window.addEventListener('resize',()=>requestAnimationFrame(resize));
-  console.info('KIKSTART v41.2 ready: second-half tunnel return, correct attack direction, match-screen controls and full-time results.');
+  console.info('KIKSTART v41.3 ready: second-half tunnel return, correct attack direction, match-screen controls and full-time results.');
 })();
 </script>
 
