@@ -175,7 +175,7 @@
     localProfile:null, remoteProfile:null, hostProfile:null, guestProfile:null,
     remoteKeys:Object.create(null), latestSnapshot:null, lastAppliedSeq:0,
     snapshotTimer:null, inputTimer:null, peerTimer:null, connTimer:null, helloTimer:null,
-    startTimer:null, startAck:false, guestReady:false,
+    startTimer:null, startAck:false, guestReady:false, startingGuest:false,
     snapshotSeq:0, lastInputAt:0, started:false, pendingEnd:null, mode:null, reconnecting:false
   };
   const NET_KEYS = ["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space","KeyF","KeyJ","KeyQ","KeyE","KeyC","ShiftLeft","ShiftRight"];
@@ -250,7 +250,7 @@
     try { if(NET.conn){NET.conn.close();} } catch(e){}
     try { if(closePeer && NET.peer){NET.peer.destroy();} } catch(e){}
     NET.peer=null;NET.conn=null;NET.role=null;NET.peerId="";NET.roomCode="";NET.localProfile=null;NET.remoteProfile=null;NET.hostProfile=null;NET.guestProfile=null;
-    NET.remoteKeys=Object.create(null);NET.latestSnapshot=null;NET.lastAppliedSeq=0;NET.snapshotSeq=0;NET.started=false;NET.pendingEnd=null;NET.mode=null;NET.startAck=false;NET.guestReady=false;
+    NET.remoteKeys=Object.create(null);NET.latestSnapshot=null;NET.lastAppliedSeq=0;NET.snapshotSeq=0;NET.started=false;NET.pendingEnd=null;NET.mode=null;NET.startAck=false;NET.guestReady=false;NET.startingGuest=false;
   }
   function NET_copyRoom(){
     const input=document.getElementById("netRoomDisplay"); if(!input || !NET.roomCode)return;
@@ -334,6 +334,7 @@
       return;
     }
     if (data.type==="start" && NET.role==="guest"){
+      if(NET.startingGuest)return;
       if(NET.started&&M&&M.onlineRole==="guest"&&!M.over){NET_send({type:"start-ack"});return;}
       const host=NET_sanitizeProfile(data.hostProfile),guest=NET_sanitizeProfile(data.guestProfile);
       if(!host||!guest){NET_status("The match setup was invalid. Reconnect and try again.");NET_send({type:"start-error",reason:"Invalid match setup"});return;}
@@ -486,8 +487,9 @@
   }
   window.NET_hostStart=NET_hostStart;
   async function NET_startGuest(mode){
-    if(!NET.hostProfile||!NET.guestProfile)return;
+    if(NET.startingGuest||!NET.hostProfile||!NET.guestProfile)return;
     if(mode!==NET.hostProfile.mode || mode!==NET.guestProfile.mode){NET_status("The host and guest must be in the same mode. Reconnect after switching modes.");return;}
+    NET.startingGuest=true;
     try{
       NET_status("Loading the 3D pitch…");
       await NET_startLocal("guest",NET.hostProfile,NET.guestProfile);
@@ -495,6 +497,7 @@
       if(NET.pendingEnd){const end=NET.pendingEnd;NET.pendingEnd=null;NET_endGuest(end);}
       else if(NET.latestSnapshot)NET_applySnapshot(NET.latestSnapshot,0.016);
     }catch(err){const reason=err&&err.message?err.message:"Could not join the match.";NET_send({type:"start-error",reason:reason});NET_status(reason);NET.started=false;NET_render();}
+    finally{NET.startingGuest=false;}
   }
 
   // Guest inputs are sent at 25 Hz. No chat, microphone, camera, or personal data is sent.
