@@ -810,5 +810,189 @@
 })();
 </script>
 
+<script>
+/* KIKSTART v41.5 — fullscreen portal, true halftime attack ends, improved celebrations and online controls. */
+(function KIKSTART_V415_RELIABILITY_PATCH(){
+  'use strict';
+  if(window.__KIKSTART_V415__)return;
+  window.__KIKSTART_V415__=true;
+
+  // 1) Fullscreen: move the match out of the tab/sidebar layout into body.
+  // This prevents a transformed or width-constrained app ancestor from clipping
+  // a position:fixed match view to half of the available page.
+  const match=document.getElementById('matchView');
+  let returnMarker=null,returnParent=null;
+  function enterPortal(){
+    if(!match||match.parentNode===document.body)return;
+    returnParent=match.parentNode;
+    returnMarker=document.createComment('KIKSTART fullscreen restore point');
+    returnParent.insertBefore(returnMarker,match);
+    document.body.appendChild(match);
+  }
+  function exitPortal(){
+    if(!match||match.parentNode!==document.body)return;
+    if(returnMarker&&returnMarker.parentNode)returnMarker.parentNode.insertBefore(match,returnMarker);
+    else if(returnParent)returnParent.appendChild(match);
+    if(returnMarker)returnMarker.remove();
+    returnMarker=null;returnParent=null;
+  }
+  const oldToggle=window.KS_toggleFullscreen;
+  if(typeof oldToggle==='function'){
+    window.KS_toggleFullscreen=async function(force){
+      const active=!!(match&&(match.classList.contains('ks-v404-fullscreen')||
+        document.fullscreenElement===match||document.webkitFullscreenElement===match));
+      const entering=typeof force==='boolean'?force:!active;
+      if(entering)enterPortal();
+      let result=false;
+      try{result=await oldToggle.apply(this,arguments);}
+      finally{if(!entering)exitPortal();}
+      return result;
+    };
+  }
+  if(match){
+    const portalObserver=new MutationObserver(()=>{
+      if(!match.classList.contains('ks-v404-fullscreen')&&
+         document.fullscreenElement!==match&&document.webkitFullscreenElement!==match)exitPortal();
+    });
+    portalObserver.observe(match,{attributes:true,attributeFilter:['class']});
+  }
+  document.addEventListener('fullscreenchange',()=>{
+    if(match&&!match.classList.contains('ks-v404-fullscreen')&&
+       document.fullscreenElement!==match&&document.webkitFullscreenElement!==match)exitPortal();
+  });
+  const portalStyle=document.createElement('style');
+  portalStyle.id='kikstart-v415-fullscreen-portal-style';
+  portalStyle.textContent=[
+    'body.ks-v404-fullscreen-active{display:block!important;width:100vw!important;height:100vh!important;min-height:100vh!important;margin:0!important;padding:0!important;overflow:hidden!important;background:#02050b!important}',
+    'body.ks-v404-fullscreen-active>:not(#matchView):not(#flash):not(#big):not(#fx){display:none!important}',
+    '#matchView.ks-v404-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;min-width:100vw!important;min-height:100vh!important;min-height:100dvh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;box-sizing:border-box!important;overflow:hidden!important;z-index:2147483647!important;display:block!important;background:#02050b!important;transform:none!important}',
+    '#matchView.ks-v404-fullscreen #stage{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;display:block!important;overflow:hidden!important}',
+    '#matchView.ks-v404-fullscreen #stage>canvas:not(#v5mini){position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;display:block!important}',
+    '#matchView.ks-v404-fullscreen #ksMatchTopbar,#matchView.ks-v404-fullscreen .ks-match-topbar,#matchView.ks-v404-fullscreen>p{display:none!important}',
+    '#matchView.ks-v404-fullscreen #endBox[style*="display: block"]{position:absolute!important;inset:0!important;z-index:2147483644!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:auto!important;margin:0!important;padding:18px!important;max-width:none!important;box-sizing:border-box!important;background:rgba(2,7,17,.94)!important}',
+    '@media(max-width:700px){#matchView.ks-v404-fullscreen,#matchView.ks-v404-fullscreen #stage{width:100vw!important;height:100dvh!important;min-height:100dvh!important}}'
+  ].join('\n');
+  document.head.appendChild(portalStyle);
+
+  // 2) One direction rule for both teams. Team 0 attacks +X in the first half
+  // and -X in the second; team 1 always attacks the opposite end.
+  const previousShoot=shoot;
+  shoot=function(player,power,aimZ,shotHeight){
+    const m=M;
+    if(!m||!player||!m.F)return previousShoot.apply(this,arguments);
+    const F=m.F;
+    const attackDir=(player.t===0?1:-1)*(m.half?-1:1);
+    const targetX=attackDir*F.L*.5;
+    const targetZ=cl(Number.isFinite(aimZ)?aimZ:(rnd()*2-1)*F.gw*.42,-F.gw*.48,F.gw*.48);
+    const skill=Math.max(.5,Number(player.sk)||1);
+    const accuracy=(rnd()-.5)*(1.25-(Number(player.o)||40)/100)*.3/skill;
+    const angle=Math.atan2(targetZ-player.z,targetX-player.x)+accuracy;
+    const charge=cl(Number(power)||0,0,1);
+    const speed=24+charge*14;
+    const loft=cl(Number.isFinite(shotHeight)?shotHeight:(player.t===0?(m.aimHeight??.4):.34),0,1);
+    const lift=.4+loft*4.8+charge*.35;
+    kick(player,Math.cos(angle)*speed,Math.sin(angle)*speed,lift);
+  };
+
+  // Goal-line scoring must switch ends at half-time too. Without this, the
+  // second-half goal at the other end was credited to the wrong team.
+  const previousGoal=goal;
+  goal=function(team){
+    const m=M;
+    const credited=m&&m.half?1-team:team;
+    previousGoal(credited);
+    if(!M||M.over)return;
+    const styles=['run','slide','hype','sky'];
+    M.cel=styles[Math.floor(rnd()*styles.length)];
+    M.celT=0;M.camShake=1.35;
+    try{
+      burst(innerWidth*.5,innerHeight*.34,COL.gold.concat(COL.diamond),150,12);
+      burst(innerWidth*.28,innerHeight*.28,COL.diamond.concat(COL.gold),65,8);
+      burst(innerWidth*.72,innerHeight*.28,COL.gold.concat(COL.diamond),65,8);
+    }catch(e){console.warn('[KIKSTART v41.5] celebration particles skipped',e);}
+  };
+
+  // Add a timed jump, arm-wave and team-huddle sequence on top of the existing
+  // articulated 3D player animation. No player models or stats are replaced.
+  const previousAnimate=window.V5_animate;
+  if(typeof previousAnimate==='function'){
+    window.V5_animate=function(m,dt){
+      const result=previousAnimate.apply(this,arguments);
+      if(!m||!m.celeb||!(m.pause>0)||!m.scorer||!Array.isArray(m.pl))return result;
+      const elapsed=Math.max(0,Number(m.celT)||0),scorer=m.scorer;
+      m.pl.forEach(p=>{
+        if(p.t!==scorer.t||p.gk||!p.mesh)return;
+        const g=p.mesh,u=g.userData||{},arms=u.a,legs=u.l;
+        const isScorer=p===scorer,phase=elapsed*8+(p.i||0)*.85;
+        const wave=Math.sin(phase),jump=Math.max(0,Math.sin(elapsed*8.5+(p.i||0)*.65));
+        const jumpHeight=(isScorer?.82:.5)*jump;
+        g.position.y+=jumpHeight;
+        g.rotation.x=Math.sin(elapsed*4.8+(p.i||0))*(isScorer?.18:.12);
+        g.rotation.z=Math.sin(elapsed*6.2+(p.i||0)*.7)*(isScorer?.2:.12);
+        if(Array.isArray(arms)&&arms.length>=2){
+          arms[0].rotation.z=-2.35-wave*.48;
+          arms[1].rotation.z=2.35+wave*.48;
+          arms[0].rotation.x=Math.sin(phase+1)*.42;
+          arms[1].rotation.x=-Math.sin(phase+1)*.42;
+        }
+        if(Array.isArray(legs)&&legs.length>=2&&m.cel!=='slide'){
+          legs[0].rotation.x=Math.sin(phase)*.72;
+          legs[1].rotation.x=-Math.sin(phase)*.72;
+        }
+      });
+      return result;
+    };
+  }
+
+  // 3) Make the three career match difficulties more demanding, while keeping
+  // their names, entry fees and rewards unchanged.
+  if(typeof LV!=='undefined'){
+    if(LV.easy)LV.easy.sk=.95;
+    if(LV.medium)LV.medium.sk=1.22;
+    if(LV.hard)LV.hard.sk=1.55;
+  }
+
+  // 4) Online guest controls are seen from the opposite end of the pitch.
+  // Rotate the incoming directional keys 180 degrees before the host applies
+  // them, and mirror the guest's celebration flag from authoritative snapshots.
+  const NET=window.KIKSTART_NET;
+  if(NET){
+    let remoteKeys=NET.remoteKeys||Object.create(null);
+    try{
+      Object.defineProperty(NET,'remoteKeys',{
+        configurable:true,enumerable:true,
+        get(){return remoteKeys;},
+        set(value){
+          const raw=value&&typeof value==='object'?value:Object.create(null);
+          const mapped=Object.assign(Object.create(null),raw);
+          const pairs=[['KeyW','KeyS'],['KeyA','KeyD'],['ArrowUp','ArrowDown'],['ArrowLeft','ArrowRight']];
+          pairs.forEach(([a,b])=>{mapped[a]=!!raw[b];mapped[b]=!!raw[a];});
+          remoteKeys=mapped;
+        }
+      });
+      NET.remoteKeys=remoteKeys;
+    }catch(e){console.warn('[KIKSTART v41.5] online key transform unavailable',e);}
+  }
+  const previousStep=stepMatch;
+  stepMatch=function(dt){
+    const result=previousStep.apply(this,arguments);
+    if(M&&M.onlineRole==='guest'&&NET&&NET.latestSnapshot){
+      const snap=NET.latestSnapshot;
+      M.celeb=!!(Number(snap.pause)>0&&Number.isInteger(snap.scorer)&&snap.scorer>=0&&!!snap.cel);
+    }
+    return result;
+  };
+
+  document.title='KIKSTART v41.5 — Fullscreen, Matchday and Online Fixes';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');
+  if(meta)meta.content='41.5';
+  window.KIKSTART_GAME_VERSION='41.5';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v41.5');
+  const footer=document.querySelector('.ks-boot-footer');
+  if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v41.5';
+  console.info('KIKSTART v41.5 loaded: fullscreen portal, second-half attack/score ends, celebrations, harder levels and mirrored online controls.');
+})();
+</script>
+
 </body>
 </html>
