@@ -389,7 +389,7 @@
 
 
 <script>
-/* KIKSTART v41.0 — match walkout announcement and guaranteed halftime intermission. */
+/* KIKSTART v41.1 — realistic tunnel walkout and consistent second-half controls. */
 (function KIKSTART_V41_MATCH_FLOW(){
   'use strict';
   if(window.__KIKSTART_V41_MATCH_FLOW__) return;
@@ -450,23 +450,23 @@
       if(timeline && !timeline.querySelector('.v41-release')){
         const item = document.createElement('article');
         item.className = 'v35-release current v41-release';
-        item.innerHTML = '<div class="v35-release-dot"></div><div class="v35-release-top"><b>v41.0</b><span>LATEST RELEASE</span></div><h3>Matchday walkouts and halftime stability</h3><p>Improved the match entrance announcement, protected the halftime intermission against early or duplicate kickoffs, and retained host-authoritative timing for online matches.</p>';
+        item.innerHTML = '<div class="v35-release-dot"></div><div class="v35-release-top"><b>v41.1</b><span>LATEST RELEASE</span></div><h3>Matchday walkouts and halftime stability</h3><p>Improved the match entrance announcement, protected the halftime intermission against early or duplicate kickoffs, and retained host-authoritative timing for online matches.</p>';
         timeline.prepend(item);
       }
       const pill = root && root.querySelector('.v35-version-pill');
-      if(pill) pill.textContent = 'CURRENT · v41.0';
+      if(pill) pill.textContent = 'CURRENT · v41.1';
     }
     return result;
   };
 
-  document.title = 'KIKSTART v41.0 — Matchday Stability Update';
+  document.title = 'KIKSTART v41.1 — Matchday Stability Update';
   const meta = document.querySelector('meta[name="kikstart-game-version"]');
   if(meta) meta.content = '41.0';
   window.KIKSTART_GAME_VERSION = '41.0';
-  document.querySelectorAll('#top .ks-build-version').forEach(el => el.textContent = 'KIKSTART v41.0');
+  document.querySelectorAll('#top .ks-build-version').forEach(el => el.textContent = 'KIKSTART v41.1');
   const footer = document.querySelector('.ks-boot-footer');
-  if(footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v41.0';
-  console.info('KIKSTART v41.0 ready: match walkout announcement and guarded halftime restart.');
+  if(footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v41.1';
+  console.info('KIKSTART v41.1 ready: match walkout announcement and guarded halftime restart.');
 })();
 </script>
 
