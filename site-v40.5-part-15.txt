@@ -334,7 +334,7 @@
     let html=jonWeiBaseCardHTML.apply(this,arguments);
     if(!player||!player.jonWeiSecret)return html;
     html=html.replace(/class="card ([^"]*)"/,(m,classes)=>'class="card '+classes+' ks-jonwei-card"');
-    html=html.replace(/(<div class="rar">[\\s\\S]*?<\\/div>)/,'$1<div class="ks-jonwei-ribbon">✦ JON WEI · 100 OVR · SECRET CDM ✦</div>');
+    html=html.replace(/(<div class="rar">[\s\S]*?<\/div>)/,'$1<div class="ks-jonwei-ribbon">✦ JON WEI · 100 OVR · SECRET CDM ✦</div>');
     return html;
   };
   const jonWeiStyle=document.createElement("style");
