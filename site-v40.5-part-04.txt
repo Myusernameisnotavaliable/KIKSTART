@@ -501,7 +501,7 @@
     if(best)passTo(p,best);
   }
   function NET_remoteControl(p,dt){
-    const m=M,k=NET.remoteKeys||{},halfDir=m.half?-1:1,ix=((k.KeyD||k.ArrowRight?1:0)-(k.KeyA||k.ArrowLeft?1:0))*halfDir,iz=(k.KeyS||k.ArrowDown?1:0)-(k.KeyW||k.ArrowUp?1:0),len=hyp(ix,iz),dx=len?ix/len:0,dz=len?iz/len:0;
+    const m=M,k=NET.remoteKeys||{},ix=(k.KeyD||k.ArrowRight?1:0)-(k.KeyA||k.ArrowLeft?1:0),iz=(k.KeyS||k.ArrowDown?1:0)-(k.KeyW||k.ArrowUp?1:0),len=hyp(ix,iz),dx=len?ix/len:0,dz=len?iz/len:0;
     const sprint=!!(k.ShiftLeft||k.ShiftRight),speed=p.spd*(sprint?1.28:1)*(p.lunge>0?1.5:1);
     move(p,dx,dz,speed,dt);if(len){p.dx=dx;p.dz=dz;}
     if(k.KeyC&&!m.remoteSwitchDown){m.remoteSwitchDown=true;const list=m.pl.filter(q=>q.t===1&&!q.gk);if(list.length){const idx=list.indexOf(m.remoteCtrl);m.remoteCtrl=list[(idx+1+list.length)%list.length];}}
