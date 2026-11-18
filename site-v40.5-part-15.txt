@@ -461,8 +461,8 @@
 
   document.title = 'KIKSTART v41.1 — Matchday Stability Update';
   const meta = document.querySelector('meta[name="kikstart-game-version"]');
-  if(meta) meta.content = '41.0';
-  window.KIKSTART_GAME_VERSION = '41.0';
+  if(meta) meta.content = '41.1';
+  window.KIKSTART_GAME_VERSION = '41.1';
   document.querySelectorAll('#top .ks-build-version').forEach(el => el.textContent = 'KIKSTART v41.1');
   const footer = document.querySelector('.ks-boot-footer');
   if(footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v41.1';
