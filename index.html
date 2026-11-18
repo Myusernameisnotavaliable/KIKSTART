@@ -7,7 +7,7 @@ const parts=Array.from({length:15},(_,i)=>'site-v40.5-part-'+String(i+1).padStar
 const responses=await Promise.all(parts.map(url=>fetch(url+'?build=41.1',{cache:'no-store'})));
 const bad=responses.findIndex(r=>!r.ok);if(bad!==-1)throw new Error('Game source part '+(bad+1)+' failed (HTTP '+responses[bad].status+').');
 const source=(await Promise.all(responses.map(r=>r.text()))).join('\n');
-if(!/window\.KIKSTART_GAME_VERSION\s*=\s*[\'"]41\.0[\'"]/.test(source)||!source.trimEnd().endsWith('</html>'))throw new Error('The game source failed its v41.1 integrity check.');
+if(!/window\.KIKSTART_GAME_VERSION\s*=\s*[\'"]41\.1[\'"]/.test(source)||!source.trimEnd().endsWith('</html>'))throw new Error('The game source failed its v41.1 integrity check.');
 document.open();document.write(source);document.close();
 }catch(e){status.textContent='KIKSTART could not load: '+e.message;console.error(e);}})();
 </script></body></html>
