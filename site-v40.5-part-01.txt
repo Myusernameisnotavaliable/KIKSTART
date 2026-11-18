@@ -755,10 +755,20 @@ function buildWorld(F,c){
   // stadium: more tiers with higher Stands level, fans wear your club colours, back wall closes it in
   const rows=2+Math.ceil(S.st.a/2),fan=[c.a,c.b,"#ffffff",c.a].map(mt),fg=new THREE.BoxGeometry(.9,1.2,.7);
   [-1,1].forEach(s=>{
-    bx(L+4,1,.4,s>0?c.a:c.b,0,.5,s*(W/2+2));
+    if(s<0){const side=Math.max(2,(L-18)/2);bx(side,1,.4,c.b,-(L+18)/4,.5,s*(W/2+2));bx(side,1,.4,c.b,(L+18)/4,.5,s*(W/2+2));}else bx(L+4,1,.4,c.a,0,.5,s*(W/2+2));
     for(let r=0;r<rows+1;r++)for(let x=-L/2-2;x<=L/2+2;x+=1.4){const f=new THREE.Mesh(fg,fan[Math.floor(rnd()*4)]);f.position.set(x,1.6+r*1.1,s*(W/2+4+r*1.2));world.add(f)}
     bx(L+30,12,.6,0x0b1230,0,6,s*(W/2+4+(rows+1)*1.2+1.2));
   });
+  // Matchday tunnel: an open player entrance through the home-end stand.
+  const tunnelZ=-(W/2+12);
+  bx(18,.65,24,0x101827,0,5.8,tunnelZ);
+  bx(.65,5.8,24,0x172235,-9,2.9,tunnelZ);
+  bx(.65,5.8,24,0x172235,9,2.9,tunnelZ);
+  bx(17,.12,24,0x263348,0,-.02,tunnelZ);
+  bx(.8,5.8,.8,0x7dd3fc,-8.5,2.9,-W/2-1.5);
+  bx(.8,5.8,.8,0x7dd3fc,8.5,2.9,-W/2-1.5);
+  bx(18,.8,.8,0x7dd3fc,0,5.8,-W/2-1.5);
+  for(let i=0;i<6;i++){const z=-(W/2+21-i*3.5);bx(.16,.12,.7,0xb8e7ff,-8.2,5.25,z);bx(.16,.12,.7,0xb8e7ff,8.2,5.25,z);}
   // floodlights glow brighter with each Floodlights level
   for(let i=0;i<4&&S.st.c>0;i++){
     const x=(i%2?1:-1)*(L/2+4),z=(i<2?-1:1)*(W/2+7);bx(.5,14,.5,0x444444,x,7,z);bx(3,1.2,1,new THREE.MeshBasicMaterial({color:0xfff6c0}),x,14.4,z);
@@ -789,8 +799,8 @@ function startMatch(key){
   const bm=new THREE.Mesh(new THREE.IcosahedronGeometry(.5*F.ps,1),new THREE.MeshLambertMaterial({color:0xffffff,flatShading:true}));world.add(bm);M.ball.mesh=bm;
   const bs=new THREE.Mesh(new THREE.CircleGeometry(.5*F.ps,14),new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:.35}));bs.rotation.x=-Math.PI/2;world.add(bs);M.ball.sh=bs;
   const go=()=>{ // teams walk out of the tunnel onto the pitch; player walkouts are reserved for actual pack pulls
-    M.pl.forEach(p=>{p.sx=(p.i-F.n/2)*1.3*F.ps*(p.t?-1:1);p.sz=-(F.W/2+9)});
-    M.wait=false;M.intro=4.5;cheer(6,.35);banner(me.n+" vs "+T.n);
+    M.pl.forEach(p=>{p.sx=(p.i-F.n/2)*1.3*F.ps*(p.t?-1:1);p.sz=-(F.W/2+20);p.walkDelay=p.i*.11+(p.t?.12:0)});
+    M.wait=false;M.intro=5.8;cheer(6,.35);banner(me.n+" vs "+T.n);
   };
   go();
 }
@@ -840,7 +850,7 @@ function pickCtrl(){
   const c=m.ctrl;if(c&&c.t===0&&!c.gk&&hyp(c.x-b.x,c.z-b.z)<bd+3)return;m.ctrl=best;
 }
 function userCtrl(p,dt){
-  const m=M,F=m.F,halfDir=m.half?-1:1,ix=((K.KeyD||K.ArrowRight?1:0)-(K.KeyA||K.ArrowLeft?1:0))*halfDir,iz=(K.KeyS||K.ArrowDown?1:0)-(K.KeyW||K.ArrowUp?1:0),len=hyp(ix,iz),dx=len?ix/len:0,dz=len?iz/len:0;
+  const m=M,F=m.F,ix=(K.KeyD||K.ArrowRight?1:0)-(K.KeyA||K.ArrowLeft?1:0),iz=(K.KeyS||K.ArrowDown?1:0)-(K.KeyW||K.ArrowUp?1:0),len=hyp(ix,iz),dx=len?ix/len:0,dz=len?iz/len:0;
   const sp=p.spd*((K.ShiftLeft||K.ShiftRight)?1.3:1)*(p.lunge>0?1.5:1);move(p,dx,dz,sp,dt);if(len){p.dx=dx;p.dz=dz}
   if(K.Space){if(!K.spd){K.spd=1;if(m.owner===p)userPass(p,dx,dz,len);else p.lunge=.35}}else K.spd=0;
   if(K.KeyF||K.KeyJ)m.chg=Math.min(1,m.chg+dt*1.5);
@@ -901,8 +911,8 @@ function stepMatch(dt){
   const m=M,b=m.ball;
   if(m.wait){}
   else if(m.intro>0){
-    m.intro-=dt;const u=Math.min(1,1-m.intro/4.5),e=u*u*(3-2*u);
-    m.pl.forEach(p=>{const h=home(p);p.x=p.sx+(h[0]-p.sx)*e;p.z=p.sz+(h[1]-p.sz)*e;p.dx=p.t?-1:1;p.dz=0;p.vx=u<1?4:0;p.vz=0});
+    m.intro-=dt;const elapsed=5.8-m.intro;
+    m.pl.forEach(p=>{const h=home(p),u=cl((elapsed-(p.walkDelay||0))/4.2,0,1),e=u*u*(3-2*u);p.x=p.sx+(h[0]-p.sx)*e;p.z=p.sz+(h[1]-p.sz)*e;p.dx=0;p.dz=1;p.vx=0;p.vz=u<1?4.4:0});
     b.x=b.z=0;
     if(m.intro<=0){kickoff(0);m.pause=1.2;banner("KICK OFF!");sfx.whistle()}
   }
