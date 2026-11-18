@@ -81,7 +81,7 @@
     m.celeb=0;
     m.pl.forEach(p=>{
       const homePos=home(p);
-      p.x=-homePos[0];
+      p.x=homePos[0];
       p.z=homePos[1];
       p.vx=0;p.vz=0;
       p.dx=p.t===0?-1:1;
@@ -389,7 +389,7 @@
 
 
 <script>
-/* KIKSTART v41.1 — realistic tunnel walkout and consistent second-half controls. */
+/* KIKSTART v41.2 — realistic tunnel walkout and consistent second-half controls. */
 (function KIKSTART_V41_MATCH_FLOW(){
   'use strict';
   if(window.__KIKSTART_V41_MATCH_FLOW__) return;
@@ -450,23 +450,90 @@
       if(timeline && !timeline.querySelector('.v41-release')){
         const item = document.createElement('article');
         item.className = 'v35-release current v41-release';
-        item.innerHTML = '<div class="v35-release-dot"></div><div class="v35-release-top"><b>v41.1</b><span>LATEST RELEASE</span></div><h3>Matchday walkouts and halftime stability</h3><p>Improved the match entrance announcement, protected the halftime intermission against early or duplicate kickoffs, and retained host-authoritative timing for online matches.</p>';
+        item.innerHTML = '<div class="v35-release-dot"></div><div class="v35-release-top"><b>v41.2</b><span>LATEST RELEASE</span></div><h3>Matchday walkouts and halftime stability</h3><p>Improved the match entrance announcement, protected the halftime intermission against early or duplicate kickoffs, and retained host-authoritative timing for online matches.</p>';
         timeline.prepend(item);
       }
       const pill = root && root.querySelector('.v35-version-pill');
-      if(pill) pill.textContent = 'CURRENT · v41.1';
+      if(pill) pill.textContent = 'CURRENT · v41.2';
     }
     return result;
   };
 
-  document.title = 'KIKSTART v41.1 — Matchday Stability Update';
+  document.title = 'KIKSTART v41.2 — Matchday Stability Update';
   const meta = document.querySelector('meta[name="kikstart-game-version"]');
   if(meta) meta.content = '41.1';
   window.KIKSTART_GAME_VERSION = '41.1';
-  document.querySelectorAll('#top .ks-build-version').forEach(el => el.textContent = 'KIKSTART v41.1');
+  document.querySelectorAll('#top .ks-build-version').forEach(el => el.textContent = 'KIKSTART v41.2');
   const footer = document.querySelector('.ks-boot-footer');
-  if(footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v41.1';
-  console.info('KIKSTART v41.1 ready: match walkout announcement and guarded halftime restart.');
+  if(footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v41.2';
+  console.info('KIKSTART v41.2 ready: match walkout announcement and guarded halftime restart.');
+})();
+</script>
+
+
+<script>
+/* KIKSTART v41.2 — second-half tunnel restart, full-time presentation and touchline controls. */
+(function KIKSTART_V412_MATCH_FIXES(){
+  'use strict';
+  if(window.__KIKSTART_V412__) return;
+  window.__KIKSTART_V412__ = true;
+  const v412BaseKickoff = kickoff;
+  kickoff = function(team){
+    const m=M;
+    if(m && m.half && m.v412WalkoutActive){
+      m.v412WalkoutActive=false;
+      return v412BaseKickoff.call(this,1);
+    }
+    const secondHalfRestart=!!(m&&m.half&&m.v22HalfTime&&!m.v412WalkoutDone&&m.onlineRole!=='guest');
+    const result=v412BaseKickoff.apply(this,arguments);
+    if(secondHalfRestart&&m&&M===m&&!m.over){
+      m.v412WalkoutDone=true;m.v412WalkoutActive=true;
+      const F=m.F;
+      m.pl.forEach(p=>{
+        p.sx=(p.i-F.n/2)*1.3*F.ps*(p.t?-1:1);
+        p.sz=-(F.W/2+20);p.walkDelay=p.i*.11+(p.t?.12:0);
+        p.x=p.sx;p.z=p.sz;p.vx=p.vz=0;p.dx=0;p.dz=1;
+      });
+      m.owner=null;m.ctrl=null;
+      m.ball.x=m.ball.z=0;m.ball.vx=m.ball.vy=m.ball.vz=0;m.ball.y=.5*F.ps;
+      m.intro=5.8;m.pause=0;m.wait=false;
+      try{banner('SECOND HALF · PLAYERS RETURN TO THE PITCH');}catch(_){}
+    }
+    return result;
+  };
+
+  const v412BaseFinish=finishMatch;
+  finishMatch=function(forfeit){
+    const m=M,result=v412BaseFinish.apply(this,arguments);
+    if(!m||!m.over)return result;
+    const homeName=(typeof CL!=='undefined'&&S&&CL[S.club])?CL[S.club].n:'Your club';
+    const awayName=m.team&&m.team.n?m.team.n:'Opposition';
+    const hs=Number(m.score[0])||0,as=Number(m.score[1])||0;
+    const outcome=forfeit?'MATCH FORFEITED':hs>as?'FULL TIME · VICTORY':hs<as?'FULL TIME · DEFEAT':'FULL TIME · DRAW';
+    const subs=Array.isArray(m.v22SubLog)?m.v22SubLog:[];
+    const subHtml=subs.length?'<div class="v412-result-sublist"><b>SUBSTITUTIONS</b>'+subs.map(x=>'<div>'+esc(x.off||'Player')+' <span>→</span> '+esc(x.on||'Player')+'</div>').join('')+'</div>':'<div class="v412-result-sublist"><b>SUBSTITUTIONS</b><div>No substitutions made</div></div>';
+    const stats=[['Shots',Number(m.v22Stats&&m.v22Stats.shots)||0],['Passes',Number(m.v22Stats&&m.v22Stats.passes)||0],['Tackles',Number(m.v22Stats&&m.v22Stats.tackles)||0],['Subs',Number(m.v22SubsUsed)||0]];
+    const statsHtml=stats.map(x=>'<div><b>'+x[1]+'</b><small>'+x[0]+'</small></div>').join('');
+    const box=$('endBox');
+    if(box){
+      box.innerHTML='<section class="v412-result-card"><div class="v412-result-kicker">KIKSTART · MATCH CENTRE</div><h2>'+outcome+'</h2><div class="v412-scoreline"><div><b>'+esc(homeName)+'</b><strong>'+hs+'</strong></div><i>—</i><div><strong>'+as+'</strong><b>'+esc(awayName)+'</b></div></div><div class="v412-result-stats">'+statsHtml+'</div>'+subHtml+'<div class="v412-result-actions"><button onclick="backToLobby()">BACK TO MATCH HUB</button><button class="alt" onclick="backToLobby();showTab(\'table\')">VIEW LEAGUE TABLE</button></div></section>';
+      box.style.display='block';box.setAttribute('role','dialog');box.setAttribute('aria-label','Full-time match result');
+    }
+    return result;
+  };
+
+  const style=document.createElement('style');
+  style.id='kikstart-v412-match-screen-style';
+  style.textContent='#matchView.ks-v404-fullscreen #v22LiveMatchTools.active{position:absolute!important;left:50%!important;bottom:12px!important;top:auto!important;transform:translateX(-50%)!important;width:min(960px,calc(100% - 24px))!important;max-width:calc(100% - 24px)!important;margin:0!important;z-index:90!important;justify-content:center!important;backdrop-filter:blur(12px)!important;background:rgba(5,14,29,.94)!important;border-color:#5e83a8!important;box-shadow:0 12px 36px #000a!important}#matchView.ks-v404-fullscreen #v22LiveMatchTools select{max-width:190px!important;min-width:120px!important}#matchView.ks-v404-fullscreen>p{display:none!important}#matchView.ks-v404-fullscreen #endBox[style*="display: block"]{position:absolute!important;inset:0!important;z-index:2147483000!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:auto!important;padding:22px!important;box-sizing:border-box!important;margin:0!important;max-width:none!important;background:rgba(2,7,17,.91)!important;backdrop-filter:blur(12px)!important;font-size:16px!important}.v412-result-card{width:min(720px,94vw);max-height:90%;overflow:auto;padding:clamp(18px,4vw,34px);border:1px solid #42658c;border-radius:22px;background:linear-gradient(145deg,#142744,#07111f);box-shadow:0 25px 90px #000c;color:#f4f8ff;text-align:center}.v412-result-kicker{font-size:11px;letter-spacing:.22em;color:#91d8ff;font-weight:900}.v412-result-card h2{font-size:clamp(22px,4vw,34px);margin:10px 0 20px}.v412-scoreline{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;padding:18px 8px;border-block:1px solid #ffffff20}.v412-scoreline>div{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}.v412-scoreline b{font-size:clamp(12px,2vw,17px)}.v412-scoreline strong{font-size:clamp(36px,7vw,58px)}.v412-scoreline i{font-style:normal;color:#8ca4c2;font-size:24px}.v412-result-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:16px 0}.v412-result-stats>div{padding:12px 6px;border-radius:12px;background:#ffffff0c}.v412-result-stats b,.v412-result-stats small{display:block}.v412-result-stats b{font-size:23px}.v412-result-stats small{color:#a9bdd5;font-size:11px}.v412-result-sublist{text-align:left;margin:14px 0;padding:13px;border-radius:12px;background:#ffffff0c}.v412-result-sublist>b{display:block;color:#91d8ff;font-size:11px;letter-spacing:.12em;margin-bottom:7px}.v412-result-sublist div{padding:4px 0;font-size:13px}.v412-result-sublist span{color:#8fe2d5;padding:0 8px}.v412-result-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:18px}@media(max-width:700px){#matchView.ks-v404-fullscreen #v22LiveMatchTools.active{bottom:6px!important;gap:5px!important;padding:7px!important;width:calc(100% - 12px)!important;max-width:calc(100% - 12px)!important}#matchView.ks-v404-fullscreen #v22LiveMatchTools select{min-width:0!important;max-width:32%!important;padding:7px 5px!important;font-size:11px!important}.v412-result-stats{grid-template-columns:repeat(2,1fr)}}';
+  document.head.appendChild(style);
+  const resize=()=>{
+    if(typeof renderer==='undefined'||!renderer||typeof camera==='undefined'||!camera)return;
+    const stage=$('stage');if(!stage)return;
+    const r=stage.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height));
+    renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+  };
+  window.addEventListener('resize',()=>requestAnimationFrame(resize));
+  console.info('KIKSTART v41.2 ready: second-half tunnel return, correct attack direction, match-screen controls and full-time results.');
 })();
 </script>
 
