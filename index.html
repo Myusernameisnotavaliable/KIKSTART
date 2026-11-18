@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d17"><title>KIKSTART v41.0</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d17"><title>KIKSTART v41.1</title>
 <style>html,body{margin:0;min-height:100%;background:#080d17;color:#fff;font:15px system-ui;display:grid;place-items:center}#status{padding:24px;text-align:center;color:#cbd5e1}</style></head>
-<body><div id="status">Loading KIKSTART v41.0…</div><script>
+<body><div id="status">Loading KIKSTART v41.1…</div><script>
 (async()=>{const status=document.getElementById('status');try{
 const parts=Array.from({length:15},(_,i)=>'site-v40.5-part-'+String(i+1).padStart(2,'0')+'.txt');
-const responses=await Promise.all(parts.map(url=>fetch(url+'?build=41.0',{cache:'no-store'})));
+const responses=await Promise.all(parts.map(url=>fetch(url+'?build=41.1',{cache:'no-store'})));
 const bad=responses.findIndex(r=>!r.ok);if(bad!==-1)throw new Error('Game source part '+(bad+1)+' failed (HTTP '+responses[bad].status+').');
 const source=(await Promise.all(responses.map(r=>r.text()))).join('\n');
-if(!/window\.KIKSTART_GAME_VERSION\s*=\s*[\'"]41\.0[\'"]/.test(source)||!source.trimEnd().endsWith('</html>'))throw new Error('The game source failed its v41.0 integrity check.');
+if(!/window\.KIKSTART_GAME_VERSION\s*=\s*[\'"]41\.0[\'"]/.test(source)||!source.trimEnd().endsWith('</html>'))throw new Error('The game source failed its v41.1 integrity check.');
 document.open();document.write(source);document.close();
 }catch(e){status.textContent='KIKSTART could not load: '+e.message;console.error(e);}})();
 </script></body></html>
