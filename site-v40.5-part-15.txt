@@ -1164,5 +1164,112 @@
 })();
 </script>
 
+<script>
+/* KIKSTART v41.7 — fullscreen viewport, no page-pan and reliable canvas resize. */
+(function KIKSTART_V417_FULLSCREEN_REPAIR(){
+  'use strict';
+  if(window.__KIKSTART_V417__)return;
+  window.__KIKSTART_V417__=true;
+  const match=document.getElementById('matchView');
+  const stage=document.getElementById('stage');
+  if(!match||!stage)return;
+
+  const css=document.createElement('style');
+  css.id='kikstart-v417-fullscreen-repair';
+  css.textContent=`
+    html.ks-v404-fullscreen-active,body.ks-v404-fullscreen-active{
+      position:fixed!important;inset:0!important;width:100%!important;height:100%!important;
+      min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;
+      overflow:hidden!important;overscroll-behavior:none!important;touch-action:pan-x pan-y!important;
+    }
+    body.ks-v404-fullscreen-active{touch-action:none!important}
+    #matchView.ks-v404-fullscreen{
+      position:fixed!important;inset:0!important;left:0!important;top:0!important;
+      width:100vw!important;width:100dvw!important;height:100vh!important;height:100dvh!important;
+      min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
+      margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
+      display:block!important;overflow:hidden!important;overscroll-behavior:none!important;
+      touch-action:none!important;transform:none!important;box-sizing:border-box!important;
+      background:#02050b!important;
+    }
+    #matchView.ks-v404-fullscreen #stage{
+      position:absolute!important;inset:0!important;left:0!important;top:0!important;
+      width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+      max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;
+      border:0!important;border-radius:0!important;display:block!important;overflow:hidden!important;
+      touch-action:none!important;
+    }
+    #matchView.ks-v404-fullscreen #stage>canvas:not(#v5mini){
+      position:absolute!important;inset:0!important;left:0!important;top:0!important;
+      display:block!important;width:100%!important;height:100%!important;
+      min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
+      margin:0!important;padding:0!important;touch-action:none!important;
+    }
+    html.ks-v404-fullscreen-active,html.ks-v404-fullscreen-active body,
+    body.ks-v404-fullscreen-active #matchView{overflow:hidden!important;overscroll-behavior:none!important}
+  `;
+  document.head.appendChild(css);
+
+  let resizeQueued=false;
+  function resizeFullscreen(){
+    resizeQueued=false;
+    if(!match.classList.contains('ks-v404-fullscreen') &&
+       document.fullscreenElement!==match &&
+       document.webkitFullscreenElement!==match)return;
+    const w=Math.max(1,Math.round(stage.clientWidth||window.innerWidth));
+    const h=Math.max(1,Math.round(stage.clientHeight||window.innerHeight));
+    try{
+      if(typeof v38ResizeMatch==='function')v38ResizeMatch();
+      if(typeof v39Resize==='function')v39Resize();
+      if(typeof resizeRenderer==='function')resizeRenderer();
+      if(typeof camera!=='undefined'&&camera&&camera.isCamera){
+        camera.aspect=w/h;camera.updateProjectionMatrix();
+      }
+    }catch(e){console.warn('[KIKSTART v41.7] viewport resize:',e);}
+  }
+  function queueResize(){
+    if(resizeQueued)return;
+    resizeQueued=true;
+    requestAnimationFrame(resizeFullscreen);
+  }
+  if(window.ResizeObserver)new ResizeObserver(queueResize).observe(stage);
+  window.addEventListener('resize',queueResize,{passive:true});
+  window.addEventListener('orientationchange',()=>requestAnimationFrame(queueResize),{passive:true});
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',queueResize,{passive:true});
+    window.visualViewport.addEventListener('scroll',()=>{
+      if(match.classList.contains('ks-v404-fullscreen'))window.scrollTo(0,0);
+    },{passive:true});
+  }
+  document.addEventListener('fullscreenchange',queueResize);
+  document.addEventListener('webkitfullscreenchange',queueResize);
+  document.addEventListener('touchmove',e=>{
+    if(match.classList.contains('ks-v404-fullscreen') &&
+       !e.target.closest('#mobileControls,#joyBase,.v27-mobile-actions button,#ksFullscreenMenuPanel')){
+      e.preventDefault();
+    }
+  },{passive:false,capture:true});
+  const previousToggle=window.KS_toggleFullscreen;
+  if(typeof previousToggle==='function'&&!previousToggle.__ksV417Wrapped){
+    const wrapped=async function(){
+      const result=await previousToggle.apply(this,arguments);
+      requestAnimationFrame(()=>requestAnimationFrame(queueResize));
+      return result;
+    };
+    wrapped.__ksV417Wrapped=true;
+    window.KS_toggleFullscreen=wrapped;
+  }
+  requestAnimationFrame(()=>requestAnimationFrame(queueResize));
+  document.title='KIKSTART v41.7 — Fullscreen Viewport Fix';
+  const meta=document.querySelector('meta[name="kikstart-game-version"]');
+  if(meta)meta.content='41.7';
+  window.KIKSTART_GAME_VERSION='41.7';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v41.7');
+  const footer=document.querySelector('.ks-boot-footer');
+  if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v41.7';
+  console.info('KIKSTART v41.7 ready: viewport fills fullscreen, horizontal page panning locked, canvas resized on viewport changes.');
+})();
+</script>
+
 </body>
 </html>
