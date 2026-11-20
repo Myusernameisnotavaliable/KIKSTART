@@ -1544,6 +1544,7 @@
   if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v41.9';
   console.info('KIKSTART v41.9 ready: match and WebGL canvas locked to the full viewport.');
 })();
+</script>
 
 <script>
 /* KIKSTART v42.0 — fullscreen layout and exit-state repair. */
@@ -1709,8 +1710,6 @@
   if(footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v42.0';
   console.info('KIKSTART v42.0 loaded: fullscreen flex layout, bounded pitch and browser-exit state cleanup.');
 })();
-</script>
-
 </script>
 
 </body>
