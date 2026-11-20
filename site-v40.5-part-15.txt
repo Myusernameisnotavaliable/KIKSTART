@@ -1413,7 +1413,7 @@
 
   const style=document.createElement('style');
   style.id='kikstart-v419-unified-fullscreen';
-  style.textContent=`
+  style.textContent=  style.textContent=`
     html.ks-v404-fullscreen-active,html.v39-lock-screen,html.v38-fullscreen-active,
     body.ks-v404-fullscreen-active,body.v39-lock-screen,body.v38-body-fullscreen{
       position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;
@@ -1424,27 +1424,40 @@
     #matchView.ks-v404-fullscreen,#matchView.v39-fullscreen,
     #matchView.v38-fullscreen,#matchView.v33-game-fullscreen,
     #matchView:fullscreen,#matchView:-webkit-full-screen{
-      position:fixed!important;inset:0!important;top:0!important;right:0!important;
-      bottom:0!important;left:0!important;z-index:2147483647!important;
-      display:block!important;box-sizing:border-box!important;
-      width:100vw!important;width:100dvw!important;
-      height:100vh!important;height:100dvh!important;
-      min-width:100vw!important;min-height:100vh!important;min-height:100dvh!important;
-      max-width:none!important;max-height:none!important;
-      margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
-      gap:0!important;overflow:hidden!important;overflow-x:hidden!important;
+      position:fixed!important;inset:0!important;z-index:2147483647!important;
+      display:flex!important;flex-direction:column!important;align-items:stretch!important;
+      box-sizing:border-box!important;width:100vw!important;width:100dvw!important;
+      height:100vh!important;height:100dvh!important;min-width:0!important;min-height:0!important;
+      max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;
+      border:0!important;border-radius:0!important;gap:0!important;overflow:hidden!important;
       overscroll-behavior:none!important;touch-action:none!important;transform:none!important;
       background:#02050b!important;
     }
-    #matchView.ks-v404-fullscreen #stage,#matchView.v39-fullscreen #stage,
-    #matchView.v38-fullscreen #stage,#matchView.v33-game-fullscreen #stage,
-    #matchView:fullscreen #stage,#matchView:-webkit-full-screen #stage{
-      position:absolute!important;inset:0!important;top:0!important;right:0!important;
-      bottom:0!important;left:0!important;display:block!important;flex:none!important;
-      width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;
+    #matchView.ks-v404-fullscreen #ksMatchTopbar,
+    #matchView.ks-v404-fullscreen .ks-match-topbar,
+    #matchView.v39-fullscreen #ksMatchTopbar,
+    #matchView.v39-fullscreen .ks-match-topbar,
+    #matchView.v38-fullscreen #ksMatchTopbar,
+    #matchView.v38-fullscreen .ks-match-topbar,
+    #matchView.v33-game-fullscreen #ksMatchTopbar,
+    #matchView.v33-game-fullscreen .ks-match-topbar,
+    #matchView:fullscreen #ksMatchTopbar,
+    #matchView:fullscreen .ks-match-topbar,
+    #matchView:-webkit-full-screen #ksMatchTopbar,
+    #matchView:-webkit-full-screen .ks-match-topbar{
+      position:relative!important;inset:auto!important;flex:0 0 auto!important;
+      width:100%!important;max-width:none!important;margin:0!important;border-radius:0!important;
+    }
+    #matchView.ks-v404-fullscreen #stage,
+    #matchView.v39-fullscreen #stage,
+    #matchView.v38-fullscreen #stage,
+    #matchView.v33-game-fullscreen #stage,
+    #matchView:fullscreen #stage,
+    #matchView:-webkit-full-screen #stage{
+      position:relative!important;inset:auto!important;flex:1 1 0!important;
+      width:100%!important;height:0!important;min-width:0!important;min-height:0!important;
       max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;
-      border:0!important;border-radius:0!important;overflow:hidden!important;
-      touch-action:none!important;transform:none!important;
+      border:0!important;border-radius:0!important;overflow:hidden!important;touch-action:none!important;
     }
     #matchView.ks-v404-fullscreen #stage>canvas:not(#v5mini),
     #matchView.v39-fullscreen #stage>canvas:not(#v5mini),
@@ -1453,7 +1466,7 @@
     #matchView:fullscreen #stage>canvas:not(#v5mini),
     #matchView:-webkit-full-screen #stage>canvas:not(#v5mini){
       position:absolute!important;inset:0!important;display:block!important;
-      width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;
+      width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
       max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;
       touch-action:none!important;
     }
@@ -1468,9 +1481,52 @@
       aspect-ratio:168/104!important;max-width:25%!important;max-height:20%!important;
       min-width:0!important;min-height:0!important;z-index:35!important;
     }
+    #matchView.ks-v404-fullscreen #ksControlDeck,
+    #matchView.ks-v404-fullscreen #v22LiveMatchTools,
+    #matchView.ks-v404-fullscreen #endBox,
+    #matchView.v39-fullscreen #ksControlDeck,
+    #matchView.v39-fullscreen #v22LiveMatchTools,
+    #matchView.v39-fullscreen #endBox,
+    #matchView.v38-fullscreen #ksControlDeck,
+    #matchView.v38-fullscreen #v22LiveMatchTools,
+    #matchView.v38-fullscreen #endBox,
+    #matchView.v33-game-fullscreen #ksControlDeck,
+    #matchView.v33-game-fullscreen #v22LiveMatchTools,
+    #matchView.v33-game-fullscreen #endBox,
+    #matchView:fullscreen #ksControlDeck,
+    #matchView:fullscreen #v22LiveMatchTools,
+    #matchView:fullscreen #endBox,
+    #matchView:-webkit-full-screen #ksControlDeck,
+    #matchView:-webkit-full-screen #v22LiveMatchTools,
+    #matchView:-webkit-full-screen #endBox{
+      position:relative!important;flex:0 0 auto!important;width:100%!important;
+      max-width:none!important;margin:0!important;overflow-x:hidden!important;
+    }
     #matchView.ks-v404-fullscreen>p,#matchView.v39-fullscreen>p,
     #matchView.v38-fullscreen>p,#matchView.v33-game-fullscreen>p,
     #matchView:fullscreen>p,#matchView:-webkit-full-screen>p{display:none!important}
+    #matchView.ks-v404-fullscreen #stage *,
+    #matchView.v39-fullscreen #stage *,
+    #matchView.v38-fullscreen #stage *,
+    #matchView.v33-game-fullscreen #stage *,
+    #matchView:fullscreen #stage *,
+    #matchView:-webkit-full-screen #stage *{overscroll-behavior:contain}
+    @media(max-width:700px){
+      #matchView.ks-v404-fullscreen #stage,
+      #matchView.v39-fullscreen #stage,
+      #matchView.v38-fullscreen #stage,
+      #matchView.v33-game-fullscreen #stage,
+      #matchView:fullscreen #stage,
+      #matchView:-webkit-full-screen #stage{flex:1 1 0!important}
+      #matchView.ks-v404-fullscreen #stage>canvas#v5mini,
+      #matchView.v39-fullscreen #stage>canvas#v5mini,
+      #matchView.v38-fullscreen #stage>canvas#v5mini,
+      #matchView.v33-game-fullscreen #stage>canvas#v5mini,
+      #matchView:fullscreen #stage>canvas#v5mini,
+      #matchView:-webkit-full-screen #stage>canvas#v5mini{
+        width:94px!important;max-width:25%!important;top:6px!important;right:6px!important;
+      }
+    }
   `;
   document.head.appendChild(style);
 
