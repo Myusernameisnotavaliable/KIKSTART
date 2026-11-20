@@ -1544,6 +1544,173 @@
   if(footer)footer.textContent='KIKSTART · FOOTBALL EXPERIENCE · v41.9';
   console.info('KIKSTART v41.9 ready: match and WebGL canvas locked to the full viewport.');
 })();
+
+<script>
+/* KIKSTART v42.0 — fullscreen layout and exit-state repair. */
+(function KIKSTART_V420_FULLSCREEN_RELIABILITY(){
+  'use strict';
+  if(window.__KIKSTART_V420__) return;
+  window.__KIKSTART_V420__ = true;
+  const match = document.getElementById('matchView');
+  const stage = document.getElementById('stage');
+  if(!match || !stage) return;
+
+  const stateClasses = ['ks-v404-fullscreen','v39-fullscreen','v38-fullscreen','v33-game-fullscreen'];
+  const isNativeFullscreen = () =>
+    document.fullscreenElement === match || document.webkitFullscreenElement === match;
+  const isActive = () =>
+    isNativeFullscreen() || window.__kikstartNativeFullscreen === true ||
+    stateClasses.some(name => match.classList.contains(name));
+
+  let wasNativeFullscreen = isNativeFullscreen();
+  function setClassState(active){
+    stateClasses.forEach(name => match.classList.toggle(name, active));
+    document.documentElement.classList.toggle('ks-v404-fullscreen-active', active);
+    document.body.classList.toggle('ks-v404-fullscreen-active', active);
+    document.documentElement.classList.toggle('v38-fullscreen-active', active);
+    document.body.classList.toggle('v38-body-fullscreen', active);
+    document.documentElement.classList.toggle('v39-lock-screen', active);
+    document.body.classList.toggle('v39-lock-screen', active);
+    const button = document.getElementById('ksFullscreenButton');
+    if(button){
+      button.textContent = active ? '⛶ EXIT FULL SCREEN' : '⛶ FULL SCREEN';
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      button.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
+    }
+  }
+
+  const style = document.createElement('style');
+  style.id = 'kikstart-v420-fullscreen-reliability';
+  style.textContent = `
+    html.ks-v404-fullscreen-active,html.v38-fullscreen-active,html.v39-lock-screen,
+    body.ks-v404-fullscreen-active,body.v38-body-fullscreen,body.v39-lock-screen{
+      position:fixed!important;inset:0!important;width:100%!important;height:100%!important;
+      min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;
+      overflow:hidden!important;overflow-x:hidden!important;overscroll-behavior:none!important;
+      touch-action:none!important;
+    }
+    #matchView.ks-v404-fullscreen,#matchView.v39-fullscreen,
+    #matchView.v38-fullscreen,#matchView.v33-game-fullscreen,
+    #matchView:fullscreen,#matchView:-webkit-full-screen{
+      position:fixed!important;inset:0!important;z-index:2147483647!important;
+      display:flex!important;flex-direction:column!important;align-items:stretch!important;
+      box-sizing:border-box!important;width:100%!important;height:100%!important;
+      min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
+      margin:0!important;padding:0!important;gap:0!important;border:0!important;border-radius:0!important;
+      overflow:hidden!important;overflow-x:hidden!important;overscroll-behavior:none!important;
+      touch-action:none!important;transform:none!important;background:#02050b!important;
+    }
+    #matchView.ks-v404-fullscreen #stage,#matchView.v39-fullscreen #stage,
+    #matchView.v38-fullscreen #stage,#matchView.v33-game-fullscreen #stage,
+    #matchView:fullscreen #stage,#matchView:-webkit-full-screen #stage{
+      position:relative!important;inset:auto!important;flex:1 1 0!important;
+      display:block!important;width:100%!important;height:0!important;
+      min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
+      margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
+      overflow:hidden!important;touch-action:none!important;
+    }
+    #matchView.ks-v404-fullscreen #stage>canvas:not(#v5mini),
+    #matchView.v39-fullscreen #stage>canvas:not(#v5mini),
+    #matchView.v38-fullscreen #stage>canvas:not(#v5mini),
+    #matchView.v33-game-fullscreen #stage>canvas:not(#v5mini),
+    #matchView:fullscreen #stage>canvas:not(#v5mini),
+    #matchView:-webkit-full-screen #stage>canvas:not(#v5mini){
+      position:absolute!important;inset:0!important;display:block!important;
+      width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+      max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;
+      touch-action:none!important;
+    }
+    #matchView.ks-v404-fullscreen #stage>canvas#v5mini,
+    #matchView.v39-fullscreen #stage>canvas#v5mini,
+    #matchView.v38-fullscreen #stage>canvas#v5mini,
+    #matchView.v33-game-fullscreen #stage>canvas#v5mini{
+      position:absolute!important;top:10px!important;right:10px!important;left:auto!important;bottom:auto!important;
+      width:clamp(88px,11vw,142px)!important;height:auto!important;aspect-ratio:168/104!important;
+      max-width:25%!important;max-height:20%!important;min-width:0!important;min-height:0!important;z-index:40!important;
+    }
+    #matchView.ks-v404-fullscreen #ksFullscreenMenuButton,
+    #matchView.ks-v404-fullscreen #ksFullscreenMenuPanel{z-index:2147483647!important}
+  `;
+  document.head.appendChild(style);
+
+  let queued = false;
+  function resizeRendererToStage(){
+    queued = false;
+    if(!isActive()) return;
+    const rect = stage.getBoundingClientRect();
+    const width = Math.max(1,Math.round(rect.width || window.innerWidth || 1));
+    const height = Math.max(1,Math.round(rect.height || window.innerHeight || 1));
+    try{
+      if(typeof renderer !== 'undefined' && renderer && typeof renderer.setSize === 'function'){
+        if(typeof renderer.setPixelRatio === 'function')
+          renderer.setPixelRatio(Math.min(2,window.devicePixelRatio || 1));
+        renderer.setSize(width,height,false);
+      }
+      if(typeof camera !== 'undefined' && camera){
+        camera.aspect = width / height;
+        if(typeof camera.updateProjectionMatrix === 'function') camera.updateProjectionMatrix();
+      }
+    }catch(error){ console.warn('[KIKSTART v42.0] renderer resize:',error); }
+  }
+  function queueResize(){
+    if(queued) return;
+    queued = true;
+    requestAnimationFrame(()=>requestAnimationFrame(resizeRendererToStage));
+  }
+  function sync(fromFullscreenChange){
+    const nativeNow = isNativeFullscreen();
+    // Escape from browser fullscreen must clear the fallback classes too.
+    if(fromFullscreenChange && wasNativeFullscreen && !nativeNow &&
+       window.__kikstartNativeFullscreen !== true){
+      setClassState(false);
+    }else{
+      setClassState(isActive());
+    }
+    wasNativeFullscreen = nativeNow;
+    if(isActive()){
+      try{ window.scrollTo(0,0); }catch(_){}
+    }
+    queueResize();
+  }
+
+  const previousToggle = window.KS_toggleFullscreen;
+  if(typeof previousToggle === 'function' && !previousToggle.__ksV420Wrapped){
+    const wrapped = async function(){
+      const result = await previousToggle.apply(this,arguments);
+      sync(false);
+      requestAnimationFrame(()=>{ if(typeof window.KS_refreshFullscreenUI === 'function') window.KS_refreshFullscreenUI(); });
+      return result;
+    };
+    wrapped.__ksV420Wrapped = true;
+    window.KS_toggleFullscreen = wrapped;
+  }
+  if(window.ResizeObserver){
+    const observer = new ResizeObserver(queueResize);
+    observer.observe(match);
+    observer.observe(stage);
+  }
+  window.addEventListener('resize',()=>sync(false),{passive:true});
+  window.addEventListener('orientationchange',()=>sync(false),{passive:true});
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',()=>sync(false),{passive:true});
+  }
+  document.addEventListener('fullscreenchange',()=>sync(true));
+  document.addEventListener('webkitfullscreenchange',()=>sync(true));
+  const classObserver = new MutationObserver(()=>sync(false));
+  classObserver.observe(match,{attributes:true,attributeFilter:['class']});
+  sync(false);
+
+  document.title = 'KIKSTART v42.0 — Fullscreen Reliability';
+  const meta = document.querySelector('meta[name="kikstart-game-version"]');
+  if(meta) meta.content = '42.0';
+  window.KIKSTART_GAME_VERSION = '42.0';
+  document.querySelectorAll('#top .ks-build-version').forEach(el=>el.textContent='KIKSTART v42.0');
+  const footer = document.querySelector('.ks-boot-footer');
+  if(footer) footer.textContent = 'KIKSTART · FOOTBALL EXPERIENCE · v42.0';
+  console.info('KIKSTART v42.0 loaded: fullscreen flex layout, bounded pitch and browser-exit state cleanup.');
+})();
+</script>
+
 </script>
 
 </body>
