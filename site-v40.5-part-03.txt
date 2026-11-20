@@ -566,6 +566,13 @@
     }
     let tx=b.x*.72+cl(b.vx*.28,-9,9),ty=(29+Math.min(7,bs*.22))*cs,tz=(35+Math.min(9,bs*.3))*cs,lx=null,fov=50;
     if(m.pause>.4&&m.scorer&&m.celeb){const s=m.scorer;tx=s.x;ty=8*cs+3;tz=s.z+15*cs;lx=s;fov=42}
+    else{
+      // Frame the pitch more tightly on wide fullscreen displays. Scale the
+      // camera's offset from its look-at point, keeping portrait views looser.
+      const zoom=cl(1.25/Math.max(.85,camera.aspect||1),.82,1.08);
+      ty*=zoom;
+      tz=3*cs+(tz-3*cs)*zoom;
+    }
     const k=Math.min(1,dt*(lx?2.4:3.2));camera.position.x+=(tx-camera.position.x)*k;camera.position.y+=(ty-camera.position.y)*k;camera.position.z+=(tz-camera.position.z)*k;
     if(m.camShake>0){camera.position.x+=(rnd()-.5)*m.camShake;camera.position.y+=(rnd()-.5)*m.camShake*.6;m.camShake=Math.max(0,m.camShake-dt*2.4)}
     camera.fov+=(fov-camera.fov)*Math.min(1,dt*3);camera.updateProjectionMatrix();
