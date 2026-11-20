@@ -608,6 +608,23 @@
   menuButton.setAttribute('aria-expanded','false');
   match.appendChild(menuButton);
 
+  // Detach the match from the page's tab/layout wrappers while fullscreen is active.
+  // This prevents ancestor sizing/overflow rules from leaving page content around or below it.
+  const matchReturnMarker = document.createComment('KIKSTART match return position');
+  let matchDetachedForFullscreen = false;
+  function detachMatchForFullscreen(){
+    if(matchDetachedForFullscreen || !match.parentNode) return;
+    match.parentNode.insertBefore(matchReturnMarker,match);
+    document.body.appendChild(match);
+    matchDetachedForFullscreen = true;
+  }
+  function restoreMatchToPage(){
+    if(!matchDetachedForFullscreen) return;
+    if(matchReturnMarker.parentNode) matchReturnMarker.parentNode.insertBefore(match,matchReturnMarker);
+    matchReturnMarker.remove();
+    matchDetachedForFullscreen = false;
+  }
+
   const parked = new Map();
   function parkInMenu(id){
     const node = document.getElementById(id);
@@ -653,11 +670,13 @@
     const active = fullscreenIsActive();
     menuButton.style.display = active ? 'grid' : 'none';
     if(active){
+      detachMatchForFullscreen();
       parkInMenu('v22LiveMatchTools');
       parkInMenu('ksControlDeck');
     }else{
       setMenuOpen(false);
       restoreControls();
+      restoreMatchToPage();
     }
     requestAnimationFrame(resizePitch);
   }
@@ -707,7 +726,11 @@
   if(typeof window.KS_toggleFullscreen==='function' && !window.KS_toggleFullscreen.__ksV414Wrapped){
     const previousToggle=window.KS_toggleFullscreen;
     const wrappedToggle=async function(){
+      const currentlyActive=fullscreenIsActive();
+      const next=typeof arguments[0]==='boolean'?arguments[0]:!currentlyActive;
+      if(next) detachMatchForFullscreen();
       const result=await previousToggle.apply(this,arguments);
+      if(!fullscreenIsActive()) restoreMatchToPage();
       requestAnimationFrame(syncFullscreenMenu);
       return result;
     };
