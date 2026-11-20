@@ -555,18 +555,22 @@
       c.fillStyle="#fff";c.beginPath();c.arc((b.x+F.L/2)*sx,(b.z+F.W/2)*sz,2.4,0,6.3);c.fill()}
   };
   window.V5_camera=function(dt){
-    const m=M,F=m.F;
-    // Keep the entire playing surface in view. An overhead camera excludes
-    // the technical areas, substitutes and stadium seating from match footage.
-    const aspect=Math.max(.5,camera.aspect||1);
-    const fieldSpan=Math.max(F.W,F.L/aspect);
-    const distance=fieldSpan/(2*Math.tan(20*Math.PI/180))*1.08;
-    camera.up.set(0,0,-1);
-    camera.position.set(0,distance,0.001);
-    camera.fov=40;
-    camera.lookAt(0,0,0);
-    camera.updateProjectionMatrix();
-  };
+    const m=M,b=m.ball,cs=m.F.sc>.9?1:.45,bs=hyp(b.vx,b.vz);
+    if(m.intro>0){
+      const progress=cl((5.8-m.intro)/5.8,0,1);
+      const tx=b.x*.72*progress,ty=5.5+(29+Math.min(7,bs*.22))*cs*progress,tz=-(m.F.W/2+24)+((35+Math.min(9,bs*.3))*cs+m.F.W/2+24)*progress;
+      const k=Math.min(1,dt*2.6);camera.position.x+=(tx-camera.position.x)*k;camera.position.y+=(ty-camera.position.y)*k;camera.position.z+=(tz-camera.position.z)*k;
+      camera.fov+=(52-camera.fov)*Math.min(1,dt*3);camera.updateProjectionMatrix();
+      const lookZ=-(m.F.W/2+3)+(3*cs+m.F.W/2+3)*progress;camera.lookAt(b.x*.35*progress,2,lookZ);
+      return;
+    }
+    let tx=b.x*.72+cl(b.vx*.28,-9,9),ty=(29+Math.min(7,bs*.22))*cs,tz=(35+Math.min(9,bs*.3))*cs,lx=null,fov=50;
+    if(m.pause>.4&&m.scorer&&m.celeb){const s=m.scorer;tx=s.x;ty=8*cs+3;tz=s.z+15*cs;lx=s;fov=42}
+    const k=Math.min(1,dt*(lx?2.4:3.2));camera.position.x+=(tx-camera.position.x)*k;camera.position.y+=(ty-camera.position.y)*k;camera.position.z+=(tz-camera.position.z)*k;
+    if(m.camShake>0){camera.position.x+=(rnd()-.5)*m.camShake;camera.position.y+=(rnd()-.5)*m.camShake*.6;m.camShake=Math.max(0,m.camShake-dt*2.4)}
+    camera.fov+=(fov-camera.fov)*Math.min(1,dt*3);camera.updateProjectionMatrix();
+    camera.lookAt(lx?lx.x:camera.position.x,lx?2:0,lx?lx.z:3*cs);
+  };;
 })();
 
 </script>
