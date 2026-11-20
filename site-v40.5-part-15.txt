@@ -1192,6 +1192,10 @@
  #matchView.ks-v404-fullscreen #ksControlDeck,#matchView.v39-fullscreen #ksControlDeck,#matchView.v38-fullscreen #ksControlDeck,#matchView.v33-game-fullscreen #ksControlDeck,#matchView:fullscreen #ksControlDeck,#matchView:-webkit-full-screen #ksControlDeck{display:flex!important;flex-direction:column!important;gap:8px!important;width:100%!important;max-width:none!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
  #matchView.ks-v404-fullscreen #mobileControls.v38-mobile-live,#matchView.v39-fullscreen #mobileControls.v38-mobile-live,#matchView.v38-fullscreen #mobileControls.v38-mobile-live,#matchView.v33-game-fullscreen #mobileControls.v38-mobile-live,#matchView:fullscreen #mobileControls.v38-mobile-live,#matchView:-webkit-full-screen #mobileControls.v38-mobile-live{position:relative!important;inset:auto!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;width:100%!important;max-width:none!important;margin:0!important;pointer-events:auto!important}
  #matchView.ks-v404-fullscreen #mobileControls.v39-mobile-live,#matchView.v39-fullscreen #mobileControls.v39-mobile-live,#matchView.v38-fullscreen #mobileControls.v39-mobile-live,#matchView.v33-game-fullscreen #mobileControls.v39-mobile-live,#matchView:fullscreen #mobileControls.v39-mobile-live,#matchView:-webkit-full-screen #mobileControls.v39-mobile-live{position:relative!important;inset:auto!important;width:100%!important;max-width:none!important;margin:0!important;pointer-events:auto!important}
+ #ksFullscreenSubsButton,#ksFullscreenTacticsButton{position:absolute!important;top:10px!important;right:60px!important;bottom:auto!important;z-index:2147483646!important;display:grid!important;place-items:center!important;width:42px!important;height:42px!important;padding:0!important;border:1px solid #ffffff45!important;border-radius:13px!important;background:rgba(5,15,30,.88)!important;color:#fff!important;font-size:19px!important;font-weight:900!important;box-shadow:0 5px 18px #0007!important;cursor:pointer!important}
+ #ksFullscreenTacticsButton{right:110px!important}
+ #ksFullscreenSubsButton:hover,#ksFullscreenTacticsButton:hover{filter:brightness(1.2)!important}
+ @media(max-width:520px){#ksFullscreenSubsButton,#ksFullscreenTacticsButton{width:38px!important;height:38px!important;top:8px!important}#ksFullscreenSubsButton{right:52px!important}#ksFullscreenTacticsButton{right:96px!important}}
  #matchView.ks-v404-fullscreen #stage,#matchView.v39-fullscreen #stage,#matchView.v38-fullscreen #stage,#matchView.v33-game-fullscreen #stage,#matchView:fullscreen #stage,#matchView:-webkit-full-screen #stage{position:relative!important;inset:auto!important;flex:1 1 0!important;width:100%!important;height:0!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;overflow:hidden!important;touch-action:none!important}
  #matchView.ks-v404-fullscreen #stage>canvas:not(#v5mini),#matchView.v39-fullscreen #stage>canvas:not(#v5mini),#matchView.v38-fullscreen #stage>canvas:not(#v5mini),#matchView.v33-game-fullscreen #stage>canvas:not(#v5mini),#matchView:fullscreen #stage>canvas:not(#v5mini),#matchView:-webkit-full-screen #stage>canvas:not(#v5mini){position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;touch-action:none!important}
  #matchView.ks-v404-fullscreen #stage>canvas#v5mini,#matchView.v39-fullscreen #stage>canvas#v5mini,#matchView.v38-fullscreen #stage>canvas#v5mini,#matchView.v33-game-fullscreen #stage>canvas#v5mini,#matchView:fullscreen #stage>canvas#v5mini,#matchView:-webkit-full-screen #stage>canvas#v5mini{position:absolute!important;inset:10px 10px auto auto!important;left:auto!important;bottom:auto!important;width:clamp(88px,11vw,142px)!important;height:auto!important;aspect-ratio:168/104!important;max-width:25%!important;max-height:20%!important;min-width:0!important;min-height:0!important;z-index:35!important}
@@ -1209,6 +1213,19 @@
   if(menu){if(menu.textContent!=='☰')menu.textContent='☰';menu.setAttribute('aria-label','Open substitutions and match controls');menu.title='Substitutions and tactics';}
  }
  syncTopToolbar();
+ function addQuickMatchIcon(id,label,glyph,target){
+  if(match.querySelector('#'+id))return;
+  const button=document.createElement('button');button.id=id;button.type='button';button.textContent=glyph;
+  button.setAttribute('aria-label',label);button.title=label;
+  button.addEventListener('click',()=>{
+   match.classList.add('ks-fs-menu-open');
+   const menu=match.querySelector('#ksFullscreenMenuButton');if(menu)menu.setAttribute('aria-expanded','true');
+   requestAnimationFrame(()=>{const field=match.querySelector(target);if(field){field.focus();field.scrollIntoView({block:'nearest',behavior:'smooth'});}});
+  });
+  match.appendChild(button);
+ }
+ addQuickMatchIcon('ksFullscreenSubsButton','Substitutions','↔','#v22SubOut');
+ addQuickMatchIcon('ksFullscreenTacticsButton','Tactics','⚙','#v22TacticSelect');
  const toolbarObserver=new MutationObserver(syncTopToolbar);
  toolbarObserver.observe(match,{childList:true,subtree:true});
  let frame=0,lastW=0,lastH=0,lastRatio=0;
