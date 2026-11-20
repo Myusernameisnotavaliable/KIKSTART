@@ -1203,15 +1203,14 @@
  // Compact in-game toolbar: pitch remains clear; management tools live behind the top-right icon.
  function syncTopToolbar(){
   const pause=match.querySelector('#ksPauseButton'),exit=match.querySelector('#ksFullscreenButton');
-  if(pause){pause.textContent='Ⅱ';pause.setAttribute('aria-label','Pause or resume match');pause.title='Pause / resume';}
-  if(exit){exit.textContent='⛶';exit.setAttribute('aria-label','Exit fullscreen');exit.title='Exit fullscreen';}
+  if(pause){if(pause.textContent!=='Ⅱ')pause.textContent='Ⅱ';pause.setAttribute('aria-label','Pause or resume match');pause.title='Pause / resume';}
+  if(exit){if(exit.textContent!=='⛶')exit.textContent='⛶';exit.setAttribute('aria-label','Exit fullscreen');exit.title='Exit fullscreen';}
   const menu=match.querySelector('#ksFullscreenMenuButton');
-  if(menu){menu.textContent='☰';menu.setAttribute('aria-label','Open substitutions and match controls');menu.title='Substitutions and tactics';}
+  if(menu){if(menu.textContent!=='☰')menu.textContent='☰';menu.setAttribute('aria-label','Open substitutions and match controls');menu.title='Substitutions and tactics';}
  }
  syncTopToolbar();
  const toolbarObserver=new MutationObserver(syncTopToolbar);
- const toolbarHeader=match.querySelector('#ksMatchTopbar');
- if(toolbarHeader)toolbarObserver.observe(toolbarHeader,{childList:true,subtree:true});
+ toolbarObserver.observe(match,{childList:true,subtree:true});
  let frame=0,lastW=0,lastH=0,lastRatio=0;
  function viewport(){const v=window.visualViewport,w=Math.max(1,Math.round(v&&v.width||innerWidth||document.documentElement.clientWidth||1)),h=Math.max(1,Math.round(v&&v.height||innerHeight||document.documentElement.clientHeight||1));document.documentElement.style.setProperty('--ks-v404-vw',w+'px');document.documentElement.style.setProperty('--ks-v404-vh',h+'px');}
  function resize(){const r=stage.getBoundingClientRect(),w=Math.round(r.width),h=Math.round(r.height);if(w<2||h<2)return;const ratio=Math.min(2,devicePixelRatio||1);try{if(typeof renderer!=='undefined'&&renderer&&typeof renderer.setSize==='function'&&(w!==lastW||h!==lastH||Math.abs(ratio-lastRatio)>.01)){if(Math.abs(ratio-lastRatio)>.01&&renderer.setPixelRatio)renderer.setPixelRatio(ratio);renderer.setSize(w,h,false);lastW=w;lastH=h;lastRatio=ratio;}if(typeof camera!=='undefined'&&camera&&camera.updateProjectionMatrix){const a=w/h;if(Math.abs((camera.aspect||0)-a)>.0001){camera.aspect=a;camera.updateProjectionMatrix();}}}catch(e){console.warn('[KIKSTART] renderer resize:',e);}}
