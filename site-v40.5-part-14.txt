@@ -243,6 +243,7 @@
   // and a true fixed-viewport CSS fallback on iOS/WebViews that reject the API.
   let v38CssFullscreen=false,v38BrowserFullscreen=false;
   function v38ResizeMatch(){
+    if(window.__KS_FULLSCREEN_RESIZE_OWNER__)return;
     const stage=document.getElementById('stage');if(!stage)return;
     const rect=stage.getBoundingClientRect(),w=Math.max(1,Math.round(rect.width||stage.clientWidth||1)),h=Math.max(1,Math.round(rect.height||stage.clientHeight||1));
     try{if(typeof renderer!=='undefined'&&renderer&&typeof camera!=='undefined'&&camera){renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}}catch(e){console.warn('KIKSTART fullscreen renderer resize:',e);}
@@ -830,6 +831,7 @@
   // -------------------- Fullscreen and minimap: never stretch the minimap canvas --------------------
   let v39CssFullscreen=false,v39ApiFullscreen=false;
   function v39Resize(){
+    if(window.__KS_FULLSCREEN_RESIZE_OWNER__)return;
     const stage=$('stage');if(!stage)return;
     const rect=stage.getBoundingClientRect(),w=Math.max(1,Math.round(rect.width||stage.clientWidth||1)),h=Math.max(1,Math.round(rect.height||stage.clientHeight||1));
     try{if(renderer&&camera){renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}}catch(e){console.warn('KIKSTART v39 resize:',e);}
